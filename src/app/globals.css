@@ -4,12 +4,185 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ITC Brasil — Paleta Completa */
+:root {
+  /* Ciano — cor principal da marca */
+  --itc-ciano-1: #97dde0;
+  --itc-ciano-2: #65d2d8;
+  --itc-ciano-3: #55c3c9;
+  --itc-ciano-4: #43b4ba;
+  --itc-ciano-5: #30a5ab;
+  --itc-ciano-6: #17969c;
+  --itc-ciano-7: #008f95; /* COR PRINCIPAL DA MARCA */
+  --itc-ciano-8: #007a80;
+  --itc-ciano-9: #006c72;
+  --itc-ciano-10: #005d63;
+  --itc-ciano-11: #004f54;
+  --itc-ciano-12: #004145;
+
+  /* Bordô — destaque institucional */
+  --itc-bordo-1: #ffe8f1;
+  --itc-bordo-2: #ffcedc;
+  --itc-bordo-3: #ecbac8;
+  --itc-bordo-4: #e6a0b4;
+  --itc-bordo-5: #d18da1;
+  --itc-bordo-6: #bc7a8e;
+  --itc-bordo-7: #a8677b;
+  --itc-bordo-8: #945569;
+  --itc-bordo-9: #814458;
+  --itc-bordo-10: #6e3247;
+  --itc-bordo-11: #5b2137;
+  --itc-bordo-12: #491027; /* COR PRINCIPAL BORDÔ */
+
+  /* Neutros — Escala Branco */
+  --itc-branco: #ffffff;
+  --itc-branco-2: #e7e7e7;
+  --itc-branco-3: #d0d0d0;
+  --itc-branco-4: #bababa;
+  --itc-branco-5: #a4a4a4;
+  --itc-branco-6: #8e8e8e;
+  --itc-branco-7: #797979;
+  --itc-branco-8: #656565;
+  --itc-branco-9: #515151;
+  --itc-branco-10: #3e3e3e;
+  --itc-branco-11: #2c2c2c;
+  --itc-branco-12: #1b1b1b;
+
+  /* Neutros — Escala Preto */
+  --itc-preto-1: #e2e2e2;
+  --itc-preto-2: #cbcbcb;
+  --itc-preto-3: #b5b5b5;
+  --itc-preto-4: #9f9f9f;
+  --itc-preto-5: #898989;
+  --itc-preto-6: #757575;
+  --itc-preto-7: #606060;
+  --itc-preto-8: #4d4d4d;
+  --itc-preto-9: #3a3a3a;
+  --itc-preto-10: #292929;
+  --itc-preto-11: #181818;
+  --itc-preto: #000000;
+
+  /* Cores Funcionais */
+  --itc-sucesso: #1a7f3c;
+  --itc-atencao: #cc7a00;
+  --itc-erro: #c0392b;
+  --itc-info: #1565c0;
+
+  /* shadcn/ui — modo claro mapeado para ITC */
+  --background: var(--itc-branco);
+  --foreground: var(--itc-branco-12);
+  --card: var(--itc-branco);
+  --card-foreground: var(--itc-branco-12);
+  --popover: var(--itc-branco);
+  --popover-foreground: var(--itc-branco-12);
+  --primary: var(--itc-ciano-7);
+  --primary-foreground: var(--itc-branco);
+  --secondary: var(--itc-branco-2);
+  --secondary-foreground: var(--itc-branco-12);
+  --muted: var(--itc-branco-2);
+  --muted-foreground: var(--itc-branco-8);
+  --accent: var(--itc-ciano-1);
+  --accent-foreground: var(--itc-ciano-10);
+  --destructive: var(--itc-erro);
+  --border: var(--itc-branco-3);
+  --input: var(--itc-branco-3);
+  --ring: var(--itc-ciano-5);
+  --radius: 0.625rem;
+
+  /* Chart */
+  --chart-1: var(--itc-ciano-7);
+  --chart-2: var(--itc-ciano-4);
+  --chart-3: var(--itc-bordo-12);
+  --chart-4: var(--itc-atencao);
+  --chart-5: var(--itc-sucesso);
+
+  /* Sidebar */
+  --sidebar: var(--itc-branco);
+  --sidebar-foreground: var(--itc-branco-12);
+  --sidebar-primary: var(--itc-ciano-7);
+  --sidebar-primary-foreground: var(--itc-branco);
+  --sidebar-accent: var(--itc-ciano-1);
+  --sidebar-accent-foreground: var(--itc-ciano-10);
+  --sidebar-border: var(--itc-branco-3);
+  --sidebar-ring: var(--itc-ciano-5);
+}
+
+.dark {
+  /* shadcn/ui — modo escuro mapeado para ITC */
+  --background: var(--itc-branco-12);
+  --foreground: var(--itc-branco);
+  --card: var(--itc-branco-11);
+  --card-foreground: var(--itc-branco);
+  --popover: var(--itc-branco-11);
+  --popover-foreground: var(--itc-branco);
+  --primary: var(--itc-ciano-6);
+  --primary-foreground: var(--itc-branco);
+  --secondary: var(--itc-branco-10);
+  --secondary-foreground: var(--itc-branco);
+  --muted: var(--itc-branco-10);
+  --muted-foreground: var(--itc-branco-6);
+  --accent: var(--itc-ciano-11);
+  --accent-foreground: var(--itc-ciano-2);
+  --destructive: #e05252;
+  --border: var(--itc-branco-10);
+  --input: var(--itc-branco-10);
+  --ring: var(--itc-ciano-6);
+
+  /* Chart */
+  --chart-1: var(--itc-ciano-5);
+  --chart-2: var(--itc-ciano-3);
+  --chart-3: var(--itc-bordo-7);
+  --chart-4: var(--itc-atencao);
+  --chart-5: var(--itc-sucesso);
+
+  /* Sidebar */
+  --sidebar: var(--itc-branco-11);
+  --sidebar-foreground: var(--itc-branco);
+  --sidebar-primary: var(--itc-ciano-6);
+  --sidebar-primary-foreground: var(--itc-branco);
+  --sidebar-accent: var(--itc-ciano-11);
+  --sidebar-accent-foreground: var(--itc-ciano-2);
+  --sidebar-border: var(--itc-branco-10);
+  --sidebar-ring: var(--itc-ciano-6);
+}
+
 @theme inline {
+  /* Tailwind color utilities para os tokens ITC */
+  --color-itc-ciano-1: var(--itc-ciano-1);
+  --color-itc-ciano-2: var(--itc-ciano-2);
+  --color-itc-ciano-3: var(--itc-ciano-3);
+  --color-itc-ciano-4: var(--itc-ciano-4);
+  --color-itc-ciano-5: var(--itc-ciano-5);
+  --color-itc-ciano-6: var(--itc-ciano-6);
+  --color-itc-ciano-7: var(--itc-ciano-7);
+  --color-itc-ciano-8: var(--itc-ciano-8);
+  --color-itc-ciano-9: var(--itc-ciano-9);
+  --color-itc-ciano-10: var(--itc-ciano-10);
+  --color-itc-ciano-11: var(--itc-ciano-11);
+  --color-itc-ciano-12: var(--itc-ciano-12);
+  --color-itc-bordo-1: var(--itc-bordo-1);
+  --color-itc-bordo-2: var(--itc-bordo-2);
+  --color-itc-bordo-3: var(--itc-bordo-3);
+  --color-itc-bordo-4: var(--itc-bordo-4);
+  --color-itc-bordo-5: var(--itc-bordo-5);
+  --color-itc-bordo-6: var(--itc-bordo-6);
+  --color-itc-bordo-7: var(--itc-bordo-7);
+  --color-itc-bordo-8: var(--itc-bordo-8);
+  --color-itc-bordo-9: var(--itc-bordo-9);
+  --color-itc-bordo-10: var(--itc-bordo-10);
+  --color-itc-bordo-11: var(--itc-bordo-11);
+  --color-itc-bordo-12: var(--itc-bordo-12);
+  --color-itc-sucesso: var(--itc-sucesso);
+  --color-itc-atencao: var(--itc-atencao);
+  --color-itc-erro: var(--itc-erro);
+  --color-itc-info: var(--itc-info);
+
+  /* Mapeamento shadcn/ui */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-heading: var(--font-inter);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,75 +219,6 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
