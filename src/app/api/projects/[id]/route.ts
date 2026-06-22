@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createProjectSchema } from "@/lib/validations";

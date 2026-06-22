@@ -1,43 +1,14 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
-import NextAuth, { type NextAuthConfig } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { prisma } from "@/lib/db/prisma";
+import type { NextAuthConfig } from "next-auth";
 
+// Edge-safe config — no Prisma, no bcrypt.
+// Used by proxy.ts (middleware/Edge Runtime).
+// The full Node.js config with adapter and providers lives in lib/auth/index.ts.
 export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   pages: {
     signIn: "/",
   },
-  providers: [
-    Credentials({
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
-
-        if (!user) return null;
-
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash,
-        );
-
-        if (!valid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          nome: user.nome,
-          role: user.role,
-          metaDiaria: user.metaDiaria,
-        };
-      },
-    }),
-  ],
+  providers: [],
   callbacks: {
     jwt({ token, user }) {
       if (user) {
@@ -57,5 +28,3 @@ export const authConfig: NextAuthConfig = {
     },
   },
 };
-
-export const { auth, handlers, signIn, signOut } = NextAuth(authConfig);

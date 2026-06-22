@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -128,9 +128,12 @@ async function notifyTelegram(conference: {
   const total = conference.items.length;
 
   const data = new Date(conference.dataInicio).toLocaleDateString("pt-BR");
-  const hora = new Date(conference.dataInicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  const statusEmoji = conference.status === "CONCLUIDO_OK" ? "✅" : "⚠️";
-  const statusLabel = conference.status === "CONCLUIDO_OK" ? "CONCLUÍDO ✅" : "FALTANTES ⚠️";
+  const hora = new Date(conference.dataInicio).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const statusLabel =
+    conference.status === "CONCLUIDO_OK" ? "CONCLUÍDO ✅" : "FALTANTES ⚠️";
 
   const text = [
     `🔍 *Conferência Concluída*`,
