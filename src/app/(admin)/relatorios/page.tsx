@@ -1,26 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Download, Filter, X } from "lucide-react";
+import {
+  BarChart3,
+  Download,
+  Filter,
+  X,
+  ChevronsUpDown,
+  Check,
+  CalendarIcon,
+} from "lucide-react";
 import { useConferences, type ConferencesFilters } from "@/hooks/useConferences";
 import { useUsers } from "@/hooks/useUsers";
 import { useUMs } from "@/hooks/useUMs";
+import { useProjects } from "@/hooks/useProjects";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/DataTable";
 import type { ConferenceRecord } from "@/hooks/useConferences";
+import type { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 const columns: ColumnDef<ConferenceRecord>[] = [
   {
@@ -30,7 +43,8 @@ const columns: ColumnDef<ConferenceRecord>[] = [
       const d = new Date(row.original.dataInicio);
       return (
         <span className="text-sm tabular-nums">
-          {d.toLocaleDateString("pt-BR")} {d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          {d.toLocaleDateString("pt-BR")}{" "}
+          {d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </span>
       );
     },
@@ -107,13 +121,136 @@ function exportCSV(conferences: ConferenceRecord[]) {
   URL.revokeObjectURL(url);
 }
 
+interface ComboboxFilterProps {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string; sublabel?: string; color?: string }[];
+}
+
+function ComboboxFilter({ value, onChange, placeholder, options }: ComboboxFilterProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="flex-1 min-w-0 h-8 text-sm justify-between font-normal"
+        >
+          <span className="flex items-center gap-2 truncate min-w-0">
+            {selected?.color && (
+              <span
+                className="h-2 w-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: selected.color }}
+              />
+            )}
+            <span className="truncate">
+              {selected ? selected.label : placeholder}
+            </span>
+          </span>
+          <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-1" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-60" align="start">
+        <Command>
+          <CommandInput placeholder={`Buscar ${placeholder.toLowerCase()}...`} className="h-8" />
+          <CommandList>
+            <CommandEmpty>Nenhum resultado.</CommandEmpty>
+            <CommandGroup>
+              {value && (
+                <CommandItem
+                  value="__clear__"
+                  onSelect={() => { onChange(""); setOpen(false); }}
+                  className="text-muted-foreground text-xs"
+                >
+                  <X className="h-3 w-3 mr-2" />
+                  Limpar seleção
+                </CommandItem>
+              )}
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt.value}
+                  value={opt.label + (opt.sublabel ?? "")}
+                  onSelect={() => { onChange(opt.value); setOpen(false); }}
+                >
+                  <Check
+                    className={cn("mr-2 h-4 w-4", value === opt.value ? "opacity-100" : "opacity-0")}
+                  />
+                  {opt.color && (
+                    <span
+                      className="h-2 w-2 rounded-full mr-2 flex-shrink-0"
+                      style={{ backgroundColor: opt.color }}
+                    />
+                  )}
+                  {opt.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DateRangeFilter({
+  value,
+  onChange,
+}: {
+  value: DateRange | undefined;
+  onChange: (r: DateRange | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const label = value?.from
+    ? value.to
+      ? `${value.from.toLocaleDateString("pt-BR")} – ${value.to.toLocaleDateString("pt-BR")}`
+      : value.from.toLocaleDateString("pt-BR")
+    : "Período";
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="flex-1 min-w-0 h-8 text-sm justify-between font-normal"
+        >
+          <span className="flex items-center gap-2 truncate">
+            <CalendarIcon className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
+            <span className="truncate">{label}</span>
+          </span>
+          {value?.from && (
+            <X
+              className="h-3.5 w-3.5 shrink-0 ml-1 opacity-50 hover:opacity-100"
+              onClick={(e) => { e.stopPropagation(); onChange(undefined); setOpen(false); }}
+            />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="range"
+          selected={value}
+          onSelect={onChange}
+          numberOfMonths={2}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function RelatoriosPage() {
   const { data: users } = useUsers();
   const { data: ums } = useUMs();
+  const { data: projects } = useProjects();
 
   const [filters, setFilters] = useState<ConferencesFilters>({ limit: 100 });
-  const [fromInput, setFromInput] = useState("");
-  const [toInput, setToInput] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [projectId, setProjectId] = useState("");
 
   const { data: conferences, isLoading } = useConferences(filters);
 
@@ -121,14 +258,52 @@ export default function RelatoriosPage() {
     setFilters((prev) => ({ ...prev, [key]: value || undefined }));
   };
 
-  const clearFilters = () => {
-    setFilters({ limit: 100 });
-    setFromInput("");
-    setToInput("");
+  const handleDateRange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    if (range?.from) {
+      const from = range.from;
+      from.setHours(0, 0, 0, 0);
+      setFilters((prev) => ({ ...prev, from: from.toISOString() }));
+    } else {
+      setFilters((prev) => ({ ...prev, from: undefined }));
+    }
+    if (range?.to) {
+      const to = new Date(range.to);
+      to.setHours(23, 59, 59, 999);
+      setFilters((prev) => ({ ...prev, to: to.toISOString() }));
+    } else {
+      setFilters((prev) => ({ ...prev, to: undefined }));
+    }
   };
 
+  const clearFilters = () => {
+    setFilters({ limit: 100 });
+    setDateRange(undefined);
+    setProjectId("");
+  };
+
+  const filteredUMs = projectId
+    ? (ums ?? []).filter((um) => um.project.id === projectId)
+    : (ums ?? []);
+
   const hasActiveFilters =
-    filters.userId || filters.umId || filters.status || filters.from || filters.to;
+    filters.userId || filters.umId || filters.status || filters.from || filters.to || projectId;
+
+  const userOptions = (users ?? []).map((u) => ({ value: u.id, label: u.nome }));
+  const projectOptions = (projects ?? []).map((p) => ({
+    value: p.id,
+    label: p.nome,
+    color: p.cor,
+  }));
+  const umOptions = filteredUMs.map((um) => ({
+    value: um.id,
+    label: um.nome,
+    color: um.project.cor,
+  }));
+  const statusOptions = [
+    { value: "CONCLUIDO_OK", label: "Concluído" },
+    { value: "CONCLUIDO_FALTANTES", label: "Faltantes" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -165,85 +340,35 @@ export default function RelatoriosPage() {
             </Button>
           )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <Select
+        <div className="flex flex-wrap gap-2">
+          <ComboboxFilter
             value={filters.userId ?? ""}
-            onValueChange={(v) => setFilter("userId", v)}
-          >
-            <SelectTrigger className="h-8 text-sm">
-              <SelectValue placeholder="Técnico" />
-            </SelectTrigger>
-            <SelectContent>
-              {users?.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
+            onChange={(v) => setFilter("userId", v)}
+            placeholder="Técnico"
+            options={userOptions}
+          />
+          <ComboboxFilter
+            value={projectId}
+            onChange={(v) => {
+              setProjectId(v);
+              if (filters.umId) setFilter("umId", undefined);
+            }}
+            placeholder="Projeto"
+            options={projectOptions}
+          />
+          <ComboboxFilter
             value={filters.umId ?? ""}
-            onValueChange={(v) => setFilter("umId", v)}
-          >
-            <SelectTrigger className="h-8 text-sm">
-              <SelectValue placeholder="UM" />
-            </SelectTrigger>
-            <SelectContent>
-              {ums?.map((um) => (
-                <SelectItem key={um.id} value={um.id}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: um.project.cor }}
-                    />
-                    {um.nome}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
+            onChange={(v) => setFilter("umId", v)}
+            placeholder="UM"
+            options={umOptions}
+          />
+          <ComboboxFilter
             value={filters.status ?? ""}
-            onValueChange={(v) => setFilter("status", v)}
-          >
-            <SelectTrigger className="h-8 text-sm">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="CONCLUIDO_OK">Concluído</SelectItem>
-              <SelectItem value="CONCLUIDO_FALTANTES">Faltantes</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Input
-            type="date"
-            className="h-8 text-sm"
-            value={fromInput}
-            onChange={(e) => {
-              setFromInput(e.target.value);
-              setFilter("from", e.target.value ? new Date(e.target.value).toISOString() : undefined);
-            }}
-            placeholder="De"
+            onChange={(v) => setFilter("status", v)}
+            placeholder="Status"
+            options={statusOptions}
           />
-
-          <Input
-            type="date"
-            className="h-8 text-sm"
-            value={toInput}
-            onChange={(e) => {
-              setToInput(e.target.value);
-              if (e.target.value) {
-                const to = new Date(e.target.value);
-                to.setHours(23, 59, 59, 999);
-                setFilter("to", to.toISOString());
-              } else {
-                setFilter("to", undefined);
-              }
-            }}
-            placeholder="Até"
-          />
+          <DateRangeFilter value={dateRange} onChange={handleDateRange} />
         </div>
       </div>
 
@@ -273,7 +398,7 @@ export default function RelatoriosPage() {
             {conferences.length} conferência{conferences.length !== 1 ? "s" : ""} encontrada
             {conferences.length !== 1 ? "s" : ""}
           </p>
-          <DataTable columns={columns} data={conferences} />
+          <DataTable columns={columns} data={conferences} pageSize={20} />
         </div>
       )}
     </div>
