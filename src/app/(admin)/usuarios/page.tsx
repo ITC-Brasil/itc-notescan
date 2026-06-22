@@ -93,6 +93,8 @@ function CreateUserDialog({
     } as CreateUserInput,
   });
 
+  const role = form.watch("role");
+
   const onSubmit = async (data: CreateUserInput) => {
     try {
       await createMutation.mutateAsync(data);
@@ -151,7 +153,7 @@ function CreateUserDialog({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className={role === "USER" ? "grid grid-cols-2 gap-3" : ""}>
               <FormField
                 control={form.control}
                 name="role"
@@ -174,24 +176,26 @@ function CreateUserDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="metaDiaria"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Meta diária</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {role === "USER" && (
+                <FormField
+                  control={form.control}
+                  name="metaDiaria"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Meta diária</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -229,6 +233,8 @@ function EditUserDialog({
       password: "",
     },
   });
+
+  const role = form.watch("role");
 
   const onSubmit = async (data: UpdateUserFormValues) => {
     try {
@@ -298,7 +304,7 @@ function EditUserDialog({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className={role === "USER" ? "grid grid-cols-2 gap-3" : ""}>
               <FormField
                 control={form.control}
                 name="role"
@@ -321,24 +327,26 @@ function EditUserDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="metaDiaria"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Meta diária</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {role === "USER" && (
+                <FormField
+                  control={form.control}
+                  name="metaDiaria"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Meta diária</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
