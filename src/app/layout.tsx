@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { SessionProvider } from "@/providers/SessionProvider";
+import { QueryProvider } from "@/providers/QueryProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,7 +37,16 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <ThemeProvider defaultTheme="system" storageKey="itc-notescan-theme">
+          <SessionProvider>
+            <QueryProvider>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+              <Toaster position="bottom-center" richColors />
+            </QueryProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
