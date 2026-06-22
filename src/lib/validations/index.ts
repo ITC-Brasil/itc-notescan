@@ -30,6 +30,25 @@ export const createNotebooksBatchSchema = z.object({
   status: z.enum(["ATIVO", "MANUTENCAO"]).default("ATIVO"),
 });
 
+export const updateNotebookSchema = z.object({
+  hostname: z.string().min(1).max(100),
+  serial: z.string().optional(),
+  patrimonio: z.string().optional(),
+  status: z.enum(["ATIVO", "MANUTENCAO"]),
+  umId: z.string().min(1),
+});
+
+export const importNotebooksSchema = z.object({
+  umId: z.string().min(1),
+  rows: z.array(
+    z.object({
+      hostname: z.string().min(1).max(100),
+      serial: z.string().optional(),
+      patrimonio: z.string().optional(),
+    }),
+  ).min(1),
+});
+
 export const createProjectSchema = z.object({
   nome: z.string().min(1).max(100),
   cor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve ser um hex válido"),
@@ -58,6 +77,8 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export type UpdateNotebookInput = z.infer<typeof updateNotebookSchema>;
+export type ImportNotebooksInput = z.infer<typeof importNotebooksSchema>;
 export type CreateConferenceInput = z.infer<typeof createConferenceSchema>;
 export type CreateNotebookInput = z.infer<typeof createNotebookSchema>;
 export type CreateNotebooksBatchInput = z.infer<typeof createNotebooksBatchSchema>;
