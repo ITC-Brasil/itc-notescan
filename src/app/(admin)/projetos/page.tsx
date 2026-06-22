@@ -211,9 +211,6 @@ export default function ProjetosPage() {
                 <span className="font-medium text-sm text-foreground">
                   {project.nome}
                 </span>
-                <span className="font-mono text-xs text-muted-foreground hidden sm:inline">
-                  {project.cor}
-                </span>
                 <Badge variant="secondary" className="text-xs">
                   {project._count.ums} UM{project._count.ums !== 1 ? "s" : ""}
                 </Badge>
@@ -243,6 +240,7 @@ export default function ProjetosPage() {
       )}
 
       <ProjectFormDialog
+        key={editingProject?.id ?? "new"}
         open={formOpen}
         onOpenChange={(v) => {
           setFormOpen(v);
