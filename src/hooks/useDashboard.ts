@@ -1,10 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 
+interface MaintenanceNotebook {
+  id: string;
+  hostname: string;
+  serial: string | null;
+  um: { nome: string; project: { nome: string; cor: string } };
+}
+
 interface DashboardStats {
   conferencesToday: number;
   conferencesWithMissing: number;
   notebooksInMaintenance: number;
+  notebooksTotal: number;
   activeTechnicians: number;
+  maintenanceNotebooks: MaintenanceNotebook[];
   latestConferences: {
     id: string;
     status: "CONCLUIDO_OK" | "CONCLUIDO_FALTANTES";

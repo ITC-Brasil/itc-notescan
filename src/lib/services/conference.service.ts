@@ -8,8 +8,10 @@ export async function getDashboardStats() {
     conferencesToday,
     conferencesWithMissing,
     notebooksInMaintenance,
+    notebooksTotal,
     activeTechnicians,
     latestConferences,
+    maintenanceNotebooks,
   ] = await Promise.all([
     prisma.conference.count({
       where: { dataInicio: { gte: todayStart } },
@@ -23,6 +25,7 @@ export async function getDashboardStats() {
     prisma.notebook.count({
       where: { status: "MANUTENCAO" },
     }),
+    prisma.notebook.count(),
     prisma.conference
       .findMany({
         where: { dataInicio: { gte: todayStart } },
@@ -45,13 +48,25 @@ export async function getDashboardStats() {
         _count: { select: { items: true } },
       },
     }),
+    prisma.notebook.findMany({
+      where: { status: "MANUTENCAO" },
+      orderBy: [{ um: { project: { nome: "asc" } } }, { um: { nome: "asc" } }, { hostname: "asc" }],
+      select: {
+        id: true,
+        hostname: true,
+        serial: true,
+        um: { select: { nome: true, project: { select: { nome: true, cor: true } } } },
+      },
+    }),
   ]);
 
   return {
     conferencesToday,
     conferencesWithMissing,
     notebooksInMaintenance,
+    notebooksTotal,
     activeTechnicians,
     latestConferences,
+    maintenanceNotebooks,
   };
 }

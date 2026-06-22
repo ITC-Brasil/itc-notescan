@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ClipboardCheck,
   AlertTriangle,
@@ -7,6 +8,7 @@ import {
   Users,
   CheckCircle2,
   XCircle,
+  Laptop,
 } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -14,6 +16,12 @@ import { SkeletonCard, SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/DataTable";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 
@@ -91,11 +99,18 @@ interface StatCardProps {
   value: number;
   icon: React.ElementType;
   variant?: "default" | "warning" | "error";
+  onClick?: () => void;
 }
 
-function StatCard({ title, value, icon: Icon, variant = "default" }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, variant = "default", onClick }: StatCardProps) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+    <div
+      className={cn(
+        "rounded-lg border border-border bg-card p-4 space-y-3",
+        onClick && "cursor-pointer hover:bg-muted/30 transition-colors",
+      )}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{title}</p>
         <div
@@ -103,17 +118,10 @@ function StatCard({ title, value, icon: Icon, variant = "default" }: StatCardPro
             "rounded-md p-1.5",
             variant === "warning" && "bg-[--itc-atencao]/10",
             variant === "error" && "bg-[--itc-erro]/10",
-            variant === "default" && "bg-primary/10",
+            variant === "default" && "bg-[--itc-ciano-7]/10",
           )}
         >
-          <Icon
-            className={cn(
-              "h-4 w-4",
-              variant === "warning" && "text-[--itc-atencao]",
-              variant === "error" && "text-[--itc-erro]",
-              variant === "default" && "text-primary",
-            )}
-          />
+          <Icon className="h-4 w-4 text-[--itc-ciano-7]" />
         </div>
       </div>
       <p className="text-2xl font-semibold text-foreground">{value}</p>
@@ -123,6 +131,7 @@ function StatCard({ title, value, icon: Icon, variant = "default" }: StatCardPro
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -134,8 +143,8 @@ export default function DashboardPage() {
 
       {isLoading ? (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
@@ -149,7 +158,7 @@ export default function DashboardPage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <StatCard
               title="Conferências hoje"
               value={data!.conferencesToday}
@@ -161,10 +170,16 @@ export default function DashboardPage() {
               icon={Users}
             />
             <StatCard
+              title="Notebooks cadastrados"
+              value={data!.notebooksTotal}
+              icon={Laptop}
+            />
+            <StatCard
               title="Em manutenção"
               value={data!.notebooksInMaintenance}
               icon={Wrench}
               variant="warning"
+              onClick={() => setMaintenanceOpen(true)}
             />
             <StatCard
               title="Com faltantes"
@@ -194,6 +209,46 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+
+      <Dialog open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Notebooks em Manutenção</DialogTitle>
+          </DialogHeader>
+          {!data?.maintenanceNotebooks.length ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Nenhum notebook em manutenção no momento.
+            </p>
+          ) : (
+            <div className="rounded-lg border border-border overflow-hidden max-h-96 overflow-y-auto">
+              {data.maintenanceNotebooks.map((nb, i) => (
+                <div
+                  key={nb.id}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2.5",
+                    i < data.maintenanceNotebooks.length - 1 && "border-b border-border",
+                  )}
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: nb.um.project.cor }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-mono font-medium text-foreground">{nb.hostname}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {nb.um.project.nome} / {nb.um.nome}
+                      {nb.serial && ` · ${nb.serial}`}
+                    </p>
+                  </div>
+                  <Badge className="text-xs bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15">
+                    Manutenção
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
