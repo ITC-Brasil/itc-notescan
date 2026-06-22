@@ -6,12 +6,14 @@ declare module "next-auth" {
       id: string;
       nome: string;
       role: string;
+      metaDiaria: number;
     } & DefaultSession["user"];
   }
 
   interface User {
     nome: string;
     role: string;
+    metaDiaria: number;
   }
 }
 
@@ -20,5 +22,6 @@ declare module "next-auth/jwt" {
     id: string;
     nome: string;
     role: string;
+    metaDiaria: number;
   }
 }

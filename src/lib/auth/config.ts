@@ -33,6 +33,7 @@ export const authConfig: NextAuthConfig = {
           email: user.email,
           nome: user.nome,
           role: user.role,
+          metaDiaria: user.metaDiaria,
         };
       },
     }),
@@ -43,6 +44,7 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         token.role = (user as { role: string }).role;
         token.nome = (user as { nome: string }).nome;
+        token.metaDiaria = (user as { metaDiaria: number }).metaDiaria;
       }
       return token;
     },
@@ -50,6 +52,7 @@ export const authConfig: NextAuthConfig = {
       session.user.id = token.id as string;
       session.user.role = token.role as string;
       session.user.nome = token.nome as string;
+      session.user.metaDiaria = token.metaDiaria as number;
       return session;
     },
   },
