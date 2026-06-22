@@ -29,21 +29,14 @@ const navItems = [
   { href: "/usuarios", label: "Usuários", icon: Users, roles: ["MASTER"] },
 ] as const;
 
-interface AdminLayoutProps {
-  children: React.ReactNode;
+interface NavContentProps {
+  visibleItems: typeof navItems[number][];
+  pathname: string;
+  onNavClick: () => void;
 }
 
-export function AdminLayout({ children }: AdminLayoutProps) {
-  const { data: session } = useSession();
-  const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const role = session?.user.role ?? "";
-  const visibleItems = navItems.filter((item) =>
-    item.roles.includes(role as "ADMIN" | "MASTER"),
-  );
-
-  const NavContent = () => (
+function NavContent({ visibleItems, pathname, onNavClick }: NavContentProps) {
+  return (
     <nav className="flex flex-col gap-1 p-3">
       {visibleItems.map((item) => {
         const Icon = item.icon;
@@ -52,7 +45,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <Link
             key={item.href}
             href={item.href}
-            onClick={() => setSidebarOpen(false)}
+            onClick={onNavClick}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               isActive
@@ -67,6 +60,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       })}
     </nav>
   );
+}
+
+interface AdminLayoutProps {
+  children: React.ReactNode;
+}
+
+export function AdminLayout({ children }: AdminLayoutProps) {
+  const { data: session } = useSession();
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const role = session?.user.role ?? "";
+  const visibleItems = navItems.filter((item) =>
+    (item.roles as readonly string[]).includes(role),
+  ) as typeof navItems[number][];
 
   return (
     <div className="flex h-full min-h-screen">
@@ -79,7 +87,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <span className="font-semibold text-foreground text-sm">NoteScan</span>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <NavContent />
+          <NavContent
+            visibleItems={visibleItems}
+            pathname={pathname}
+            onNavClick={() => {}}
+          />
         </div>
         <div className="border-t border-border p-3">
           <div className="flex items-center gap-2 px-2 py-1.5 mb-1">
@@ -136,7 +148,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <NavContent />
+          <NavContent
+            visibleItems={visibleItems}
+            pathname={pathname}
+            onNavClick={() => setSidebarOpen(false)}
+          />
         </div>
       </aside>
 
