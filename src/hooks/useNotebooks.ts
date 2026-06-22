@@ -124,3 +124,44 @@ export function useImportNotebooks() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });
 }
+
+export interface NotebookHistoryItem {
+  id: string;
+  status: "ESCANEADO" | "FALTANTE" | "MANUTENCAO";
+  conference: {
+    dataInicio: string;
+    user: { nome: string };
+    um: { nome: string; project: { nome: string; cor: string } };
+  };
+}
+
+export function useNotebookHistory(notebookId: string | null) {
+  return useQuery({
+    queryKey: ["notebook-history", notebookId],
+    queryFn: async () => {
+      const res = await fetch(`/api/notebooks/${notebookId}/history`);
+      if (!res.ok) throw new Error("Falha ao carregar histórico");
+      return res.json() as Promise<NotebookHistoryItem[]>;
+    },
+    enabled: !!notebookId,
+  });
+}
+
+export function useBulkDeleteNotebooks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (umId: string) => {
+      const res = await fetch("/api/notebooks/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ umId }),
+      });
+      if (!res.ok) {
+        const err = (await res.json()) as { message: string };
+        throw new Error(err.message);
+      }
+      return res.json() as Promise<{ deleted: number }>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
+  });
+}

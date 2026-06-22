@@ -6,10 +6,17 @@ import {
   Plus,
   Pencil,
   Trash2,
-  ChevronDown,
-  ChevronRight,
   Upload,
   Layers,
+  Wrench,
+  CheckCircle2,
+  XCircle,
+  History,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +28,8 @@ import {
   useDeleteNotebook,
   useCreateNotebooksBatch,
   useImportNotebooks,
+  useNotebookHistory,
+  useBulkDeleteNotebooks,
   type Notebook,
 } from "@/hooks/useNotebooks";
 import { useUMs } from "@/hooks/useUMs";
@@ -60,6 +69,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 type NotebookFormValues = {
@@ -70,6 +93,76 @@ type NotebookFormValues = {
   umId: string;
 };
 
+function UMCombobox({
+  value,
+  onChange,
+  placeholder = "Selecione a UM",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const { data: ums } = useUMs();
+  const [open, setOpen] = useState(false);
+  const selected = ums?.find((u) => u.id === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          {selected ? (
+            <span className="flex items-center gap-2 text-left min-w-0">
+              <span
+                className="h-2 w-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: selected.project.cor }}
+              />
+              <span className="truncate">{selected.nome}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-full min-w-[280px]" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar UM..." className="h-9" />
+          <CommandList>
+            <CommandEmpty>Nenhuma UM encontrada.</CommandEmpty>
+            <CommandGroup>
+              {ums?.map((um) => (
+                <CommandItem
+                  key={um.id}
+                  value={`${um.project.nome} ${um.nome}`}
+                  onSelect={() => { onChange(um.id); setOpen(false); }}
+                  className="flex items-start gap-3 py-2"
+                >
+                  <Check
+                    className={cn("mt-0.5 h-4 w-4 flex-shrink-0", value === um.id ? "opacity-100" : "opacity-0")}
+                  />
+                  <span
+                    className="h-2 w-2 rounded-full flex-shrink-0 mt-1.5"
+                    style={{ backgroundColor: um.project.cor }}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-tight">{um.nome}</p>
+                    <p className="text-xs text-muted-foreground leading-tight">{um.project.nome}</p>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function NotebookFormDialog({
   open,
   onOpenChange,
@@ -79,7 +172,6 @@ function NotebookFormDialog({
   onOpenChange: (v: boolean) => void;
   notebook?: Notebook;
 }) {
-  const { data: ums } = useUMs();
   const createMutation = useCreateNotebook();
   const updateMutation = useUpdateNotebook();
   const isEditing = !!notebook;
@@ -130,26 +222,9 @@ function NotebookFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unidade Móvel</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value as string}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a UM" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {ums?.map((um) => (
-                        <SelectItem key={um.id} value={um.id}>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: um.project.cor }}
-                            />
-                            {um.project.nome} / {um.nome}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <UMCombobox value={field.value as string} onChange={field.onChange} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -173,7 +248,7 @@ function NotebookFormDialog({
                 name="serial"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Serial</FormLabel>
+                    <FormLabel>N/S</FormLabel>
                     <FormControl>
                       <Input placeholder="Opcional" {...field} value={field.value as string ?? ""} />
                     </FormControl>
@@ -241,7 +316,6 @@ function BatchDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { data: ums } = useUMs();
   const batchMutation = useCreateNotebooksBatch();
 
   const form = useForm({
@@ -293,26 +367,9 @@ function BatchDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unidade Móvel</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a UM" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {ums?.map((um) => (
-                        <SelectItem key={um.id} value={um.id}>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: um.project.cor }}
-                            />
-                            {um.project.nome} / {um.nome}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <UMCombobox value={field.value} onChange={field.onChange} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -388,6 +445,17 @@ function BatchDialog({
   );
 }
 
+function downloadCSVTemplate() {
+  const csv = "hostname,serial,patrimonio,status\nBSBIA01-EST01,,, ATIVO\n";
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "modelo_notebooks.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function ImportDialog({
   open,
   onOpenChange,
@@ -395,7 +463,6 @@ function ImportDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { data: ums } = useUMs();
   const importMutation = useImportNotebooks();
   const fileRef = useRef<HTMLInputElement>(null);
   const [selectedUmId, setSelectedUmId] = useState("");
@@ -406,10 +473,13 @@ function ImportDialog({
     const lines = text.trim().split(/\r?\n/);
     if (!lines.length) return;
 
+    const firstLine = lines[0].toLowerCase();
+    const startIdx = firstLine.startsWith("hostname") ? 1 : 0;
+
     const rows: { hostname: string; serial?: string; patrimonio?: string }[] = [];
     const errors: string[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = startIdx; i < lines.length; i++) {
       const cols = lines[i].split(",").map((c) => c.trim());
       if (!cols[0]) { errors.push(`Linha ${i + 1}: hostname vazio`); continue; }
       rows.push({
@@ -460,29 +530,24 @@ function ImportDialog({
         <div className="space-y-4">
           <div>
             <p className="text-sm font-medium text-foreground mb-1.5">Unidade Móvel</p>
-            <Select value={selectedUmId} onValueChange={setSelectedUmId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a UM" />
-              </SelectTrigger>
-              <SelectContent>
-                {ums?.map((um) => (
-                  <SelectItem key={um.id} value={um.id}>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: um.project.cor }}
-                      />
-                      {um.project.nome} / {um.nome}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <UMCombobox value={selectedUmId} onChange={setSelectedUmId} />
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground mb-1.5">Arquivo CSV</p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-sm font-medium text-foreground">Arquivo CSV</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1.5 text-muted-foreground"
+                onClick={downloadCSVTemplate}
+                type="button"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Baixar modelo
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground mb-2">
-              Formato: hostname, serial (opcional), patrimônio (opcional)
+              Colunas: hostname, serial (opcional), patrimônio (opcional), status (opcional)
             </p>
             <input
               ref={fileRef}
@@ -546,49 +611,168 @@ function ImportDialog({
   );
 }
 
+function HistoryModal({
+  notebookId,
+  hostname,
+  open,
+  onOpenChange,
+}: {
+  notebookId: string | null;
+  hostname: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { data: history, isLoading } = useNotebookHistory(open ? notebookId : null);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Histórico — {hostname}</DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="space-y-2 py-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-12 rounded bg-muted animate-pulse" />
+            ))}
+          </div>
+        ) : !history?.length ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Nenhuma conferência registrada para este notebook.
+          </p>
+        ) : (
+          <div className="space-y-0 rounded-lg border border-border overflow-hidden max-h-96 overflow-y-auto">
+            {history.map((item, i) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "flex items-start gap-3 px-4 py-3",
+                  i < history.length - 1 && "border-b border-border",
+                )}
+              >
+                <div className="flex-shrink-0 mt-0.5">
+                  {item.status === "ESCANEADO" ? (
+                    <CheckCircle2 className="h-4 w-4 text-[--itc-sucesso]" />
+                  ) : item.status === "FALTANTE" ? (
+                    <XCircle className="h-4 w-4 text-[--itc-erro]" />
+                  ) : (
+                    <Wrench className="h-4 w-4 text-[--itc-atencao]" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">
+                      {item.conference.um.project.nome} / {item.conference.um.nome}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-xs", {
+                        "text-[--itc-sucesso] border-[--itc-sucesso]/30": item.status === "ESCANEADO",
+                        "text-[--itc-erro] border-[--itc-erro]/30": item.status === "FALTANTE",
+                        "text-[--itc-atencao] border-[--itc-atencao]/30": item.status === "MANUTENCAO",
+                      })}
+                    >
+                      {item.status === "ESCANEADO" ? "Escaneado" : item.status === "FALTANTE" ? "Faltante" : "Manutenção"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(item.conference.dataInicio).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })} · {item.conference.user.nome}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function NotebooksPage() {
   const { data: notebooks, isLoading } = useNotebooks();
   const deleteMutation = useDeleteNotebook();
+  const updateMutation = useUpdateNotebook();
+  const bulkDeleteMutation = useBulkDeleteNotebooks();
 
   const [formOpen, setFormOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editingNotebook, setEditingNotebook] = useState<Notebook | undefined>();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [bulkDeletingUmId, setBulkDeletingUmId] = useState<string | null>(null);
+  const [bulkDeletingUmNome, setBulkDeletingUmNome] = useState("");
+  const [historyNotebook, setHistoryNotebook] = useState<{ id: string; hostname: string } | null>(null);
 
-  const toggleGroup = (key: string) => {
-    setExpandedGroups((prev) => {
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [expandedUMs, setExpandedUMs] = useState<Set<string>>(new Set());
+
+  const toggleProject = (id: string) =>
+    setExpandedProjects((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+
+  const toggleUM = (id: string) =>
+    setExpandedUMs((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  // Natural sort helper
+  const naturalSort = (a: string, b: string) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+
+  // Build hierarchy: project → um → notebooks (natural sorted)
+  type UMGroup = {
+    umId: string;
+    umNome: string;
+    projectCor: string;
+    items: Notebook[];
+  };
+  type ProjectGroup = {
+    projectId: string;
+    projectNome: string;
+    projectCor: string;
+    ums: UMGroup[];
   };
 
-  type GroupKey = string;
-  const grouped = (notebooks ?? []).reduce<
-    Record<
-      GroupKey,
-      {
-        label: string;
-        projectCor: string;
-        umNome: string;
-        items: Notebook[];
+  const hierarchy = Object.values(
+    (notebooks ?? []).reduce<Record<string, ProjectGroup>>((acc, nb) => {
+      const pid = nb.um.project.id;
+      if (!acc[pid]) {
+        acc[pid] = {
+          projectId: pid,
+          projectNome: nb.um.project.nome,
+          projectCor: nb.um.project.cor,
+          ums: [],
+        };
       }
-    >
-  >((acc, nb) => {
-    const key = `${nb.um.project.id}::${nb.umId}`;
-    if (!acc[key]) {
-      acc[key] = {
-        label: `${nb.um.project.nome} / ${nb.um.nome}`,
-        projectCor: nb.um.project.cor,
-        umNome: nb.um.nome,
-        items: [],
-      };
-    }
-    acc[key].items.push(nb);
-    return acc;
-  }, {});
+      const umGroup = acc[pid].ums.find((u) => u.umId === nb.umId);
+      if (!umGroup) {
+        acc[pid].ums.push({
+          umId: nb.umId,
+          umNome: nb.um.nome,
+          projectCor: nb.um.project.cor,
+          items: [nb],
+        });
+      } else {
+        umGroup.items.push(nb);
+      }
+      return acc;
+    }, {}),
+  ).sort((a, b) => naturalSort(a.projectNome, b.projectNome));
+
+  hierarchy.forEach((pg) => {
+    pg.ums.sort((a, b) => naturalSort(a.umNome, b.umNome));
+    pg.ums.forEach((u) => {
+      u.items.sort((a, b) => naturalSort(a.hostname, b.hostname));
+    });
+  });
 
   const handleDelete = async () => {
     if (!deletingId) return;
@@ -602,11 +786,49 @@ export default function NotebooksPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (!bulkDeletingUmId) return;
+    try {
+      const result = await bulkDeleteMutation.mutateAsync(bulkDeletingUmId);
+      toast.success(`${result.deleted} notebook${result.deleted !== 1 ? "s" : ""} excluído${result.deleted !== 1 ? "s" : ""}.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir notebooks.");
+    } finally {
+      setBulkDeletingUmId(null);
+      setBulkDeletingUmNome("");
+    }
+  };
+
+  const handleToggleStatus = async (nb: Notebook) => {
+    const newStatus = nb.status === "ATIVO" ? "MANUTENCAO" : "ATIVO";
+    try {
+      await updateMutation.mutateAsync({
+        id: nb.id,
+        data: {
+          hostname: nb.hostname,
+          serial: nb.serial ?? undefined,
+          patrimonio: nb.patrimonio ?? undefined,
+          umId: nb.umId,
+          status: newStatus,
+        },
+      });
+      toast.success(
+        newStatus === "MANUTENCAO"
+          ? `${nb.hostname} movido para manutenção.`
+          : `${nb.hostname} marcado como ativo.`,
+      );
+    } catch {
+      toast.error("Erro ao alterar status.");
+    }
+  };
+
+  const totalNotebooks = notebooks?.length ?? 0;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Notebooks"
-        description="Gerencie o inventário de notebooks"
+        description={`${totalNotebooks} notebook${totalNotebooks !== 1 ? "s" : ""} cadastrado${totalNotebooks !== 1 ? "s" : ""}`}
         icon={Laptop}
         action={
           <div className="flex items-center gap-2">
@@ -654,100 +876,162 @@ export default function NotebooksPage() {
         />
       ) : (
         <div className="space-y-2">
-          {Object.entries(grouped).map(([key, group]) => {
-            const isExpanded = expandedGroups.has(key);
-            return (
-              <div key={key} className="rounded-lg border border-border overflow-hidden">
-                <button
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                  onClick={() => toggleGroup(key)}
-                >
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  )}
-                  <span
-                    className="h-3 w-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: group.projectCor }}
-                  />
-                  <span className="font-medium text-sm text-foreground">{group.label}</span>
-                  <Badge variant="secondary" className="text-xs ml-auto">
-                    {group.items.length} notebook{group.items.length !== 1 ? "s" : ""}
-                  </Badge>
-                  <Badge
-                    variant={
-                      group.items.some((n) => n.status === "MANUTENCAO") ? "destructive" : "secondary"
-                    }
-                    className="text-xs"
-                  >
-                    {group.items.filter((n) => n.status === "MANUTENCAO").length} manutenção
-                  </Badge>
-                </button>
+          {hierarchy.map((pg) => (
+            <Collapsible
+              key={pg.projectId}
+              open={expandedProjects.has(pg.projectId)}
+              onOpenChange={() => toggleProject(pg.projectId)}
+            >
+              <div className="rounded-lg border border-border overflow-hidden">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left">
+                    {expandedProjects.has(pg.projectId) ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    )}
+                    <span
+                      className="h-3 w-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: pg.projectCor }}
+                    />
+                    <span className="font-semibold text-sm text-foreground">{pg.projectNome}</span>
+                    <Badge variant="secondary" className="text-xs ml-auto">
+                      {pg.ums.reduce((s, u) => s + u.items.length, 0)} notebooks
+                    </Badge>
+                  </button>
+                </CollapsibleTrigger>
 
-                {isExpanded && (
+                <CollapsibleContent>
                   <div className="border-t border-border">
-                    {group.items.map((nb, i) => (
-                      <div
-                        key={nb.id}
-                        className={cn(
-                          "flex items-center justify-between px-4 py-2 pl-11 hover:bg-muted/30 transition-colors",
-                          i < group.items.length - 1 && "border-b border-border",
-                        )}
+                    {pg.ums.map((ug) => (
+                      <Collapsible
+                        key={ug.umId}
+                        open={expandedUMs.has(ug.umId)}
+                        onOpenChange={() => toggleUM(ug.umId)}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-sm font-mono font-medium text-foreground truncate">
-                            {nb.hostname}
-                          </span>
-                          {nb.serial && (
-                            <span className="text-xs text-muted-foreground hidden sm:inline">
-                              {nb.serial}
-                            </span>
-                          )}
-                          {nb.patrimonio && (
-                            <span className="text-xs text-muted-foreground hidden md:inline">
-                              PAT: {nb.patrimonio}
-                            </span>
-                          )}
-                          <Badge
-                            variant={nb.status === "MANUTENCAO" ? "destructive" : "secondary"}
-                            className="text-xs"
-                          >
-                            {nb.status === "MANUTENCAO" ? "Manutenção" : "Ativo"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              setEditingNotebook(nb);
-                              setFormOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => setDeletingId(nb.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
+                        <CollapsibleTrigger asChild>
+                          <button className="w-full flex items-center gap-3 px-4 py-2.5 pl-10 hover:bg-muted/30 transition-colors text-left border-b border-border last:border-b-0">
+                            {expandedUMs.has(ug.umId) ? (
+                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            )}
+                            <span className="text-sm font-medium text-foreground">{ug.umNome}</span>
+                            <Badge variant="secondary" className="text-xs ml-auto">
+                              {ug.items.length}
+                            </Badge>
+                            {ug.items.some((n) => n.status === "MANUTENCAO") && (
+                              <Badge className="text-xs bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15">
+                                {ug.items.filter((n) => n.status === "MANUTENCAO").length} manutenção
+                              </Badge>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive ml-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBulkDeletingUmId(ug.umId);
+                                setBulkDeletingUmNome(ug.umNome);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Excluir todos
+                            </Button>
+                          </button>
+                        </CollapsibleTrigger>
+
+                        <CollapsibleContent>
+                          <div>
+                            {ug.items.map((nb, i) => (
+                              <div
+                                key={nb.id}
+                                className={cn(
+                                  "flex items-center justify-between px-4 py-2 pl-16 hover:bg-muted/20 transition-colors",
+                                  i < ug.items.length - 1 && "border-b border-border",
+                                )}
+                              >
+                                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                                  <span className="text-sm font-mono font-medium text-foreground truncate max-w-[160px]">
+                                    {nb.hostname}
+                                  </span>
+                                  {nb.serial && (
+                                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                                      {nb.serial}
+                                    </span>
+                                  )}
+                                  {nb.patrimonio && (
+                                    <span className="text-xs text-muted-foreground hidden md:inline">
+                                      PAT:{nb.patrimonio}
+                                    </span>
+                                  )}
+                                  {nb.status === "MANUTENCAO" && (
+                                    <Badge className="text-xs bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15 shrink-0">
+                                      Manutenção
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    title="Histórico"
+                                    onClick={() => setHistoryNotebook({ id: nb.id, hostname: nb.hostname })}
+                                  >
+                                    <History className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                      "h-7 w-7",
+                                      nb.status === "MANUTENCAO"
+                                        ? "text-[--itc-atencao] hover:text-[--itc-atencao]/80"
+                                        : "text-muted-foreground hover:text-[--itc-atencao]",
+                                    )}
+                                    title={nb.status === "MANUTENCAO" ? "Marcar como Ativo" : "Mover para Manutenção"}
+                                    onClick={() => handleToggleStatus(nb)}
+                                    disabled={updateMutation.isPending}
+                                  >
+                                    <Wrench className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      setEditingNotebook(nb);
+                                      setFormOpen(true);
+                                    }}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    onClick={() => setDeletingId(nb.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     ))}
                   </div>
-                )}
+                </CollapsibleContent>
               </div>
-            );
-          })}
+            </Collapsible>
+          ))}
         </div>
       )}
 
       <NotebookFormDialog
+        key={editingNotebook?.id ?? "new"}
         open={formOpen}
         onOpenChange={(v) => {
           setFormOpen(v);
@@ -758,6 +1042,13 @@ export default function NotebooksPage() {
       <BatchDialog open={batchOpen} onOpenChange={setBatchOpen} />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
 
+      <HistoryModal
+        notebookId={historyNotebook?.id ?? null}
+        hostname={historyNotebook?.hostname ?? ""}
+        open={!!historyNotebook}
+        onOpenChange={(v) => !v && setHistoryNotebook(null)}
+      />
+
       <ConfirmationDialog
         open={!!deletingId}
         onOpenChange={(v) => !v && setDeletingId(null)}
@@ -767,6 +1058,17 @@ export default function NotebooksPage() {
         onConfirm={handleDelete}
         destructive
         loading={deleteMutation.isPending}
+      />
+
+      <ConfirmationDialog
+        open={!!bulkDeletingUmId}
+        onOpenChange={(v) => !v && setBulkDeletingUmId(null)}
+        title={`Excluir todos os notebooks — ${bulkDeletingUmNome}`}
+        description="Esta ação é irreversível. Todos os notebooks desta UM serão permanentemente removidos."
+        confirmLabel="Excluir todos"
+        onConfirm={handleBulkDelete}
+        destructive
+        loading={bulkDeleteMutation.isPending}
       />
     </div>
   );
