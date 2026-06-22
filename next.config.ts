@@ -10,6 +10,9 @@ const withPWA = withSerwist({
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    viewTransition: true,
+  },
   async headers() {
     return [
       {

@@ -37,7 +37,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <ThemeProvider defaultTheme="system" storageKey="itc-notescan-theme">
+        <ThemeProvider attribute="class" defaultTheme="system" storageKey="itc-notescan-theme" enableSystem disableTransitionOnChange>
           <SessionProvider>
             <QueryProvider>
               <ErrorBoundary>

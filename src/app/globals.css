@@ -2,6 +2,22 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Page transition */
+main {
+  animation: page-enter 0.2s ease-out both;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* ITC Brasil — Paleta Completa */
@@ -68,12 +84,12 @@
   --itc-erro: #c0392b;
   --itc-info: #1565c0;
 
-  /* shadcn/ui — modo claro mapeado para ITC */
-  --background: var(--itc-branco);
+  /* shadcn/ui — modo claro mapeado para ITC (fundo âmbar/off-white) */
+  --background: #FAF7F2;
   --foreground: var(--itc-branco-12);
-  --card: var(--itc-branco);
+  --card: #FFFFFF;
   --card-foreground: var(--itc-branco-12);
-  --popover: var(--itc-branco);
+  --popover: #FFFFFF;
   --popover-foreground: var(--itc-branco-12);
   --primary: var(--itc-ciano-7);
   --primary-foreground: var(--itc-branco);
