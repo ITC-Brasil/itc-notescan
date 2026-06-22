@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
@@ -84,7 +85,6 @@ function UMFormDialog({
   };
 
   const perifericoFields = [
-    { name: "perifericos" as const, label: "Periféricos" },
     { name: "mouses" as const, label: "Mouses" },
     { name: "carregadores" as const, label: "Carregadores" },
     { name: "fones" as const, label: "Fones" },
@@ -104,7 +104,7 @@ function UMFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Projeto</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um projeto" />
@@ -162,7 +162,7 @@ function UMFormDialog({
             <Separator />
             <div>
               <p className="text-sm font-medium text-foreground mb-3">Periféricos</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {perifericoFields.map(({ name, label }) => (
                   <FormField
                     key={name}
@@ -170,11 +170,9 @@ function UMFormDialog({
                     name={name}
                     render={({ field }) => (
                       <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-border p-2.5 hover:bg-muted/50 transition-colors">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={field.value as boolean}
-                          onChange={field.onChange}
-                          className="accent-primary"
+                          onCheckedChange={field.onChange}
                         />
                         <span className="text-sm">{label}</span>
                       </label>
@@ -365,6 +363,7 @@ export default function UMsPage() {
       )}
 
       <UMFormDialog
+        key={editingUM?.id ?? "new"}
         open={formOpen}
         onOpenChange={(v) => {
           setFormOpen(v);
