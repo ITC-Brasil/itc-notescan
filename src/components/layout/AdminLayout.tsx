@@ -43,6 +43,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { KeyRound } from "lucide-react";
+import { ChangePasswordModal } from "@/components/ui/ChangePasswordModal";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["ADMIN", "MASTER"] },
@@ -77,6 +79,7 @@ function AppSidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const role = session?.user.role ?? "";
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const visibleItems = navItems.filter((item) =>
     (item.roles as readonly string[]).includes(role),
@@ -133,28 +136,46 @@ function AppSidebar() {
         <div className="space-y-1 px-1">
           <ThemeToggle />
           <Separator className="my-1" />
-          <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center">
-            <div className="h-7 w-7 rounded-full bg-[--itc-ciano-7]/20 flex items-center justify-center text-xs font-semibold text-[--itc-ciano-7] flex-shrink-0">
-              {session?.user.nome?.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-              <p className="text-xs font-medium text-foreground truncate">
-                {session?.user.nome}
-              </p>
-              <p className="text-xs text-muted-foreground">{role}</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:justify-center"
-            onClick={() => signOut({ callbackUrl: "/" })}
-          >
-            <LogOut className="h-4 w-4 flex-shrink-0" />
-            <span className="group-data-[collapsible=icon]:hidden">Sair</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors group-data-[collapsible=icon]:justify-center">
+                <div className="h-7 w-7 rounded-full bg-[--itc-ciano-7]/20 flex items-center justify-center text-xs font-semibold text-[--itc-ciano-7] flex-shrink-0">
+                  {session?.user.nome?.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0 text-left group-data-[collapsible=icon]:hidden">
+                  <p className="text-xs font-medium text-foreground truncate">
+                    {session?.user.nome}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{role}</p>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-48">
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                {session?.user.email}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
+                <KeyRound className="h-4 w-4 mr-2" />
+                Alterar senha
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </SidebarFooter>
+
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
 
       <SidebarRail />
     </Sidebar>
