@@ -450,9 +450,11 @@ export default function UsuariosPage() {
                       <RoleIcon className="h-3 w-3" />
                       {roleLabels[user.role]}
                     </Badge>
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                      Meta: {user.metaDiaria}/dia
-                    </span>
+                    {user.role === "USER" && (
+                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                        Meta: {user.metaDiaria}/dia
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
