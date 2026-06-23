@@ -241,7 +241,7 @@ export default function UMsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Unidades Móveis"
         description="Gerencie as carretas e sua configuração"

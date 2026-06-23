@@ -3,19 +3,19 @@
 @import "shadcn/tailwind.css";
 
 /* Page transition */
-main {
-  animation: page-enter 0.2s ease-out both;
-}
-
-@keyframes page-enter {
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.page-transition {
+  animation: fadeInUp 200ms ease forwards;
 }
 
 @custom-variant dark (&:is(.dark *));

@@ -823,7 +823,7 @@ export default function NotebooksPage() {
   const totalNotebooks = notebooks?.length ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Notebooks"
         description={`${totalNotebooks} notebook${totalNotebooks !== 1 ? "s" : ""} cadastrado${totalNotebooks !== 1 ? "s" : ""}`}

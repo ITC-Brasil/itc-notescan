@@ -385,7 +385,7 @@ export default function UsuariosPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Usuários"
         description="Gerencie os acessos ao sistema"

@@ -306,7 +306,7 @@ export default function RelatoriosPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Relatórios"
         description="Histórico completo de conferências"

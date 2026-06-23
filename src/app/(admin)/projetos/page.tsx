@@ -161,7 +161,7 @@ export default function ProjetosPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Projetos"
         description="Gerencie os projetos e suas cores"

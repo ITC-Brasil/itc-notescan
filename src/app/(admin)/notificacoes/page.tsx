@@ -215,7 +215,7 @@ function TargetedForm() {
 
 export default function NotificacoesPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-transition">
       <PageHeader
         title="Notificações"
         description="Envie push notifications para os técnicos de campo"
