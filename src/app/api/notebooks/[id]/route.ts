@@ -24,7 +24,15 @@ export async function PUT(
   const { id } = await params;
 
   try {
-    const notebook = await prisma.notebook.update({
+    const existing = await prisma.notebook.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    const statusChanged =
+      existing && parsed.data.status && existing.status !== parsed.data.status;
+
+    const notebookUpdateArgs = {
       where: { id },
       data: parsed.data,
       include: {
@@ -36,7 +44,27 @@ export async function PUT(
           },
         },
       },
-    });
+    };
+
+    if (statusChanged && parsed.data.status) {
+      const isMaintenance = parsed.data.status === "MANUTENCAO";
+      const [notebook] = await prisma.$transaction([
+        prisma.notebook.update(notebookUpdateArgs),
+        prisma.lifecycleEvent.create({
+          data: {
+            notebookId: id,
+            userId: session.user.id,
+            tipo: isMaintenance ? "Manutenção" : "Retorno",
+            descricao: isMaintenance
+              ? "Notebook colocado em manutenção"
+              : "Notebook retirado da manutenção",
+          },
+        }),
+      ]);
+      return Response.json(notebook);
+    }
+
+    const notebook = await prisma.notebook.update(notebookUpdateArgs);
     return Response.json(notebook);
   } catch (error) {
     logger.captureException(error);

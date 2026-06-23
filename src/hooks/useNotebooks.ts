@@ -127,12 +127,10 @@ export function useImportNotebooks() {
 
 export interface NotebookHistoryItem {
   id: string;
-  status: "ESCANEADO" | "FALTANTE" | "MANUTENCAO";
-  conference: {
-    dataInicio: string;
-    user: { nome: string };
-    um: { nome: string; project: { nome: string; cor: string } };
-  };
+  tipo: string;
+  descricao: string;
+  createdAt: string;
+  user: { nome: string };
 }
 
 export function useNotebookHistory(notebookId: string | null) {

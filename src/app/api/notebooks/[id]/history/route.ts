@@ -13,24 +13,14 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const items = await prisma.conferenceItem.findMany({
+    const events = await prisma.lifecycleEvent.findMany({
       where: { notebookId: id },
-      orderBy: { conference: { dataInicio: "desc" } },
+      orderBy: { createdAt: "desc" },
       include: {
-        conference: {
-          include: {
-            user: { select: { nome: true } },
-            um: {
-              select: {
-                nome: true,
-                project: { select: { nome: true, cor: true } },
-              },
-            },
-          },
-        },
+        user: { select: { nome: true } },
       },
     });
-    return Response.json(items);
+    return Response.json(events);
   } catch (error) {
     logger.captureException(error);
     return Response.json({ message: "Erro interno" }, { status: 500 });

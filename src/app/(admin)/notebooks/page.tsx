@@ -17,6 +17,8 @@ import {
   Download,
   Check,
   ChevronsUpDown,
+  AlertCircle,
+  Info,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -611,6 +613,23 @@ function ImportDialog({
   );
 }
 
+function lifecycleIcon(tipo: string) {
+  switch (tipo) {
+    case "Conferência - Sucesso":
+      return <CheckCircle2 className="h-4 w-4" style={{ color: "var(--itc-sucesso)" }} />;
+    case "Conferência - Faltante":
+      return <XCircle className="h-4 w-4" style={{ color: "var(--itc-erro)" }} />;
+    case "Manutenção":
+      return <Wrench className="h-4 w-4" style={{ color: "var(--itc-atencao)" }} />;
+    case "Retorno":
+      return <CheckCircle2 className="h-4 w-4" style={{ color: "var(--itc-sucesso)" }} />;
+    case "Cadastro":
+      return <Info className="h-4 w-4" style={{ color: "var(--itc-info)" }} />;
+    default:
+      return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
+  }
+}
+
 function HistoryModal({
   notebookId,
   hostname,
@@ -628,7 +647,7 @@ function HistoryModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Histórico — {hostname}</DialogTitle>
+          <DialogTitle>Ciclo de Vida — {hostname}</DialogTitle>
         </DialogHeader>
         {isLoading ? (
           <div className="space-y-2 py-2">
@@ -638,7 +657,7 @@ function HistoryModal({
           </div>
         ) : !history?.length ? (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Nenhuma conferência registrada para este notebook.
+            Nenhum evento registrado para este notebook.
           </p>
         ) : (
           <div className="space-y-0 rounded-lg border border-border overflow-hidden max-h-96 overflow-y-auto">
@@ -650,36 +669,15 @@ function HistoryModal({
                   i < history.length - 1 && "border-b border-border",
                 )}
               >
-                <div className="flex-shrink-0 mt-0.5">
-                  {item.status === "ESCANEADO" ? (
-                    <CheckCircle2 className="h-4 w-4 text-[--itc-sucesso]" />
-                  ) : item.status === "FALTANTE" ? (
-                    <XCircle className="h-4 w-4 text-[--itc-erro]" />
-                  ) : (
-                    <Wrench className="h-4 w-4 text-[--itc-atencao]" />
-                  )}
-                </div>
+                <div className="flex-shrink-0 mt-0.5">{lifecycleIcon(item.tipo)}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">
-                      {item.conference.um.project.nome} / {item.conference.um.nome}
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs", {
-                        "text-[--itc-sucesso] border-[--itc-sucesso]/30": item.status === "ESCANEADO",
-                        "text-[--itc-erro] border-[--itc-erro]/30": item.status === "FALTANTE",
-                        "text-[--itc-atencao] border-[--itc-atencao]/30": item.status === "MANUTENCAO",
-                      })}
-                    >
-                      {item.status === "ESCANEADO" ? "Escaneado" : item.status === "FALTANTE" ? "Faltante" : "Manutenção"}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(item.conference.dataInicio).toLocaleString("pt-BR", {
+                  <p className="text-sm font-medium">{item.tipo}</p>
+                  <p className="text-xs text-muted-foreground">{item.descricao}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(item.createdAt).toLocaleString("pt-BR", {
                       day: "2-digit", month: "2-digit", year: "numeric",
                       hour: "2-digit", minute: "2-digit",
-                    })} · {item.conference.user.nome}
+                    })} · {item.user.nome}
                   </p>
                 </div>
               </div>
@@ -965,11 +963,16 @@ export default function NotebooksPage() {
                                       PAT:{nb.patrimonio}
                                     </span>
                                   )}
-                                  {nb.status === "MANUTENCAO" && (
-                                    <Badge className="text-xs bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15 shrink-0">
-                                      Manutenção
-                                    </Badge>
-                                  )}
+                                  <Badge
+                                    className={cn(
+                                      "text-xs shrink-0",
+                                      nb.status === "ATIVO"
+                                        ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] border-[--itc-sucesso]/30 hover:bg-[--itc-sucesso]/15"
+                                        : "bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15",
+                                    )}
+                                  >
+                                    {nb.status === "ATIVO" ? "Ativo" : "Manutenção"}
+                                  </Badge>
                                 </div>
                                 <div className="flex items-center gap-0.5 flex-shrink-0">
                                   <Button
@@ -984,17 +987,19 @@ export default function NotebooksPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className={cn(
-                                      "h-7 w-7",
-                                      nb.status === "MANUTENCAO"
-                                        ? "text-[--itc-atencao] hover:text-[--itc-atencao]/80"
-                                        : "text-muted-foreground hover:text-[--itc-atencao]",
-                                    )}
+                                    className="h-7 w-7"
                                     title={nb.status === "MANUTENCAO" ? "Marcar como Ativo" : "Mover para Manutenção"}
                                     onClick={() => handleToggleStatus(nb)}
                                     disabled={updateMutation.isPending}
                                   >
-                                    <Wrench className="h-3.5 w-3.5" />
+                                    <Wrench
+                                      className="h-3.5 w-3.5"
+                                      style={{
+                                        color: nb.status === "MANUTENCAO"
+                                          ? "var(--itc-atencao)"
+                                          : undefined,
+                                      }}
+                                    />
                                   </Button>
                                   <Button
                                     variant="ghost"
