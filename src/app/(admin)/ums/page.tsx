@@ -169,12 +169,13 @@ function UMFormDialog({
                     control={form.control}
                     name={name}
                     render={({ field }) => (
-                      <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-border p-2.5 hover:bg-muted/50 transition-colors">
+                      <label className="flex items-center gap-1.5 cursor-pointer rounded-lg border border-border p-2 hover:bg-muted/50 transition-colors min-w-0 overflow-hidden">
                         <Checkbox
                           checked={field.value as boolean}
                           onCheckedChange={field.onChange}
+                          className="flex-shrink-0"
                         />
-                        <span className="text-sm">{label}</span>
+                        <span className="text-xs min-w-0 truncate">{label}</span>
                       </label>
                     )}
                   />
