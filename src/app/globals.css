@@ -87,21 +87,21 @@ main {
   /* shadcn/ui — modo claro mapeado para ITC (fundo âmbar/off-white) */
   --background: #FAF7F2;
   --foreground: var(--itc-branco-12);
-  --card: #FFFFFF;
+  --card: #F2EDE6;
   --card-foreground: var(--itc-branco-12);
-  --popover: #FFFFFF;
+  --popover: #F2EDE6;
   --popover-foreground: var(--itc-branco-12);
   --primary: var(--itc-ciano-7);
   --primary-foreground: var(--itc-branco);
-  --secondary: var(--itc-branco-2);
+  --secondary: #E8E2D9;
   --secondary-foreground: var(--itc-branco-12);
-  --muted: var(--itc-branco-2);
+  --muted: #E8E2D9;
   --muted-foreground: var(--itc-branco-8);
   --accent: var(--itc-ciano-1);
   --accent-foreground: var(--itc-ciano-10);
   --destructive: var(--itc-erro);
-  --border: var(--itc-branco-3);
-  --input: var(--itc-branco-3);
+  --border: #D4CEC5;
+  --input: #D4CEC5;
   --ring: var(--itc-ciano-5);
   --radius: 0.625rem;
 
@@ -113,13 +113,13 @@ main {
   --chart-5: var(--itc-sucesso);
 
   /* Sidebar */
-  --sidebar: var(--itc-branco);
+  --sidebar: #EDE8E0;
   --sidebar-foreground: var(--itc-branco-12);
   --sidebar-primary: var(--itc-ciano-7);
   --sidebar-primary-foreground: var(--itc-branco);
   --sidebar-accent: var(--itc-ciano-1);
   --sidebar-accent-foreground: var(--itc-ciano-10);
-  --sidebar-border: var(--itc-branco-3);
+  --sidebar-border: #D4CEC5;
   --sidebar-ring: var(--itc-ciano-5);
 }
 
