@@ -2,9 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   createConferenceSchema,
   createNotebookSchema,
+  createNotebooksBatchSchema,
   createProjectSchema,
   createUMSchema,
+  createUserSchema,
+  importNotebooksSchema,
   loginSchema,
+  updateNotebookSchema,
 } from "@/lib/validations";
 
 describe("createConferenceSchema", () => {
@@ -116,5 +120,136 @@ describe("loginSchema", () => {
   it("rejects empty password", () => {
     const result = loginSchema.safeParse({ email: "user@itc.com", password: "" });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("createUserSchema", () => {
+  const validUser = {
+    nome: "João Silva",
+    email: "joao@itc.com",
+    password: "senha1234",
+  };
+
+  it("accepts valid user payload", () => {
+    expect(createUserSchema.safeParse(validUser).success).toBe(true);
+  });
+
+  it("requires nome with at least 2 characters", () => {
+    expect(createUserSchema.safeParse({ ...validUser, nome: "J" }).success).toBe(false);
+  });
+
+  it("requires valid email", () => {
+    expect(createUserSchema.safeParse({ ...validUser, email: "invalido" }).success).toBe(false);
+  });
+
+  it("requires password with at least 8 characters", () => {
+    expect(createUserSchema.safeParse({ ...validUser, password: "1234567" }).success).toBe(false);
+  });
+
+  it("defaults role to USER", () => {
+    const result = createUserSchema.safeParse(validUser);
+    if (result.success) expect(result.data.role).toBe("USER");
+  });
+
+  it("accepts role ADMIN", () => {
+    expect(createUserSchema.safeParse({ ...validUser, role: "ADMIN" }).success).toBe(true);
+  });
+
+  it("rejects invalid role", () => {
+    expect(createUserSchema.safeParse({ ...validUser, role: "SUPERUSER" }).success).toBe(false);
+  });
+
+  it("defaults metaDiaria to 2", () => {
+    const result = createUserSchema.safeParse(validUser);
+    if (result.success) expect(result.data.metaDiaria).toBe(2);
+  });
+});
+
+describe("updateNotebookSchema", () => {
+  const validUpdate = {
+    hostname: "BSBIA01-EST01",
+    umId: "um123",
+    status: "ATIVO" as const,
+  };
+
+  it("accepts valid update payload", () => {
+    expect(updateNotebookSchema.safeParse(validUpdate).success).toBe(true);
+  });
+
+  it("requires hostname", () => {
+    const { hostname: _, ...rest } = validUpdate;
+    expect(updateNotebookSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it("rejects empty hostname", () => {
+    expect(updateNotebookSchema.safeParse({ ...validUpdate, hostname: "" }).success).toBe(false);
+  });
+
+  it("rejects invalid status", () => {
+    expect(updateNotebookSchema.safeParse({ ...validUpdate, status: "INVALIDO" }).success).toBe(false);
+  });
+
+  it("accepts MANUTENCAO status", () => {
+    expect(updateNotebookSchema.safeParse({ ...validUpdate, status: "MANUTENCAO" }).success).toBe(true);
+  });
+});
+
+describe("createNotebooksBatchSchema", () => {
+  const validBatch = {
+    prefix: "BSBIA01-EST",
+    start: 1,
+    end: 10,
+    umId: "um123",
+  };
+
+  it("accepts valid batch payload", () => {
+    expect(createNotebooksBatchSchema.safeParse(validBatch).success).toBe(true);
+  });
+
+  it("requires prefix", () => {
+    const { prefix: _, ...rest } = validBatch;
+    expect(createNotebooksBatchSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it("requires start >= 1", () => {
+    expect(createNotebooksBatchSchema.safeParse({ ...validBatch, start: 0 }).success).toBe(false);
+  });
+
+  it("requires end >= 1", () => {
+    expect(createNotebooksBatchSchema.safeParse({ ...validBatch, end: 0 }).success).toBe(false);
+  });
+
+  it("defaults status to ATIVO", () => {
+    const result = createNotebooksBatchSchema.safeParse(validBatch);
+    if (result.success) expect(result.data.status).toBe("ATIVO");
+  });
+});
+
+describe("importNotebooksSchema", () => {
+  const validImport = {
+    umId: "um123",
+    rows: [{ hostname: "BSBIA01-EST01" }],
+  };
+
+  it("accepts valid import payload", () => {
+    expect(importNotebooksSchema.safeParse(validImport).success).toBe(true);
+  });
+
+  it("requires at least one row", () => {
+    expect(importNotebooksSchema.safeParse({ ...validImport, rows: [] }).success).toBe(false);
+  });
+
+  it("rejects row with empty hostname", () => {
+    expect(
+      importNotebooksSchema.safeParse({ ...validImport, rows: [{ hostname: "" }] }).success,
+    ).toBe(false);
+  });
+
+  it("accepts rows with optional serial and patrimonio", () => {
+    const result = importNotebooksSchema.safeParse({
+      ...validImport,
+      rows: [{ hostname: "BSBIA01-EST01", serial: "SN123", patrimonio: "PA456" }],
+    });
+    expect(result.success).toBe(true);
   });
 });
