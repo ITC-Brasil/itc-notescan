@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Admin layout — garante que o main herde --background e não branco do browser */
+[data-slot="sidebar-wrapper"] main {
+  background-color: var(--background);
+}
+
 /* Page transition */
 @keyframes fadeInUp {
   from {

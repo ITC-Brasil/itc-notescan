@@ -968,7 +968,7 @@ export default function NotebooksPage() {
                                     className={cn(
                                       "text-xs shrink-0 border-transparent",
                                       nb.status === "ATIVO"
-                                        ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] hover:bg-[--itc-sucesso]/15"
+                                        ? "bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]/90"
                                         : "bg-[#CC7A00] text-white hover:bg-[#CC7A00]/90",
                                     )}
                                   >

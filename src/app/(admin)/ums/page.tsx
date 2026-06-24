@@ -92,7 +92,7 @@ function UMFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar UM" : "Nova UM"}</DialogTitle>
         </DialogHeader>
