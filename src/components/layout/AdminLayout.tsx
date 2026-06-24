@@ -190,10 +190,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
             <span className="font-semibold text-foreground text-sm">NoteScan</span>
           </header>
-          <main
-            className="flex-1 overflow-y-auto p-4 md:p-6"
-            style={{ backgroundColor: "var(--background)" }}
-          >
+          <main className="admin-main flex-1 overflow-y-auto p-4 md:p-6">
             {children}
           </main>
         </div>

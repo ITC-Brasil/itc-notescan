@@ -38,3 +38,10 @@ export default auth((req) => {
     return Response.redirect(new URL("/inicio", req.url));
   }
 });
+
+// Não rodar o middleware em /api (cada API Route faz seu próprio auth()),
+// nem em assets estáticos/PWA. Sem este matcher, /api/auth/session é
+// redirecionado para "/" e retorna HTML, quebrando o NextAuth no cliente.
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|manifest.json|icons|sw.js).*)"],
+};

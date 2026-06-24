@@ -2,6 +2,19 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Fundo do <main> do admin.
+   O utilitário bg-background e o inline var(--background) não pintavam este
+   elemento (var(--background) não resolvia no contexto do SidebarProvider),
+   deixando o fundo branco. Aqui aplicamos os mesmos valores em hex literal,
+   em regra não-layered (vence a layer utilities do Tailwind). Não altera os
+   valores das variáveis CSS — apenas garante que o <main> recebe #FAF7F2. */
+.admin-main {
+  background-color: #faf7f2;
+}
+.dark .admin-main {
+  background-color: #1b1b1b;
+}
+
 /* Page transition */
 @keyframes fadeInUp {
   from {
