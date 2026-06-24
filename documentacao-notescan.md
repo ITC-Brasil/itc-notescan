@@ -681,6 +681,27 @@ Aplicadas após a entrega dos três módulos principais, organizadas por área:
 
 ---
 
+### Correções e Melhorias v6
+
+#### Erro do Navegador — ClientFetchError NextAuth
+- **Causa raiz**: `proxy.ts` não tinha `export const config.matcher`, fazendo o middleware do NextAuth rodar em todas as rotas inclusive `/api/auth/*`. A `SessionProvider` no cliente fazia fetch de `/api/auth/session` sem sessão ativa, o middleware entrava no `if (!session)`, devolvia a página de login em HTML em vez de JSON, e o cliente tentava `JSON.parse("<!DOCTYPE...")`.
+- **Correção**: adicionado o matcher excluindo `/api`, `_next/static`, `_next/image`, `favicon`, `manifest.json`, ícones e `sw.js`. As API Routes já fazem o próprio `auth()` e o middleware não precisa guardá-las.
+
+#### Layout Global — Fundo do `<main>` corrigido definitivamente
+- **Causa raiz**: inline style `{{ backgroundColor: "var(--background)" }}` continuava sem pintar porque `var(--background)` resolvia para vazio naquele contexto (inválido → transparente → branco do canvas). Todas as tentativas anteriores dependiam de `var(--background)` — por isso falhavam.
+- **Correção**: classe `.admin-main` com hex literal (`#FAF7F2` claro / `#1B1B1B` escuro) em regra não-layered no `globals.css`, vencendo o layer `utilities` do Tailwind sem depender de `var()`. Valores das variáveis CSS ficaram intactos.
+
+  Valores finais confirmados — modo claro:
+  - main: `#FAF7F2`
+  - cards: `#F2EDE6`
+  - sidebar: `#EDE8E0`
+
+  Valores finais confirmados — modo escuro:
+  - main: `#1B1B1B`
+  - sidebar e cards: `#2C2C2C`
+
+---
+
 ## 10. Decisões Técnicas
 
 ### Prisma 7 — Driver Adapter Obrigatório
@@ -1017,4 +1038,4 @@ O pipeline deve passar antes de qualquer merge em `develop` ou `main`.
 
 ---
 
-*Última atualização: Junho de 2026 — correções v4 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
+*Última atualização: Junho de 2026 — correções v6 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
