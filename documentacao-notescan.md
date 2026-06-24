@@ -618,7 +618,36 @@ Aplicadas após a entrega dos três módulos principais, organizadas por área:
 - **AlertDialog**: `ConfirmationDialog` já usava `AlertDialog` do shadcn — nenhuma alteração necessária.
 - **DataTable pageSize**: Dashboard usa `pageSize={10}`, Relatórios usa `pageSize={20}` — sem alterações estruturais no `DataTable`.
 - **Animação de transição** (`globals.css`, `next.config.ts`): `page-enter` aplica `opacity 0→1 + translateY 8px→0` em 0.2s em todos os `<main>`. `experimental.viewTransition: true` habilitado no Next.js.
-- **Fundo off-white** (`globals.css`): modo claro com `--background: #FAF7F2` (âmbar suave) — `--card` permanece `#FFFFFF`.
+- **Fundo off-white** (`globals.css`): modo claro com `--background: #FAF7F2` (âmbar suave) — `--card` permanecia `#FFFFFF` (corrigido na v2).
+
+### Correções e Melhorias v2
+
+#### Unidades Móveis (item 1)
+
+- **Layout de periféricos corrigido** (`ums/page.tsx`): grid de periféricos alterado para `grid-cols-3` fixo garantindo que Mouses, Carregadores e Fones sempre caibam na mesma linha sem overflow.
+
+#### Notebooks (itens 2–4)
+
+- **Badge de status em todos os notebooks** (`notebooks/page.tsx`): exibida em todos os notebooks — verde com texto "Ativo" para ATIVO, âmbar `#CC7A00` com texto "Manutenção" para MANUTENCAO.
+- **Ícone de manutenção com cor amarela** (`notebooks/page.tsx`): ícone Wrench aplica `color: var(--itc-atencao)` via `style` inline quando `status === 'MANUTENCAO'`.
+- **Histórico de ciclo de vida completo** (`notebooks/page.tsx`, `api/notebooks/[id]/history/route.ts`, `api/notebooks/[id]/route.ts`): modal de histórico exibe todos os LifecycleEvents — conferências, mudanças de status e cadastro. `PUT /api/notebooks/[id]` cria LifecycleEvent automaticamente via `prisma.$transaction` ao detectar mudança de status: tipo "Manutenção" (ATIVO→MANUTENCAO) ou "Retorno" (MANUTENCAO→ATIVO).
+
+#### Usuários (item 5)
+
+- **metaDiaria ocultada para ADMIN e MASTER** (`usuarios/page.tsx`): campo "Meta: X/dia" no card e no modal de edição exibido somente quando `user.role === 'USER'`.
+
+#### Theme Switcher (itens 6–7)
+
+- **Toggle dark/light sem opção Sistema** (`AdminLayout.tsx`): seletor simplificado para alternar diretamente entre 'dark' e 'light' via `resolvedTheme` do next-themes — opção 'system' removida.
+- **Fundo off-white no modo claro** (`globals.css`): variáveis CSS do tema claro atualizadas: `--card: #F2EDE6`, `--popover: #F2EDE6`, `--sidebar: #EDE8E0`, `--muted: #E8E2D9`, `--border: #D4CEC5`, `--input: #D4CEC5`. Contraste verificado em sidebar, cards, tabelas, modais e inputs.
+
+#### Menu Perfil — Alterar Senha (item 8)
+
+- **Modal de alteração de senha** (`components/ui/ChangePasswordModal.tsx`, `api/users/change-password/route.ts`): opção "Alterar senha" adicionada no dropdown do perfil na sidebar. Abre modal com campos: senha atual, nova senha (mín. 8 chars) e confirmação. API `PUT /api/users/change-password` verifica senha atual com `bcrypt.compare` e faz hash da nova com rounds 12. Sair movido para dentro do mesmo dropdown de perfil.
+
+#### Geral — Transições (item 9)
+
+- **Animação fadeInUp aprimorada** (`globals.css`): keyframe `fadeInUp` com `translateY(12px → 0)` em 200ms, aplicado via classe `page-transition` no `<div>` raiz de cada página — substituiu a animação global em `<main>`.
 
 ---
 
@@ -958,4 +987,4 @@ O pipeline deve passar antes de qualquer merge em `develop` ou `main`.
 
 ---
 
-*Última atualização: Junho de 2026. Para atualizações, editar este arquivo e reimportar no BookStack.*
+*Última atualização: Junho de 2026 — v2 de correções aplicada. Para atualizações, editar este arquivo e reimportar no BookStack.*
