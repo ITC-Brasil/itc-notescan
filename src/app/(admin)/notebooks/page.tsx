@@ -907,37 +907,38 @@ export default function NotebooksPage() {
                         open={expandedUMs.has(ug.umId)}
                         onOpenChange={() => toggleUM(ug.umId)}
                       >
-                        <CollapsibleTrigger asChild>
-                          <button className="w-full flex items-center gap-3 px-4 py-2.5 pl-10 hover:bg-muted/30 transition-colors text-left border-b border-border last:border-b-0">
-                            {expandedUMs.has(ug.umId) ? (
-                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            )}
-                            <span className="text-sm font-medium text-foreground">{ug.umNome}</span>
-                            <Badge variant="secondary" className="text-xs ml-auto">
-                              {ug.items.length}
-                            </Badge>
-                            {ug.items.some((n) => n.status === "MANUTENCAO") && (
-                              <Badge className="text-xs bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15">
-                                {ug.items.filter((n) => n.status === "MANUTENCAO").length} manutenção
+                        <div className="flex items-center border-b border-border last:border-b-0">
+                          <CollapsibleTrigger asChild>
+                            <button className="flex-1 flex items-center gap-3 px-4 py-2.5 pl-10 hover:bg-muted/30 transition-colors text-left">
+                              {expandedUMs.has(ug.umId) ? (
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              )}
+                              <span className="text-sm font-medium text-foreground">{ug.umNome}</span>
+                              <Badge variant="secondary" className="text-xs ml-auto">
+                                {ug.items.length}
                               </Badge>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive ml-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setBulkDeletingUmId(ug.umId);
-                                setBulkDeletingUmNome(ug.umNome);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Excluir todos
-                            </Button>
-                          </button>
-                        </CollapsibleTrigger>
+                              {ug.items.some((n) => n.status === "MANUTENCAO") && (
+                                <Badge className="text-xs bg-[#CC7A00] text-white border-transparent hover:bg-[#CC7A00]/90">
+                                  {ug.items.filter((n) => n.status === "MANUTENCAO").length} manutenção
+                                </Badge>
+                              )}
+                            </button>
+                          </CollapsibleTrigger>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 mx-2 text-xs text-muted-foreground hover:text-destructive flex-shrink-0"
+                            onClick={() => {
+                              setBulkDeletingUmId(ug.umId);
+                              setBulkDeletingUmNome(ug.umNome);
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Excluir todos
+                          </Button>
+                        </div>
 
                         <CollapsibleContent>
                           <div>
@@ -965,10 +966,10 @@ export default function NotebooksPage() {
                                   )}
                                   <Badge
                                     className={cn(
-                                      "text-xs shrink-0",
+                                      "text-xs shrink-0 border-transparent",
                                       nb.status === "ATIVO"
-                                        ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] border-[--itc-sucesso]/30 hover:bg-[--itc-sucesso]/15"
-                                        : "bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15",
+                                        ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] hover:bg-[--itc-sucesso]/15"
+                                        : "bg-[#CC7A00] text-white hover:bg-[#CC7A00]/90",
                                     )}
                                   >
                                     {nb.status === "ATIVO" ? "Ativo" : "Manutenção"}
