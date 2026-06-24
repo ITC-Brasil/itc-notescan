@@ -668,6 +668,19 @@ Aplicadas após a entrega dos três módulos principais, organizadas por área:
 
 ---
 
+### Correções e Melhorias v4
+
+#### Layout Global
+- **Fundo do `<main>` corrigido definitivamente** (`globals.css` ou `AdminLayout.tsx`): `SidebarInset` sobrescrito para herdar `--background` (`#FAF7F2`) no modo claro. Fundo uniforme entre sidebar e conteúdo principal em todas as páginas do admin.
+
+#### Unidades Móveis
+- **Modal ampliado** (`ums/page.tsx`): `DialogContent` com `sm:max-w-md` (448px) — texto "Carregadores" exibido sem corte.
+
+#### Notebooks
+- **Badge "Ativo" restaurada** (`notebooks/page.tsx`): badge verde pastel `bg-[#D1FAE5] text-[#065F46]` para status ATIVO. Badge âmbar de manutenção mantida sem alteração. Aplicadas na listagem e no contador do cabeçalho da UM.
+
+---
+
 ## 10. Decisões Técnicas
 
 ### Prisma 7 — Driver Adapter Obrigatório
@@ -1004,4 +1017,4 @@ O pipeline deve passar antes de qualquer merge em `develop` ou `main`.
 
 ---
 
-*Última atualização: Junho de 2026 — correções v3 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
+*Última atualização: Junho de 2026 — correções v4 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
