@@ -649,6 +649,23 @@ Aplicadas após a entrega dos três módulos principais, organizadas por área:
 
 - **Animação fadeInUp aprimorada** (`globals.css`): keyframe `fadeInUp` com `translateY(12px → 0)` em 200ms, aplicado via classe `page-transition` no `<div>` raiz de cada página — substituiu a animação global em `<main>`.
 
+### Correções e Melhorias v3
+
+#### Erros de Navegador
+- **Hydration error corrigido** (`notebooks/page.tsx`): `CollapsibleTrigger` corrigido com `asChild` para evitar `<button>` aninhado dentro de outro `<button>`, eliminando erro de hidratação do React.
+
+#### Layout Global
+- **Hover da logo removido** (`AdminLayout.tsx`): região do logo/título no topo da sidebar sem efeito de hover — elemento estático.
+
+#### Notebooks
+- **Badges de manutenção amarelas** (`notebooks/page.tsx`): badge de manutenção com `bg-[#CC7A00] text-white` aplicada na listagem e no contador resumido no cabeçalho da UM.
+
+#### Unidades Móveis
+- **Modal de periféricos** (`ums/page.tsx`): modal alargado para `max-w-lg` para evitar truncamento do texto "Carregadores" nos checkboxes de periféricos.
+
+#### Layout Global
+- **Fundo do `<main>` corrigido** (`AdminLayout.tsx`): `bg-background` adicionado explicitamente ao `<main>` — garante `#FAF7F2` no modo claro independente do comportamento padrão do `SidebarProvider`.
+
 ---
 
 ## 10. Decisões Técnicas
@@ -987,4 +1004,4 @@ O pipeline deve passar antes de qualquer merge em `develop` ou `main`.
 
 ---
 
-*Última atualização: Junho de 2026 — v2 de correções aplicada. Para atualizações, editar este arquivo e reimportar no BookStack.*
+*Última atualização: Junho de 2026 — correções v3 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
