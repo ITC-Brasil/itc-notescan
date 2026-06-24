@@ -702,6 +702,19 @@ Aplicadas após a entrega dos três módulos principais, organizadas por área:
 
 ---
 
+### Correções e Melhorias v7
+
+#### Layout Global — Calibração de tom do fundo (modo claro)
+- Ajuste fino nos valores hex do modo claro para tom mais creme,
+  preservando a hierarquia de contraste. Modo escuro não alterado.
+
+  Valores finais — modo claro:
+  - main:    `#F5EFE6`
+  - cards:   `#EDE8DE`
+  - sidebar: `#E5DDD4`
+
+---
+
 ## 10. Decisões Técnicas
 
 ### Prisma 7 — Driver Adapter Obrigatório
@@ -1038,4 +1051,4 @@ O pipeline deve passar antes de qualquer merge em `develop` ou `main`.
 
 ---
 
-*Última atualização: Junho de 2026 — correções v6 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
+*Última atualização: Junho de 2026 — correções v7 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
