@@ -199,6 +199,7 @@ export default function ProjetosPage() {
           {projects.map((project, i) => (
             <div
               key={project.id}
+              data-testid="project-row"
               className={`flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors ${
                 i < projects.length - 1 ? "border-b border-border" : ""
               }`}

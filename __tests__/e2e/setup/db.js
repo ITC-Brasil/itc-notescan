@@ -1,6 +1,10 @@
-import { Pool } from "pg";
-import bcrypt from "bcryptjs";
-import { execSync } from "node:child_process";
+// @ts-check
+"use strict";
+
+const { Pool } = require("pg");
+const bcrypt = require("bcryptjs");
+const { execSync } = require("node:child_process");
+const path = require("node:path");
 
 const TEST_DB_URL =
   "postgresql://notescan:notescan_dev@localhost:5432/notescan_test";
@@ -17,15 +21,16 @@ async function ensureDatabaseExists() {
   }
 }
 
-export async function runMigrations() {
+async function runMigrations() {
   await ensureDatabaseExists();
   execSync("npx prisma migrate deploy", {
     env: { ...process.env, DATABASE_URL: TEST_DB_URL },
     stdio: "inherit",
+    cwd: path.join(__dirname, "../../.."),
   });
 }
 
-export async function seedDatabase() {
+async function seedDatabase() {
   const pool = new Pool({ connectionString: TEST_DB_URL });
 
   try {
@@ -34,7 +39,7 @@ export async function seedDatabase() {
     // Clear in dependency order
     await pool.query('DELETE FROM "ConferenceItem"');
     await pool.query('DELETE FROM "Conference"');
-    await pool.query('DELETE FROM lifecycle_events');
+    await pool.query("DELETE FROM lifecycle_events");
     await pool.query('DELETE FROM "PushSubscription"');
     await pool.query('DELETE FROM "Notebook"');
     await pool.query('DELETE FROM "UM"');
@@ -87,12 +92,12 @@ export async function seedDatabase() {
   }
 }
 
-export async function truncateDatabase() {
+async function truncateDatabase() {
   const pool = new Pool({ connectionString: TEST_DB_URL });
   try {
     await pool.query('DELETE FROM "ConferenceItem"');
     await pool.query('DELETE FROM "Conference"');
-    await pool.query('DELETE FROM lifecycle_events');
+    await pool.query("DELETE FROM lifecycle_events");
     await pool.query('DELETE FROM "PushSubscription"');
     await pool.query('DELETE FROM "Notebook"');
     await pool.query('DELETE FROM "UM"');
@@ -103,15 +108,26 @@ export async function truncateDatabase() {
   }
 }
 
-export async function resetUserPassword(email: string, password: string) {
+/**
+ * @param {string} email
+ * @param {string} password
+ */
+async function resetUserPassword(email, password) {
   const pool = new Pool({ connectionString: TEST_DB_URL });
   try {
     const hash = await bcrypt.hash(password, 12);
-    await pool.query(`UPDATE "User" SET "passwordHash" = $1 WHERE email = $2`, [
-      hash,
-      email,
-    ]);
+    await pool.query(
+      `UPDATE "User" SET "passwordHash" = $1 WHERE email = $2`,
+      [hash, email],
+    );
   } finally {
     await pool.end();
   }
 }
+
+module.exports = {
+  runMigrations,
+  seedDatabase,
+  truncateDatabase,
+  resetUserPassword,
+};

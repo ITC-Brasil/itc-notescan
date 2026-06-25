@@ -1,9 +1,20 @@
 import { test, expect } from "@playwright/test";
-import { loginAs } from "./helpers/auth";
-import { resetUserPassword } from "./setup/db";
+import { execSync } from "node:child_process";
+import path from "node:path";
+import { loginAs, openSidebar } from "./helpers/auth";
+
+const SETUP_DIR = path.join(__dirname, "setup");
+
+function resetPassword(email: string, password: string) {
+  execSync(
+    `node "${path.join(SETUP_DIR, "run-reset-password.js")}" "${email}" "${password}"`,
+    { stdio: "inherit" },
+  );
+}
 
 test.describe("Alteração de senha", () => {
   async function openPasswordModal(page: import("@playwright/test").Page) {
+    await openSidebar(page);
     const footer = page.locator('[data-slot="sidebar-footer"]');
     await footer.getByRole("button").last().click();
     await page.getByRole("menuitem", { name: "Alterar senha" }).click();
@@ -16,9 +27,9 @@ test.describe("Alteração de senha", () => {
     await loginAs(page, "admin");
   });
 
-  test.afterAll(async () => {
-    // Restore original password in case a test changed it
-    await resetUserPassword("admin@test.com", "Test@1234");
+  // Reset password after each test in case it was changed
+  test.afterEach(() => {
+    resetPassword("admin@test.com", "Test@1234");
   });
 
   test("modal de alteração abre ao clicar em 'Alterar senha' no perfil", async ({
@@ -27,7 +38,7 @@ test.describe("Alteração de senha", () => {
     await openPasswordModal(page);
 
     await expect(page.getByLabel("Senha atual")).toBeVisible();
-    await expect(page.getByLabel("Nova senha")).toBeVisible();
+    await expect(page.getByLabel("Nova senha", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Confirmar nova senha")).toBeVisible();
   });
 
@@ -35,11 +46,10 @@ test.describe("Alteração de senha", () => {
     await openPasswordModal(page);
 
     await page.getByLabel("Senha atual").fill("senha-errada");
-    await page.getByLabel("Nova senha").fill("NovaSenha@123");
+    await page.getByLabel("Nova senha", { exact: true }).fill("NovaSenha@123");
     await page.getByLabel("Confirmar nova senha").fill("NovaSenha@123");
     await page.getByRole("button", { name: "Salvar" }).click();
 
-    // API returns error, toast should show
     await expect(page.locator("[data-sonner-toast]")).toBeVisible({
       timeout: 5000,
     });
@@ -51,11 +61,10 @@ test.describe("Alteração de senha", () => {
     await openPasswordModal(page);
 
     await page.getByLabel("Senha atual").fill("Test@1234");
-    await page.getByLabel("Nova senha").fill("NovaSenha@123");
+    await page.getByLabel("Nova senha", { exact: true }).fill("NovaSenha@123");
     await page.getByLabel("Confirmar nova senha").fill("SenhaDiferente@456");
     await page.getByRole("button", { name: "Salvar" }).click();
 
-    // Zod refine error: "As senhas não coincidem"
     await expect(page.getByText("As senhas não coincidem")).toBeVisible();
   });
 
@@ -63,7 +72,7 @@ test.describe("Alteração de senha", () => {
     await openPasswordModal(page);
 
     await page.getByLabel("Senha atual").fill("Test@1234");
-    await page.getByLabel("Nova senha").fill("NovaSenha@2026");
+    await page.getByLabel("Nova senha", { exact: true }).fill("NovaSenha@2026");
     await page.getByLabel("Confirmar nova senha").fill("NovaSenha@2026");
     await page.getByRole("button", { name: "Salvar" }).click();
 
@@ -73,14 +82,9 @@ test.describe("Alteração de senha", () => {
   });
 
   test("login com a nova senha funciona", async ({ page }) => {
-    // This test depends on the previous one having changed the password
-    // We first reset the admin password to Test@1234 so this test is clean
-    await resetUserPassword("admin@test.com", "Test@1234");
-
-    // Change to new password via modal
     await openPasswordModal(page);
     await page.getByLabel("Senha atual").fill("Test@1234");
-    await page.getByLabel("Nova senha").fill("SenhaNova@E2E");
+    await page.getByLabel("Nova senha", { exact: true }).fill("SenhaNova@E2E");
     await page.getByLabel("Confirmar nova senha").fill("SenhaNova@E2E");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Senha alterada com sucesso.")).toBeVisible({
@@ -88,14 +92,15 @@ test.describe("Alteração de senha", () => {
     });
 
     // Logout
+    await openSidebar(page);
     const footer = page.locator('[data-slot="sidebar-footer"]');
     await footer.getByRole("button").last().click();
     await page.getByRole("menuitem", { name: "Sair" }).click();
     await page.waitForURL("/");
 
-    // Login with new password
+    // Login com a nova senha
     await page.getByLabel("Email").fill("admin@test.com");
-    await page.getByLabel("Senha").fill("SenhaNova@E2E");
+    await page.locator('input[autocomplete="current-password"]').fill("SenhaNova@E2E");
     await page.getByRole("button", { name: "Entrar" }).click();
     await page.waitForURL("**/dashboard");
 

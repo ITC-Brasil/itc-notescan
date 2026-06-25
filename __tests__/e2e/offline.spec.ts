@@ -91,8 +91,11 @@ test.describe("Fluxo offline", () => {
     // Re-enable network
     await page.unroute("**/api/conferences");
 
-    // Navigate to /inicio to trigger sync
-    const syncResponse = page.waitForResponse("**/api/conferences");
+    // Navigate to /inicio to trigger sync (wait for POST specifically)
+    const syncResponse = page.waitForResponse(
+      (r) => r.url().includes("/api/conferences") && r.request().method() === "POST",
+      { timeout: 15000 },
+    );
     await page.goto("/inicio");
     await page.waitForLoadState("networkidle");
     await syncResponse;
@@ -104,7 +107,7 @@ test.describe("Fluxo offline", () => {
     await adminPage.goto("/dashboard");
     await adminPage.waitForLoadState("networkidle");
 
-    await expect(adminPage.getByText("UM-TESTE")).toBeVisible({
+    await expect(adminPage.getByText("UM-TESTE").first()).toBeVisible({
       timeout: 10000,
     });
 

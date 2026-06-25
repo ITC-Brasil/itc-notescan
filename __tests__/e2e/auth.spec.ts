@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAs } from "./helpers/auth";
+import { loginAs, openSidebar } from "./helpers/auth";
 
 test.describe("Autenticação", () => {
   test("login com credenciais válidas redireciona para /dashboard (ADMIN)", async ({
@@ -7,7 +7,7 @@ test.describe("Autenticação", () => {
   }) => {
     await page.goto("/");
     await page.getByLabel("Email").fill("admin@test.com");
-    await page.getByLabel("Senha").fill("Test@1234");
+    await page.locator('input[autocomplete="current-password"]').fill("Test@1234");
     await page.getByRole("button", { name: "Entrar" }).click();
 
     await page.waitForURL("**/dashboard");
@@ -19,7 +19,7 @@ test.describe("Autenticação", () => {
   }) => {
     await page.goto("/");
     await page.getByLabel("Email").fill("tecnico@test.com");
-    await page.getByLabel("Senha").fill("Test@1234");
+    await page.locator('input[autocomplete="current-password"]').fill("Test@1234");
     await page.getByRole("button", { name: "Entrar" }).click();
 
     await page.waitForURL("**/inicio");
@@ -29,7 +29,7 @@ test.describe("Autenticação", () => {
   test("login com senha incorreta exibe mensagem de erro", async ({ page }) => {
     await page.goto("/");
     await page.getByLabel("Email").fill("admin@test.com");
-    await page.getByLabel("Senha").fill("senha-errada");
+    await page.locator('input[autocomplete="current-password"]').fill("senha-errada");
     await page.getByRole("button", { name: "Entrar" }).click();
 
     await expect(
@@ -42,7 +42,7 @@ test.describe("Autenticação", () => {
   }) => {
     await page.goto("/");
     await page.getByLabel("Email").fill("naoexiste@test.com");
-    await page.getByLabel("Senha").fill("Test@1234");
+    await page.locator('input[autocomplete="current-password"]').fill("Test@1234");
     await page.getByRole("button", { name: "Entrar" }).click();
 
     await expect(
@@ -61,8 +61,8 @@ test.describe("Autenticação", () => {
 
   test("logout encerra a sessão e redireciona para /", async ({ page }) => {
     await loginAs(page, "admin");
+    await openSidebar(page);
 
-    // Click the user avatar button in the sidebar footer to open the dropdown
     const footer = page.locator('[data-slot="sidebar-footer"]');
     await footer.getByRole("button").last().click();
     await page.getByRole("menuitem", { name: "Sair" }).click();

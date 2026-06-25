@@ -96,8 +96,8 @@ test.describe("Fluxo de conferência", () => {
 
     await page.getByRole("button", { name: /Finalizar/ }).click();
 
-    // Summary phase — shows faltantes
-    await expect(page.getByText(/Faltante/)).toBeVisible();
+    // Summary phase — shows faltantes (heading specifically to avoid strict mode)
+    await expect(page.getByRole("heading", { name: /Faltante/ })).toBeVisible();
     await page.getByRole("button", { name: "Confirmar" }).click();
 
     await expect(page.getByText("Conferência salva!")).toBeVisible({
@@ -121,7 +121,7 @@ test.describe("Fluxo de conferência", () => {
     await page.goto("/inicio");
     await page.waitForLoadState("networkidle");
 
-    await expect(page.getByText("UM-TESTE")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("UM-TESTE").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("conferência aparece no dashboard do admin", async ({
@@ -145,7 +145,7 @@ test.describe("Fluxo de conferência", () => {
     await adminPage.goto("/dashboard");
     await adminPage.waitForLoadState("networkidle");
 
-    await expect(adminPage.getByText("UM-TESTE")).toBeVisible({
+    await expect(adminPage.getByText("UM-TESTE").first()).toBeVisible({
       timeout: 10000,
     });
 
