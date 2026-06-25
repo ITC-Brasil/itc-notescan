@@ -1051,4 +1051,82 @@ O pipeline deve passar antes de qualquer merge em `develop` ou `main`.
 
 ---
 
-*Última atualização: Junho de 2026 — correções v7 aplicadas. Para atualizações, editar este arquivo e reimportar no BookStack.*
+## 17. Testes
+
+### Estratégia de testes
+
+O projeto adota duas camadas de teste:
+
+- **Vitest** — testes unitários, sem banco de dados, sem browser.
+  Cobrem lógica de negócio isolada: schemas Zod, syncQueue, hooks,
+  utilitários e rate limiting.
+- **Playwright** — testes E2E (end-to-end), com banco de teste e
+  browser real. Cobrem fluxos completos: login, conferência online,
+  conferência offline, CRUD e proteção de rotas por role.
+  (implementação na próxima etapa)
+
+### Rodar os testes
+
+```bash
+# Testes unitários
+npm run test
+
+# Testes unitários com relatório de cobertura
+npm run test:coverage
+
+# Testes em modo watch (desenvolvimento)
+npm run test:watch
+```
+
+### Cobertura mínima obrigatória
+
+| Métrica | Mínimo |
+|---|---|
+| Linhas | 80% |
+| Funções | 80% |
+| Branches | 70% |
+
+### Testes unitários implementados
+
+| Arquivo | O que testa |
+|---|---|
+| `__tests__/unit/validations.test.ts` | Schemas Zod de todas as API Routes |
+| `__tests__/unit/logger.test.ts` | Logging estruturado e mascaramento de dados sensíveis |
+| `__tests__/unit/rate-limit.test.ts` | Rate limiting — limites, bloqueio e reset |
+| `__tests__/unit/sync.test.ts` | syncQueue — retry, backoff exponencial, ordem de processamento |
+| `__tests__/unit/useConference.test.ts` | Fluxo do scanner — scan válido, duplicado, manutenção, faltante |
+| `__tests__/unit/utils.test.ts` | Utilitários — ordenação natural, formatação de data |
+
+### Resultados da primeira execução
+
+126 testes, 6 arquivos, todos passando.
+
+```
+ % Coverage report from v8
+--------------------|---------|----------|---------|---------|-------------------
+File                | % Stmts | % Branch | % Funcs | % Lines | Uncovered
+--------------------|---------|----------|---------|---------|-------------------
+All files           |   96.18 |    93.61 |   94.28 |   95.93 |
+ hooks              |   92.95 |    89.28 |   90.00 |   92.30 |
+  useConference.ts  |   92.95 |    89.28 |   90.00 |   92.30 | 74,86,114-116
+ lib/logger.ts      |  100.00 |   100.00 |  100.00 |  100.00 |
+ lib/rate-limit.ts  |  100.00 |   100.00 |  100.00 |  100.00 |
+ lib/offline/sync.ts|  100.00 |   100.00 |  100.00 |  100.00 |
+ lib/utils.ts       |  100.00 |   100.00 |  100.00 |  100.00 |
+ lib/validations/   |  100.00 |   100.00 |  100.00 |  100.00 |
+--------------------|---------|----------|---------|---------|-------------------
+
+Coverage summary:
+  Statements : 96.18% (126/131)
+  Branches   : 93.61%  (44/47)
+  Functions  : 94.28%  (33/35)
+  Lines      : 95.93% (118/123)
+```
+
+Linhas não cobertas em `useConference.ts` (74, 86, 114–116): branches do
+`navigator.geolocation` — código que acessa hardware de GPS, não testável
+em ambiente jsdom sem emulação de dispositivo.
+
+---
+
+*Última atualização: Junho de 2026 — testes unitários Vitest implementados. Para atualizações, editar este arquivo e reimportar no BookStack.*
