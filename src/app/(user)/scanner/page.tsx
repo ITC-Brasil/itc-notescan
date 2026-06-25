@@ -155,6 +155,27 @@ function ScanningPhase({
       {/* Camera */}
       <QRScanner onScan={onScan} active className="mx-4 mt-3 h-52" />
 
+      {/* Test-only scan input — visible only when NEXT_PUBLIC_E2E_TESTING=true */}
+      {process.env.NEXT_PUBLIC_E2E_TESTING === "true" && (
+        <div className="mx-4 mt-2">
+          <input
+            data-testid="scan-test-input"
+            type="text"
+            placeholder="[TESTE] Hostname + Enter"
+            className="w-full text-xs border border-dashed border-border rounded px-2 py-1 bg-muted/50 text-muted-foreground"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const input = e.currentTarget;
+                if (input.value) {
+                  onScan(input.value);
+                  input.value = "";
+                }
+              }
+            }}
+          />
+        </div>
+      )}
+
       {/* Feedback */}
       {state.error && (
         <div className="mx-4 mt-2 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2">
