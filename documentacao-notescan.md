@@ -1129,4 +1129,49 @@ em ambiente jsdom sem emulação de dispositivo.
 
 ---
 
-*Última atualização: Junho de 2026 — testes unitários Vitest implementados. Para atualizações, editar este arquivo e reimportar no BookStack.*
+### Testes E2E implementados (Playwright)
+
+#### Configuração
+
+- Banco de teste dedicado: `notescan_test` (PostgreSQL)
+- Populado automaticamente via `global-setup.js` antes de cada execução
+- Limpo automaticamente via `global-teardown.js` após cada execução
+- Dois projetos: `chromium` (desktop) e `mobile` (Pixel 7)
+
+#### Rodar os testes E2E
+
+```bash
+# Executar todos os testes E2E
+npm run test:e2e
+
+# Abrir interface visual do Playwright
+npm run test:e2e:ui
+
+# Ver relatório HTML da última execução
+npm run test:e2e:report
+```
+
+#### Suítes implementadas
+
+| Arquivo | Fluxos cobertos |
+|---|---|
+| `auth.spec.ts` | Login válido/inválido, logout, redirecionamentos sem sessão |
+| `authorization.spec.ts` | Proteção de rotas por role (USER, ADMIN, MASTER) |
+| `projetos.spec.ts` | CRUD completo de projetos com confirmação de exclusão |
+| `conference.spec.ts` | Fluxo completo de conferência online (mobile + desktop) |
+| `offline.spec.ts` | Conferência offline, salvamento no Dexie e sincronização |
+| `password.spec.ts` | Alteração de senha — validações e confirmação |
+
+#### Resultados da primeira execução
+
+70 testes, 6 arquivos, todos passando — chromium (desktop) e mobile (Pixel 7).
+
+```
+Running 70 tests using 2 workers
+
+  70 passed (5.0m)
+```
+
+---
+
+*Última atualização: Junho de 2026 — testes E2E Playwright implementados. Para atualizações, editar este arquivo e reimportar no BookStack.*
