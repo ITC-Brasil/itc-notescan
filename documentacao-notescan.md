@@ -1063,7 +1063,6 @@ O projeto adota duas camadas de teste:
 - **Playwright** — testes E2E (end-to-end), com banco de teste e
   browser real. Cobrem fluxos completos: login, conferência online,
   conferência offline, CRUD e proteção de rotas por role.
-  (implementação na próxima etapa)
 
 ### Rodar os testes
 
@@ -1174,4 +1173,61 @@ Running 70 tests using 2 workers
 
 ---
 
-*Última atualização: Junho de 2026 — testes E2E Playwright implementados. Para atualizações, editar este arquivo e reimportar no BookStack.*
+## 18. CI/CD — GitHub Actions
+
+### Pipeline Quality Check
+
+Roda automaticamente em todo push e PR para as branches `main` e `develop`.
+Um PR só pode ser mergeado se todas as etapas passarem.
+
+#### Etapas (em ordem de execução)
+
+| Etapa | Comando | O que valida |
+|---|---|---|
+| Install | `npm ci` | Dependências instaladas de forma reproduzível |
+| Prisma Generate | `npx prisma generate` | Client gerado antes do type-check |
+| Type check | `npm run type-check` | Zero erros TypeScript (`strict: true`) |
+| Lint | `npm run lint` | ESLint — padrões de código e segurança |
+| Migrations | `npx prisma migrate deploy` | Schema aplicado no banco de teste |
+| Unit tests | `npm run test:coverage` | 126 testes, cobertura mínima 80%/70% |
+| Security audit | `npm audit --audit-level=high` | Sem vulnerabilidades de severidade alta |
+
+#### Serviço PostgreSQL no runner
+
+O job sobe um container PostgreSQL 16 automaticamente, sem necessidade de
+configuração manual. O banco `notescan_test` fica disponível em `localhost:5432`.
+
+#### Análise estática de segurança
+
+Feita via **ESLint security plugin** (`eslint-plugin-security`) em tempo de lint.
+O job CodeQL foi removido: o GitHub Advanced Security não está disponível no
+plano gratuito para repositórios privados da organização ITC-Brasil.
+
+Regras ativas:
+
+| Regra | Nível |
+|---|---|
+| `detect-unsafe-regex` | error |
+| `detect-buffer-noassert` | error |
+| `detect-eval-with-expression` | error |
+| `detect-disable-mustache-escape` | error |
+| `detect-new-buffer` | error |
+| `detect-no-csrf-before-method-override` | error |
+| `detect-non-literal-fs-filename` | warn |
+| `detect-non-literal-regexp` | warn |
+| `detect-child-process` | warn |
+| `detect-possible-timing-attacks` | warn |
+
+#### Dependabot
+
+Configurado em `.github/dependabot.yml`. Abre PRs toda segunda-feira com
+atualizações de dependências npm — minor e patch apenas, sem major versions,
+limite de 5 PRs abertos simultaneamente.
+
+#### Arquivo de configuração
+
+`.github/workflows/ci.yml`
+
+---
+
+*Última atualização: Junho de 2026 — CI/CD GitHub Actions configurado. Para atualizações, editar este arquivo e reimportar no BookStack.*
