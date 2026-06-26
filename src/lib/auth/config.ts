@@ -4,6 +4,7 @@ import type { NextAuthConfig } from "next-auth";
 // Used by proxy.ts (middleware/Edge Runtime).
 // The full Node.js config with adapter and providers lives in lib/auth/index.ts.
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/",
