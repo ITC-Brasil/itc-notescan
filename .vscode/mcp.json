@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "Sentry": {
+      "url": "https://mcp.sentry.dev/mcp/grupo-itc-brasil/itc-notescan",
+      "type": "http"
+    }
+  }
+}

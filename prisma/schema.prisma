@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String           @id @default(cuid())
+  nome             String
+  email            String           @unique
+  passwordHash     String
+  role             Role             @default(USER)
+  metaDiaria       Int              @default(2)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  conferences      Conference[]
+  lifecycleEvents  LifecycleEvent[]
+  pushSubscription PushSubscription?
+}
+
+enum Role {
+  USER
+  ADMIN
+  MASTER
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  nome      String
+  cor       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ums       UM[]
+}
+
+model UM {
+  id                 String       @id @default(cuid())
+  nome               String
+  projectId          String
+  project            Project      @relation(fields: [projectId], references: [id])
+  quantidadeEsperada Int
+  perifericos        Boolean      @default(false)
+  mouses             Boolean      @default(false)
+  carregadores       Boolean      @default(false)
+  fones              Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  notebooks          Notebook[]
+  conferences        Conference[]
+}
+
+model Notebook {
+  id              String           @id @default(cuid())
+  hostname        String           @unique
+  serial          String?
+  patrimonio      String?
+  status          NotebookStatus   @default(ATIVO)
+  umId            String
+  um              UM               @relation(fields: [umId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  conferenceItems ConferenceItem[]
+  lifecycleEvents LifecycleEvent[]
+}
+
+enum NotebookStatus {
+  ATIVO
+  MANUTENCAO
+}
+
+model Conference {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  umId        String
+  um          UM               @relation(fields: [umId], references: [id])
+  dataInicio  DateTime
+  dataFim     DateTime
+  localizacao String?
+  status      ConferenceStatus
+  createdAt   DateTime         @default(now())
+  items       ConferenceItem[]
+}
+
+enum ConferenceStatus {
+  CONCLUIDO_OK
+  CONCLUIDO_FALTANTES
+}
+
+model ConferenceItem {
+  id           String     @id @default(cuid())
+  conferenceId String
+  conference   Conference @relation(fields: [conferenceId], references: [id])
+  notebookId   String
+  notebook     Notebook   @relation(fields: [notebookId], references: [id])
+  status       ItemStatus
+}
+
+enum ItemStatus {
+  ESCANEADO
+  FALTANTE
+  MANUTENCAO
+}
+
+model LifecycleEvent {
+  id         String   @id @default(cuid())
+  notebookId String
+  notebook   Notebook @relation(fields: [notebookId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  tipo       String
+  descricao  String
+  createdAt  DateTime @default(now())
+
+  @@map("lifecycle_events")
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
