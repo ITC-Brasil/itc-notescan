@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, CameraOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePlatform } from "@/hooks/usePlatform";
+import { NativeQRScanner } from "./NativeQRScanner";
 
 interface QRScannerProps {
   onScan: (value: string) => void;
@@ -11,13 +13,16 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ onScan, active = true, className }: QRScannerProps) {
+  // All hooks must be called unconditionally — branching happens in the JSX return.
+  const platform = usePlatform();
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
-    if (!active) return;
+    // Web scanner only runs in browser/PWA. On Android APK the native camera is used.
+    if (platform === "android" || !active) return;
 
     let stopped = false;
 
@@ -68,8 +73,20 @@ export function QRScanner({ onScan, active = true, className }: QRScannerProps) 
       scannerRef.current?.stop();
       setReady(false);
     };
-  }, [active, onScan]);
+  }, [active, onScan, platform]);
 
+  // On Android APK: use the native camera scanner
+  if (platform === "android") {
+    return (
+      <NativeQRScanner
+        onScan={onScan}
+        onError={(err) => console.error("Native scanner error:", err)}
+        isActive={active}
+      />
+    );
+  }
+
+  // Browser / PWA: web camera scanner
   if (error) {
     return (
       <div

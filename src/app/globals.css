@@ -261,3 +261,78 @@
     @apply font-sans;
   }
 }
+
+/* Native scanner — camera appears behind the WebView on Android APK */
+body.scanner-active {
+  background: transparent !important;
+}
+
+body.scanner-active .admin-main,
+body.scanner-active [data-slot="sidebar-inset"] {
+  background: transparent !important;
+}
+
+.native-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scanner-frame {
+  width: 250px;
+  height: 250px;
+  position: relative;
+}
+
+.scanner-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #008f95;
+  border-style: solid;
+}
+
+.scanner-corner.top-left {
+  top: 0;
+  left: 0;
+  border-width: 3px 0 0 3px;
+}
+
+.scanner-corner.top-right {
+  top: 0;
+  right: 0;
+  border-width: 3px 3px 0 0;
+}
+
+.scanner-corner.bottom-left {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 3px 3px;
+}
+
+.scanner-corner.bottom-right {
+  bottom: 0;
+  right: 0;
+  border-width: 0 3px 3px 0;
+}
+
+.scanner-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: #008f95;
+  top: 50%;
+  animation: scan 2s linear infinite;
+}
+
+@keyframes scan {
+  0% {
+    top: 0;
+  }
+  100% {
+    top: 100%;
+  }
+}
