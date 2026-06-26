@@ -342,6 +342,7 @@ function BatchDialog({
     }
   };
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const start = form.watch("start");
   const end = form.watch("end");
   const prefix = form.watch("prefix");

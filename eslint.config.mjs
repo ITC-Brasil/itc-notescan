@@ -26,10 +26,28 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
     "src/generated/**",
     "node_modules/**",
+    "__tests__/e2e/setup/**",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+      "@typescript-eslint/no-unused-expressions": [
+        "error",
+        { allowTernary: true, allowShortCircuit: true },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

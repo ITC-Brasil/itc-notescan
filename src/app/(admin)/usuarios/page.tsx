@@ -93,6 +93,7 @@ function CreateUserDialog({
     } as CreateUserInput,
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const role = form.watch("role");
 
   const onSubmit = async (data: CreateUserInput) => {
@@ -234,6 +235,7 @@ function EditUserDialog({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const role = form.watch("role");
 
   const onSubmit = async (data: UpdateUserFormValues) => {

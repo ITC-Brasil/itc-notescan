@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(_request: Request) {
+export async function DELETE(_: Request) {
   const session = await auth();
   if (!session)
     return Response.json({ message: "Não autorizado" }, { status: 401 });
