@@ -30,10 +30,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src/generated ./src/generated
-# Prisma CLI e todas as deps transitivas (deps tem node_modules completo via npm ci)
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
-COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=deps /app/node_modules/effect ./node_modules/effect
+# node_modules completo do deps para garantir todas as deps transitivas do Prisma CLI
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/scripts/docker-entrypoint.sh ./
 
 RUN chmod +x docker-entrypoint.sh
