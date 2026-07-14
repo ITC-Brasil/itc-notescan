@@ -124,12 +124,17 @@ export default function InicioPage() {
       )}
 
       {/* INICIAR button — hidden on desktop (sm+) */}
-      <Button asChild size="lg" className="w-full sm:hidden">
-        <Link href="/scanner">
-          <ScanLine className="h-5 w-5 mr-2" />
-          Iniciar Conferência
-        </Link>
-      </Button>
+      <Link href="/scanner" className="sm:hidden block">
+        <div className="w-full rounded-2xl bg-primary p-5 flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-transform">
+          <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center flex-shrink-0">
+            <ScanLine className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <div className="text-left">
+            <p className="text-lg font-bold text-primary-foreground leading-tight">Iniciar Conferência</p>
+            <p className="text-sm text-primary-foreground/70 leading-tight">Escanear notebooks da UM</p>
+          </div>
+        </div>
+      </Link>
 
       {/* Histórico */}
       <div className="mt-2">
