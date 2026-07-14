@@ -6,8 +6,12 @@ export interface ConferenceRecord {
   dataInicio: string;
   dataFim: string;
   localizacao: string | null;
+  mousesQtd: number | null;
+  carregadoresQtd: number | null;
+  fonesQtd: number | null;
   user: { id: string; nome: string };
-  um: { id: string; nome: string; project: { id: string; nome: string; cor: string } };
+  um: { id: string; nome: string; mouses: boolean; carregadores: boolean; fones: boolean; project: { id: string; nome: string; cor: string } };
+  items: { status: string; notebook: { hostname: string } }[];
   _count: { items: number };
 }
 

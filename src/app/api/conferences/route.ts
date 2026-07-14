@@ -38,7 +38,17 @@ export async function GET(request: Request) {
     take: limit,
     include: {
       user: { select: { id: true, nome: true } },
-      um: { select: { id: true, nome: true, project: { select: { id: true, nome: true, cor: true } } } },
+      um: {
+        select: {
+          id: true,
+          nome: true,
+          mouses: true,
+          carregadores: true,
+          fones: true,
+          project: { select: { id: true, nome: true, cor: true } },
+        },
+      },
+      items: { select: { status: true, notebook: { select: { hostname: true } } } },
       _count: { select: { items: true } },
     },
   });
