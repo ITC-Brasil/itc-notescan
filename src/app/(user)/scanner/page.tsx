@@ -157,8 +157,8 @@ function ScanningPhase({
         nativeUi={{
           umName: state.um?.nome ?? "",
           umColor: state.um?.project.cor ?? "#008f95",
-          pendingCount: state.pending.length,
-          scannedCount: state.scanned.length,
+          pending: state.pending,
+          scanned: state.scanned,
           lastScanned: state.lastScanned ?? null,
           scanError: state.error ?? null,
           onNext,
