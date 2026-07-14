@@ -20,7 +20,7 @@ export interface UMSlim {
   fones: boolean;
 }
 
-export type ConferencePhase = "idle" | "scanning" | "summary" | "saving" | "done";
+export type ConferencePhase = "idle" | "scanning" | "peripherals" | "summary" | "saving" | "done";
 
 export interface ConferenceState {
   phase: ConferencePhase;
@@ -39,7 +39,8 @@ type Action =
   | { type: "SCAN_OK"; notebook: NotebookSlim }
   | { type: "SCAN_ERROR"; message: string }
   | { type: "CLEAR_ERROR" }
-  | { type: "PROCEED_SUMMARY" }
+  | { type: "PROCEED_SUMMARY"; target: "peripherals" | "summary" }
+  | { type: "PROCEED_TO_SUMMARY"; location: string | null }
   | { type: "BACK_TO_SCANNING" }
   | { type: "SAVING" }
   | { type: "DONE" }
@@ -76,7 +77,9 @@ function reducer(state: ConferenceState, action: Action): ConferenceState {
     case "CLEAR_ERROR":
       return { ...state, error: null };
     case "PROCEED_SUMMARY":
-      return { ...state, phase: "summary", error: null };
+      return { ...state, phase: action.target, error: null };
+    case "PROCEED_TO_SUMMARY":
+      return { ...state, phase: "summary", location: action.location, error: null };
     case "BACK_TO_SCANNING":
       return { ...state, phase: "scanning", error: null };
     case "SAVING":
@@ -154,8 +157,12 @@ export function useConference() {
     [state.maintenance, state.scanned],
   );
 
-  const proceedToSummary = useCallback(() => {
-    dispatch({ type: "PROCEED_SUMMARY" });
+  const proceedToSummary = useCallback((target: "peripherals" | "summary" = "summary") => {
+    dispatch({ type: "PROCEED_SUMMARY", target });
+  }, []);
+
+  const proceedFromPeripherals = useCallback((location: string | null) => {
+    dispatch({ type: "PROCEED_TO_SUMMARY", location });
   }, []);
 
   const backToScanning = useCallback(() => {
@@ -208,5 +215,5 @@ export function useConference() {
     dispatch({ type: "RESET" });
   }, []);
 
-  return { state, startConference, processScan, proceedToSummary, backToScanning, finalize, reset };
+  return { state, startConference, processScan, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset };
 }

@@ -135,11 +135,13 @@ function UMSelectionPhase({
 function ScanningPhase({
   state,
   onScan,
-  onFinish,
+  onNext,
+  onReiniciar,
 }: {
   state: ReturnType<typeof useConference>["state"];
   onScan: (value: string) => void;
-  onFinish: () => void;
+  onNext: () => void;
+  onReiniciar: () => void;
 }) {
   const total = state.pending.length + state.scanned.length;
   const progress = total > 0 ? (state.scanned.length / total) * 100 : 0;
@@ -256,23 +258,31 @@ function ScanningPhase({
         </div>
       </div>
 
-      {/* Finish button */}
-      <div className="px-4 pb-2">
+      {/* Actions */}
+      <div className="px-4 pb-2 flex gap-2">
+        <Button
+          variant="outline"
+          size="lg"
+          className="flex-shrink-0"
+          onClick={onReiniciar}
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
         <Button
           variant={state.pending.length > 0 ? "destructive" : "default"}
           size="lg"
-          className="w-full"
-          onClick={onFinish}
+          className="flex-1"
+          onClick={onNext}
         >
           {state.pending.length > 0 ? (
             <>
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Finalizar com {state.pending.length} faltante{state.pending.length !== 1 ? "s" : ""}
+              Próximo — {state.pending.length} faltante{state.pending.length !== 1 ? "s" : ""}
             </>
           ) : (
             <>
               <Check className="h-4 w-4 mr-2" />
-              Finalizar — todos escaneados
+              Próximo — todos escaneados
             </>
           )}
         </Button>
@@ -455,11 +465,26 @@ export default function ScannerPage() {
     [processScan, allNotebooks],
   );
 
+  const handleNext = useCallback(() => {
+    // If UM has any peripherals configured, go to peripherals phase; otherwise summary.
+    const um = state.um;
+    if (um && (um.mouses || um.carregadores || um.fones)) {
+      proceedToSummary("peripherals");
+    } else {
+      proceedToSummary("summary");
+    }
+  }, [state.um, proceedToSummary]);
+
+  const handleReiniciar = useCallback(() => {
+    if (state.um && activeUM) {
+      startConference(state.um, activeUM.notebooks);
+    }
+  }, [state.um, activeUM, startConference]);
+
   const handleFinalize = useCallback(async () => {
     const ok = await finalize();
     setSavedOnline(ok);
   }, [finalize]);
-
 
   return (
     <div className="flex flex-col h-full min-h-[calc(100svh-4rem-3.5rem)]">
@@ -468,7 +493,8 @@ export default function ScannerPage() {
         <ScanningPhase
           state={state}
           onScan={handleScan}
-          onFinish={proceedToSummary}
+          onNext={handleNext}
+          onReiniciar={handleReiniciar}
         />
       )}
       {state.phase === "summary" && (
