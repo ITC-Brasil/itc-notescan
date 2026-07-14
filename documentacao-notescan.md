@@ -528,6 +528,20 @@ Implementado em memória (`lib/rate-limit.ts`):
 
 ## 9. Módulos Implementados
 
+Documentação detalhada de cada módulo em `docs/modules/`.
+
+| Módulo | Arquivo | Resumo |
+|---|---|---|
+| 1 — Fundação | [01-foundation.md](docs/modules/01-foundation.md) | Next.js, Prisma 7, NextAuth, proxy.ts, Dexie, Sentry, layouts, providers, shadcn/ui |
+| 2 — Admin | [02-admin.md](docs/modules/02-admin.md) | Dashboard, Projetos, UMs, Notebooks, Relatórios, Notificações, Usuários |
+| 3 — Técnico | [03-technician.md](docs/modules/03-technician.md) | /inicio, /scanner, useConference, QRScanner, fluxo offline |
+| 4 — Docker/Deploy | [04-docker-deploy.md](docs/modules/04-docker-deploy.md) | Dockerfile multi-stage, docker-compose, Cloudflare Tunnel, GLPI-SRV |
+| 5 — Testes | [05-tests.md](docs/modules/05-tests.md) | Vitest 110+ testes 93%+ cobertura, Playwright 70 testes E2E |
+| 6 — CI/CD | [06-cicd.md](docs/modules/06-cicd.md) | GitHub Actions Quality Check, workflow Deploy (pendente) |
+| 7 — Capacitor APK | [07-capacitor-apk.md](docs/modules/07-capacitor-apk.md) | Android APK, câmera nativa, split-screen, PermissionsGate |
+
+---
+
 ### Módulo 1 — Infraestrutura
 
 - Configuração completa do Next.js 16 (output: standalone, headers de segurança, CSP)
