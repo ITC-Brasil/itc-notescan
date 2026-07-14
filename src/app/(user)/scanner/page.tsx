@@ -12,7 +12,7 @@ import {
   Package,
   Wrench,
 } from "lucide-react";
-import { useConference, type NotebookSlim, type UMSlim } from "@/hooks/useConference";
+import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
 import { QRScanner } from "@/components/scanner/QRScanner";
@@ -291,6 +291,122 @@ function ScanningPhase({
   );
 }
 
+/* ─── Phase: Peripherals ─── */
+function PeripheralsPhase({
+  state,
+  onFinalize,
+}: {
+  state: ReturnType<typeof useConference>["state"];
+  onFinalize: (peripherals: Peripherals) => void;
+}) {
+  const um = state.um!;
+  const [mouses, setMouses] = useState(0);
+  const [carregadores, setCarregadores] = useState(0);
+  const [fones, setFones] = useState(0);
+
+  const handleFinalize = () => {
+    onFinalize({ mouses, carregadores, fones });
+  };
+
+  return (
+    <div className="flex flex-col gap-5 p-4">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span
+            className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: um.project.cor }}
+          />
+          <span className="text-sm font-medium text-foreground">{um.nome}</span>
+        </div>
+        <h2 className="text-lg font-bold text-foreground">Periféricos</h2>
+        <p className="text-sm text-muted-foreground">Informe as quantidades conferidas</p>
+      </div>
+
+      <div className="space-y-4">
+        {um.mouses && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <span className="text-sm font-medium text-foreground">Mouses</span>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setMouses((v) => Math.max(0, v - 1))}
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-bold tabular-nums">{mouses}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setMouses((v) => v + 1)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {um.carregadores && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <span className="text-sm font-medium text-foreground">Carregadores</span>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setCarregadores((v) => Math.max(0, v - 1))}
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-bold tabular-nums">{carregadores}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setCarregadores((v) => v + 1)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {um.fones && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <span className="text-sm font-medium text-foreground">Fones de Ouvido</span>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setFones((v) => Math.max(0, v - 1))}
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-bold tabular-nums">{fones}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setFones((v) => v + 1)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Button size="lg" className="w-full mt-2" onClick={handleFinalize}>
+        <Check className="h-4 w-4 mr-2" />
+        Finalizar Conferência
+      </Button>
+    </div>
+  );
+}
+
 /* ─── Phase: Summary ─── */
 function SummaryPhase({
   state,
@@ -437,7 +553,7 @@ function DonePhase({
 
 /* ─── Main Page ─── */
 export default function ScannerPage() {
-  const { state, startConference, processScan, proceedToSummary, backToScanning, finalize, reset } =
+  const { state, startConference, processScan, setPeripherals, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset } =
     useConference();
   const [savedOnline, setSavedOnline] = useState(true);
 
@@ -465,21 +581,47 @@ export default function ScannerPage() {
     [processScan, allNotebooks],
   );
 
-  const handleNext = useCallback(() => {
-    // If UM has any peripherals configured, go to peripherals phase; otherwise summary.
-    const um = state.um;
-    if (um && (um.mouses || um.carregadores || um.fones)) {
-      proceedToSummary("peripherals");
-    } else {
-      proceedToSummary("summary");
-    }
-  }, [state.um, proceedToSummary]);
-
   const handleReiniciar = useCallback(() => {
     if (state.um && activeUM) {
       startConference(state.um, activeUM.notebooks);
     }
   }, [state.um, activeUM, startConference]);
+
+  const handleFinalizePeripherals = useCallback((peripherals: Peripherals) => {
+    setPeripherals(peripherals);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          proceedFromPeripherals(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
+        },
+        () => proceedFromPeripherals(null),
+        { timeout: 5_000 },
+      );
+    } else {
+      proceedFromPeripherals(null);
+    }
+  }, [setPeripherals, proceedFromPeripherals]);
+
+  // For UMs without peripherals, capture geolocation when clicking Próximo
+  const handleNext = useCallback(() => {
+    const um = state.um;
+    if (um && (um.mouses || um.carregadores || um.fones)) {
+      proceedToSummary("peripherals");
+    } else {
+      // No peripherals — capture location now and go directly to summary
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            proceedFromPeripherals(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
+          },
+          () => proceedFromPeripherals(null),
+          { timeout: 5_000 },
+        );
+      } else {
+        proceedFromPeripherals(null);
+      }
+    }
+  }, [state.um, proceedToSummary, proceedFromPeripherals]);
 
   const handleFinalize = useCallback(async () => {
     const ok = await finalize();
@@ -495,6 +637,12 @@ export default function ScannerPage() {
           onScan={handleScan}
           onNext={handleNext}
           onReiniciar={handleReiniciar}
+        />
+      )}
+      {state.phase === "peripherals" && (
+        <PeripheralsPhase
+          state={state}
+          onFinalize={handleFinalizePeripherals}
         />
       )}
       {state.phase === "summary" && (

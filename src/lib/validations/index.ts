@@ -11,6 +11,9 @@ export const createConferenceSchema = z.object({
   dataFim: z.string().datetime(),
   localizacao: z.string().optional(),
   status: z.enum(["CONCLUIDO_OK", "CONCLUIDO_FALTANTES"]),
+  mousesQtd: z.number().int().min(0).optional(),
+  carregadoresQtd: z.number().int().min(0).optional(),
+  fonesQtd: z.number().int().min(0).optional(),
   items: z.array(conferenceItemSchema).min(1),
 });
 
