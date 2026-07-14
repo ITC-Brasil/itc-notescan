@@ -4,15 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, CameraOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePlatform } from "@/hooks/usePlatform";
-import { NativeQRScanner } from "./NativeQRScanner";
+import { NativeQRScanner, type NativeScanUi } from "./NativeQRScanner";
 
 interface QRScannerProps {
   onScan: (value: string) => void;
   active?: boolean;
   className?: string;
+  nativeUi?: NativeScanUi;
 }
 
-export function QRScanner({ onScan, active = true, className }: QRScannerProps) {
+export function QRScanner({ onScan, active = true, className, nativeUi }: QRScannerProps) {
   // All hooks must be called unconditionally — branching happens in the JSX return.
   const platform = usePlatform();
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +83,7 @@ export function QRScanner({ onScan, active = true, className }: QRScannerProps) 
         onScan={onScan}
         onError={(err) => console.error("Native scanner error:", err)}
         isActive={active}
+        ui={nativeUi}
       />
     );
   }
