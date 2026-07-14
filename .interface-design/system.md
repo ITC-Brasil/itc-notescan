@@ -336,15 +336,15 @@ Durante scanning nativo (`body.scanner-active`):
 
 ---
 
-## Pendências identificadas na auditoria (2026-07-14)
+## Auditoria (2026-07-14) — achados corrigidos
 
-Achados que ainda precisam de correção no código:
+Todos os achados da auditoria foram corrigidos:
 
-| # | Arquivo | Problema | Prioridade |
+| # | Arquivo | Problema | Status |
 |---|---|---|---|
-| 1 | `dashboard/page.tsx` StatCard | Ícone não respeita variante (sempre cyan) | Blocker |
-| 2 | `(user)/inicio/page.tsx` | 3 modais hand-rolled (PeripheralsModal, FaltantesModal, ResumoModal) devem usar `<Dialog>` | Blocker |
-| 3 | `dashboard/page.tsx` StatCard | `<div onClick>` sem role/tabIndex (card de manutenção) | Blocker |
-| 4 | `(user)/inicio/page.tsx` | `text-green-500` hardcoded — trocar por `text-[--itc-sucesso]` | Should-fix |
-| 5 | `AdminLayout.tsx` header | "NoteScan" duplicado (sidebar + header bar) | Should-fix |
-| 6 | `dashboard/page.tsx` | Grid 5-cards orphaned em mobile (2+2+1) | Should-fix |
+| 1 | `dashboard/page.tsx` StatCard | Ícone não respeitava variante (sempre cyan) | ✅ Corrigido |
+| 2 | `(user)/inicio/page.tsx` | 3 modais hand-rolled migrados para `<Dialog>` (bottom-sheet via className) | ✅ Corrigido |
+| 3 | `dashboard/page.tsx` StatCard | `<div onClick>` virou `<button type="button">` | ✅ Corrigido |
+| 4 | `(user)/inicio/page.tsx` | `green-500` hardcoded → `--itc-sucesso` | ✅ Corrigido |
+| 5 | `AdminLayout.tsx` header | "NoteScan" duplicado removido do header bar | ✅ Corrigido |
+| 6 | `dashboard/page.tsx` | Card "Conferências hoje" agora `col-span-2` no mobile — focal point + fim do orphan | ✅ Corrigido |

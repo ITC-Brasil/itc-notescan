@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ScanLine, CheckCircle2, AlertTriangle, Wifi, WifiOff, X } from "lucide-react";
+import { ScanLine, AlertTriangle, Wifi, WifiOff } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useConferences, type ConferenceRecord } from "@/hooks/useConferences";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -42,6 +47,10 @@ function useOutboxCount() {
 
 /* ─── Modals ─── */
 
+// Bottom-sheet styling for mobile dialogs — anchored to the bottom edge
+const SHEET_CLASS =
+  "max-w-sm top-auto bottom-0 translate-y-0 rounded-t-2xl rounded-b-none p-5 pb-8";
+
 function PeripheralsModal({ conference, onClose }: { conference: ConferenceRecord; onClose: () => void }) {
   const um = conference.um;
   const hasAny = (um.mouses && conference.mousesQtd !== null) ||
@@ -49,17 +58,11 @@ function PeripheralsModal({ conference, onClose }: { conference: ConferenceRecor
     (um.fones && conference.fonesQtd !== null);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="w-full max-w-sm rounded-t-2xl bg-card border-t border-border p-5 pb-8 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <p className="font-semibold text-foreground">Periféricos</p>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className={SHEET_CLASS}>
+        <DialogHeader>
+          <DialogTitle>Periféricos</DialogTitle>
+        </DialogHeader>
         {!hasAny ? (
           <p className="text-sm text-muted-foreground">Nenhum periférico registrado.</p>
         ) : (
@@ -84,25 +87,19 @@ function PeripheralsModal({ conference, onClose }: { conference: ConferenceRecor
             )}
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord; onClose: () => void }) {
   const faltantes = conference.items.filter((i) => i.status === "FALTANTE");
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="w-full max-w-sm rounded-t-2xl bg-card border-t border-border p-5 pb-8 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <p className="font-semibold text-foreground">Dispositivos Faltantes</p>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className={SHEET_CLASS}>
+        <DialogHeader>
+          <DialogTitle>Dispositivos Faltantes</DialogTitle>
+        </DialogHeader>
         {faltantes.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum dispositivo faltante.</p>
         ) : (
@@ -115,8 +112,8 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -133,19 +130,13 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
   const endDate = new Date(conference.dataFim);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="w-full max-w-sm rounded-t-2xl bg-card border-t border-border p-5 pb-8 space-y-4 max-h-[85vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <p className="font-semibold text-foreground">Resumo</p>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className={cn(SHEET_CLASS, "max-h-[85vh] overflow-y-auto")}>
+        <DialogHeader>
+          <DialogTitle>Resumo</DialogTitle>
+        </DialogHeader>
 
-        <div className={cn("rounded-xl p-3 text-center text-sm", isOk ? "bg-green-500/10 border border-green-500/30" : "bg-destructive/10 border border-destructive/30")}>
+        <div className={cn("rounded-xl p-3 text-center text-sm", isOk ? "bg-[--itc-sucesso]/10 border border-[--itc-sucesso]/30" : "bg-destructive/10 border border-destructive/30")}>
           <p className="font-bold text-foreground">{um.project.nome} / {um.nome}</p>
           <p className="text-muted-foreground">
             {startDate.toLocaleDateString("pt-BR")} · {startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às {endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -160,7 +151,7 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-muted-foreground">Escaneados</span>
-            <span className="font-semibold text-green-500">{escaneados}</span>
+            <span className="font-semibold text-[--itc-sucesso]">{escaneados}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-muted-foreground">Faltantes</span>
@@ -221,8 +212,8 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -252,7 +243,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
             </p>
           </div>
           <Badge
-            className={cn("text-xs flex-shrink-0", isOk ? "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30" : "bg-destructive/10 text-destructive border-destructive/30")}
+            className={cn("text-xs flex-shrink-0", isOk ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] border-[--itc-sucesso]/30" : "bg-destructive/10 text-destructive border-destructive/30")}
             variant="outline"
           >
             {isOk ? "COMPLETO" : "INCOMPLETO"}
@@ -346,7 +337,7 @@ export default function InicioPage() {
               {outboxCount} pendente{outboxCount !== 1 ? "s" : ""}
             </Badge>
           )}
-          <div className={cn("flex items-center gap-1 text-xs", online ? "text-green-500" : "text-muted-foreground")}>
+          <div className={cn("flex items-center gap-1 text-xs", online ? "text-[--itc-sucesso]" : "text-muted-foreground")}>
             {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
             <span>{online ? "Online" : "Offline"}</span>
           </div>
@@ -364,8 +355,8 @@ export default function InicioPage() {
             <p className="text-2xl font-bold text-foreground tabular-nums">{todayTotal}</p>
             <p className="text-xs text-muted-foreground mt-0.5">de {meta} hoje</p>
           </div>
-          <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3 text-center">
-            <p className="text-2xl font-bold text-green-500 tabular-nums">{todayOk}</p>
+          <div className="rounded-xl border border-[--itc-sucesso]/30 bg-[--itc-sucesso]/5 p-3 text-center">
+            <p className="text-2xl font-bold text-[--itc-sucesso] tabular-nums">{todayOk}</p>
             <p className="text-xs text-muted-foreground mt-0.5">OK</p>
           </div>
           <div className={cn(
