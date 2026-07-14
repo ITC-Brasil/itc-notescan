@@ -285,6 +285,14 @@ body.scanner-active main {
   inset: 0;
   z-index: 50;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spotlight mask: darkens everything outside the viewfinder frame */
+.scanner-frame {
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
 }
 
 .scanner-frame {
