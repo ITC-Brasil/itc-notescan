@@ -15,6 +15,7 @@ import {
 import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
+import { usePlatform } from "@/hooks/usePlatform";
 import { QRScanner } from "@/components/scanner/QRScanner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -143,6 +144,30 @@ function ScanningPhase({
   onNext: () => void;
   onReiniciar: () => void;
 }) {
+  const platform = usePlatform();
+
+  // On Android APK: hand off the entire scanning UI to the native overlay.
+  // The NativeQRScanner renders top bar + viewfinder + feedback + buttons
+  // inside a position:fixed overlay with pointer-events properly scoped.
+  if (platform === "android") {
+    return (
+      <QRScanner
+        onScan={onScan}
+        active
+        nativeUi={{
+          umName: state.um?.nome ?? "",
+          umColor: state.um?.project.cor ?? "#008f95",
+          pendingCount: state.pending.length,
+          scannedCount: state.scanned.length,
+          lastScanned: state.lastScanned ?? null,
+          scanError: state.error ?? null,
+          onNext,
+          onReiniciar,
+        }}
+      />
+    );
+  }
+
   const total = state.pending.length + state.scanned.length;
   const progress = total > 0 ? (state.scanned.length / total) * 100 : 0;
 

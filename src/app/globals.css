@@ -267,18 +267,24 @@ body.scanner-active {
   background: transparent !important;
 }
 
-body.scanner-active .admin-main,
-body.scanner-active [data-slot="sidebar-inset"] {
+/* Hide layout chrome so camera is unobstructed */
+body.scanner-active header,
+body.scanner-active nav {
+  display: none !important;
+}
+
+/* Make layout wrappers and main transparent */
+body.scanner-active > div,
+body.scanner-active main {
   background: transparent !important;
+  padding-bottom: 0 !important;
 }
 
 .native-scanner-overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  pointer-events: none;
 }
 
 .scanner-frame {
