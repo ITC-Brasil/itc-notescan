@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
-  const { umId, dataInicio, dataFim, localizacao, status, items } = parsed.data;
+  const { umId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
 
   try {
     const conference = await prisma.conference.create({
@@ -73,6 +73,9 @@ export async function POST(request: Request) {
         dataFim: new Date(dataFim),
         localizacao,
         status,
+        mousesQtd,
+        carregadoresQtd,
+        fonesQtd,
         items: {
           create: items.map((item) => ({
             notebookId: item.notebookId,

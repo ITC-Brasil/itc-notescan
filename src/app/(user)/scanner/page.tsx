@@ -418,9 +418,18 @@ function SummaryPhase({
   onBack: () => void;
 }) {
   const isOk = state.pending.length === 0;
+  const um = state.um!;
+  const totalAtivos = state.scanned.length + state.pending.length;
+
+  const startDate = state.startTime ? new Date(state.startTime) : null;
+  const nowStr = startDate
+    ? `${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+    : null;
+
+  const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4 pb-6 overflow-y-auto">
       {/* Status header */}
       <div
         className={cn(
@@ -436,28 +445,58 @@ function SummaryPhase({
         <h2 className="font-bold text-lg text-foreground">
           {isOk ? "Conferência OK" : `${state.pending.length} Faltante${state.pending.length !== 1 ? "s" : ""}`}
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {state.um?.project.nome} / {state.um?.nome}
-        </p>
+        <p className="text-sm text-muted-foreground mt-0.5">{um.project.nome} / {um.nome}</p>
+        {nowStr && <p className="text-xs text-muted-foreground mt-0.5">{nowStr}</p>}
+        {state.location && (
+          <p className="text-xs text-muted-foreground mt-0.5">📍 {state.location}</p>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border bg-card p-3 text-center">
-          <p className="text-2xl font-bold text-green-500 tabular-nums">{state.scanned.length}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Escaneados</p>
+      {/* Device stats */}
+      <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Dispositivos Ativos</span>
+          <span className="font-semibold tabular-nums">{totalAtivos}</span>
         </div>
-        <div className={cn("rounded-xl border p-3 text-center", state.pending.length > 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-card")}>
-          <p className={cn("text-2xl font-bold tabular-nums", state.pending.length > 0 ? "text-destructive" : "text-foreground")}>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Escaneados</span>
+          <span className="font-semibold text-green-500 tabular-nums">{state.scanned.length}</span>
+        </div>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Faltantes</span>
+          <span className={cn("font-semibold tabular-nums", state.pending.length > 0 ? "text-destructive" : "text-foreground")}>
             {state.pending.length}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">Faltantes</p>
+          </span>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3 text-center">
-          <p className="text-2xl font-bold text-foreground tabular-nums">{state.maintenance.length}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Manutenção</p>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Em Manutenção</span>
+          <span className="font-semibold tabular-nums">{state.maintenance.length}</span>
         </div>
       </div>
+
+      {/* Peripherals */}
+      {hasPeripherals && (
+        <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
+          {um.mouses && (
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-muted-foreground">Mouses</span>
+              <span className="font-semibold tabular-nums">{state.peripherals.mouses}</span>
+            </div>
+          )}
+          {um.carregadores && (
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-muted-foreground">Carregadores</span>
+              <span className="font-semibold tabular-nums">{state.peripherals.carregadores}</span>
+            </div>
+          )}
+          {um.fones && (
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-muted-foreground">Fones de Ouvido</span>
+              <span className="font-semibold tabular-nums">{state.peripherals.fones}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Faltantes list */}
       {state.pending.length > 0 && (
@@ -489,13 +528,6 @@ function SummaryPhase({
         </div>
       )}
 
-      {/* Location */}
-      {state.location && (
-        <p className="text-xs text-muted-foreground text-center">
-          📍 {state.location}
-        </p>
-      )}
-
       {/* Actions */}
       <div className="flex gap-3">
         <Button variant="outline" className="flex-1" onClick={onBack}>
@@ -507,7 +539,7 @@ function SummaryPhase({
           onClick={onConfirm}
         >
           <Check className="h-4 w-4 mr-1.5" />
-          Confirmar
+          Concluir e Enviar
         </Button>
       </div>
     </div>
