@@ -6,8 +6,9 @@ import { CheckCircle2, AlertTriangle, RotateCcw, Check } from 'lucide-react'
 export interface NativeScanUi {
   umName: string
   umColor: string
-  pendingCount: number
-  scannedCount: number
+  /** Full list so the overlay can render hostnames */
+  pending: { id: string; hostname: string }[]
+  scanned: { id: string; hostname: string }[]
   lastScanned: string | null
   scanError: string | null
   onNext: () => void
@@ -20,6 +21,12 @@ interface NativeQRScannerProps {
   isActive: boolean
   ui?: NativeScanUi
 }
+
+// Reusable inline-style constants
+const OPAQUE_DARK = 'rgba(14,14,14,0.94)'
+const OPAQUE_BAR  = 'rgba(0,0,0,0.82)'
+const WHITE_DIM   = 'rgba(255,255,255,0.55)'
+const GREEN_DIM   = 'rgba(26,127,60,0.85)'
 
 export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScannerProps) {
   useEffect(() => {
@@ -52,21 +59,13 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         document.body.classList.add('scanner-active')
         BarcodeScanner.hideBackground()
 
-        // startScanning() keeps the camera open between reads and fires the callback
-        // for each QR code detected. targetedFormats improves sensitivity on small labels.
-        // Note: prepare() is intentionally omitted — startScanning() handles camera
-        // setup internally via _prepare(savedCall), and calling prepare() separately
-        // can interfere with the keepAlive callback registration.
+        // startScanning() drives the full camera setup internally (_prepare + scan loop).
+        // targetedFormats: QR_CODE only — improves sensitivity on small 12×40mm labels.
         await BarcodeScanner.startScanning(
           { targetedFormats: [SupportedFormat.QR_CODE] },
           (result, err) => {
-            if (err) {
-              onError('Erro durante leitura')
-              return
-            }
-            if (result?.hasContent) {
-              onScan(result.content)
-            }
+            if (err) { onError('Erro durante leitura'); return }
+            if (result?.hasContent) { onScan(result.content) }
           },
         )
       } catch {
@@ -76,185 +75,188 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
     }
 
     void startScan()
-
-    return () => {
-      void stopScan()
-    }
+    return () => { void stopScan() }
   }, [isActive, onScan, onError])
 
-  const total = ui ? ui.pendingCount + ui.scannedCount : 0
+  // ─── No UI props: fallback to simple centered viewfinder ──────────
+  if (!ui) {
+    return (
+      <div className="native-scanner-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="scanner-frame">
+          <div className="scanner-corner top-left" />
+          <div className="scanner-corner top-right" />
+          <div className="scanner-corner bottom-left" />
+          <div className="scanner-corner bottom-right" />
+          <div className="scanner-line" />
+        </div>
+      </div>
+    )
+  }
 
-  // z-index layers inside the overlay (all are within stacking context z-50):
-  //   1 — scanner-frame (with box-shadow spotlight mask)
-  //   2 — top bar, feedback strip, bottom bar (above the mask)
+  // ─── Split layout ─────────────────────────────────────────────────
+  // The native camera view is always full-screen behind the WebView.
+  // We show it only through the transparent camera section (top area).
+  // The lists section has an opaque background that blocks the camera
+  // in the lower half, letting both be visible simultaneously.
+
+  const total = ui.pending.length + ui.scanned.length
 
   return (
-    // pointer-events: none on overlay; interactive areas use pointer-events: auto.
-    // The flex centering is applied via .native-scanner-overlay CSS class.
-    <div className="native-scanner-overlay">
+    <div
+      className="native-scanner-overlay"
+      style={{ display: 'flex', flexDirection: 'column', pointerEvents: 'none' }}
+    >
+      {/* ── Header bar ─────────────────────────────────────────────── */}
+      <div
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 16px',
+          background: OPAQUE_BAR,
+          pointerEvents: 'auto',
+        }}
+      >
+        <span style={{ width: 10, height: 10, borderRadius: '50%', background: ui.umColor, flexShrink: 0 }} />
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{ui.umName}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 13, fontFamily: 'monospace', color: WHITE_DIM }}>
+          {ui.scanned.length}/{total}
+        </span>
+      </div>
 
-      {/* ── Top bar: UM name + count ─────────────────────────────── */}
-      {ui && (
+      {/* ── Camera area — TRANSPARENT — camera shows through ──────── */}
+      <div
+        style={{
+          flexShrink: 0,
+          height: 260,
+          background: 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div className="scanner-frame">
+          <div className="scanner-corner top-left" />
+          <div className="scanner-corner top-right" />
+          <div className="scanner-corner bottom-left" />
+          <div className="scanner-corner bottom-right" />
+          <div className="scanner-line" />
+        </div>
+      </div>
+
+      {/* ── Feedback strip (scan result / error) ──────────────────── */}
+      {(ui.scanError ?? ui.lastScanned) ? (
         <div
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 2,
+            flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            padding: '12px 16px',
-            background: 'rgba(0,0,0,0.72)',
+            padding: '7px 16px',
+            background: ui.scanError ? 'rgba(192,57,43,0.93)' : 'rgba(26,127,60,0.93)',
             pointerEvents: 'auto',
           }}
         >
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: ui.umColor,
-              flexShrink: 0,
-            }}
-          />
-          <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>
-            {ui.umName}
-          </span>
-          <span style={{ marginLeft: 'auto', fontSize: 14, fontFamily: 'monospace', color: '#fff' }}>
-            {ui.scannedCount}/{total}
+          {ui.scanError
+            ? <AlertTriangle style={{ width: 15, height: 15, color: '#fff', flexShrink: 0 }} />
+            : <CheckCircle2 style={{ width: 15, height: 15, color: '#fff', flexShrink: 0 }} />
+          }
+          <span style={{ fontSize: 13, color: '#fff', fontFamily: 'monospace' }}>
+            {ui.scanError ?? ui.lastScanned}
           </span>
         </div>
+      ) : (
+        // Thin dark separator so the opaque zone starts cleanly
+        <div style={{ flexShrink: 0, height: 4, background: OPAQUE_DARK }} />
       )}
 
-      {/* ── Viewfinder frame (centered by parent flex) ────────────── */}
-      {/* box-shadow spotlight is applied via .scanner-frame CSS rule  */}
-      <div className="scanner-frame" style={{ zIndex: 1 }}>
-        <div className="scanner-corner top-left" />
-        <div className="scanner-corner top-right" />
-        <div className="scanner-corner bottom-left" />
-        <div className="scanner-corner bottom-right" />
-        <div className="scanner-line" />
+      {/* ── Lists area — OPAQUE — blocks camera in lower half ──────── */}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          display: 'flex',
+          background: OPAQUE_DARK,
+          pointerEvents: 'auto',
+        }}
+      >
+        {/* Pendentes */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 10px 8px 14px', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: WHITE_DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+            Pendentes ({ui.pending.length})
+          </p>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {ui.pending.length === 0 ? (
+              <p style={{ fontSize: 11, color: WHITE_DIM, textAlign: 'center', paddingTop: 6 }}>Todos escaneados!</p>
+            ) : (
+              ui.pending.map((nb) => (
+                <div key={nb.id} style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(255,255,255,0.75)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.05)' }}>
+                  {nb.hostname}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Escaneados */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 14px 8px 10px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: GREEN_DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+            Escaneados ({ui.scanned.length})
+          </p>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {ui.scanned.length === 0 ? (
+              <p style={{ fontSize: 11, color: WHITE_DIM, textAlign: 'center', paddingTop: 6 }}>Nenhum ainda</p>
+            ) : (
+              [...ui.scanned].reverse().map((nb) => (
+                <div key={nb.id} style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(74,222,128,0.9)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(26,127,60,0.14)' }}>
+                  {nb.hostname}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* ── Feedback strip (below viewfinder, above mask) ─────────── */}
-      {ui && (ui.scanError || ui.lastScanned) && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            // sits between the viewfinder bottom and the bottom bar (approx)
-            bottom: 88,
-            zIndex: 2,
-          }}
-        >
-          {ui.scanError ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 14px',
-                background: 'rgba(192,57,43,0.92)',
-                borderRadius: 10,
-                color: '#fff',
-                fontSize: 13,
-              }}
-            >
-              <AlertTriangle style={{ width: 16, height: 16, flexShrink: 0 }} />
-              <span>{ui.scanError}</span>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 14px',
-                background: 'rgba(26,127,60,0.92)',
-                borderRadius: 10,
-                color: '#fff',
-                fontSize: 13,
-              }}
-            >
-              <CheckCircle2 style={{ width: 16, height: 16, flexShrink: 0 }} />
-              <span>{ui.lastScanned}</span>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Bottom bar: Reiniciar + Próximo ───────────────────────── */}
-      {ui && (
-        <div
+      <div
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          gap: 10,
+          padding: '12px 16px',
+          background: OPAQUE_BAR,
+          pointerEvents: 'auto',
+        }}
+      >
+        <button
+          onClick={ui.onReiniciar}
           style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 2,
-            display: 'flex',
-            gap: 10,
-            padding: '12px 16px',
-            background: 'rgba(0,0,0,0.72)',
-            pointerEvents: 'auto',
+            flexShrink: 0, width: 56, height: 56, borderRadius: 12,
+            border: '1.5px solid rgba(255,255,255,0.3)',
+            background: 'rgba(255,255,255,0.1)', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           }}
         >
-          {/* Reiniciar */}
-          <button
-            onClick={ui.onReiniciar}
-            style={{
-              flexShrink: 0,
-              width: 56,
-              height: 56,
-              borderRadius: 12,
-              border: '1.5px solid rgba(255,255,255,0.35)',
-              background: 'rgba(255,255,255,0.12)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <RotateCcw style={{ width: 20, height: 20 }} />
-          </button>
+          <RotateCcw style={{ width: 20, height: 20 }} />
+        </button>
 
-          {/* Próximo */}
-          <button
-            onClick={ui.onNext}
-            style={{
-              flex: 1,
-              height: 56,
-              borderRadius: 12,
-              border: 'none',
-              background: ui.pendingCount > 0 ? '#c0392b' : '#008f95',
-              color: '#fff',
-              fontSize: 14,
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              cursor: 'pointer',
-            }}
-          >
-            {ui.pendingCount > 0 ? (
-              <>
-                <AlertTriangle style={{ width: 18, height: 18 }} />
-                Próximo — {ui.pendingCount} faltante{ui.pendingCount !== 1 ? 's' : ''}
-              </>
-            ) : (
-              <>
-                <Check style={{ width: 18, height: 18 }} />
-                Próximo — todos escaneados
-              </>
-            )}
-          </button>
-        </div>
-      )}
+        <button
+          onClick={ui.onNext}
+          style={{
+            flex: 1, height: 56, borderRadius: 12, border: 'none',
+            background: ui.pending.length > 0 ? '#c0392b' : '#008f95',
+            color: '#fff', fontSize: 14, fontWeight: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
+          }}
+        >
+          {ui.pending.length > 0 ? (
+            <><AlertTriangle style={{ width: 18, height: 18 }} />Próximo — {ui.pending.length} faltante{ui.pending.length !== 1 ? 's' : ''}</>
+          ) : (
+            <><Check style={{ width: 18, height: 18 }} />Próximo — todos escaneados</>
+          )}
+        </button>
+      </div>
     </div>
   )
 }
