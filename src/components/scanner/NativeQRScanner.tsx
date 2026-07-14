@@ -30,7 +30,7 @@ export function NativeQRScanner({ onScan, onError, isActive }: NativeQRScannerPr
 
     const startScan = async (): Promise<void> => {
       try {
-        const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner')
+        const { BarcodeScanner, SupportedFormat } = await import('@capacitor-community/barcode-scanner')
 
         const status = await BarcodeScanner.checkPermission({ force: true })
         if (!status.granted) {
@@ -41,16 +41,25 @@ export function NativeQRScanner({ onScan, onError, isActive }: NativeQRScannerPr
         document.body.classList.add('scanner-active')
         BarcodeScanner.hideBackground()
 
-        const result = await BarcodeScanner.startScan()
+        // Pre-warm autofocus before scanning — critical for small labels (12×40mm).
+        await BarcodeScanner.prepare()
 
-        document.body.classList.remove('scanner-active')
-        BarcodeScanner.showBackground()
-
-        if (result.hasContent) {
-          onScan(result.content)
-          // Continue scanning after a successful read
-          void startScan()
-        }
+        // startScanning() with callback keeps the camera open between reads,
+        // eliminating the stop/restart gap of the recursive startScan() pattern.
+        // targetedFormats limits detection to QR_CODE only, which increases
+        // sensitivity and scan speed compared to scanning all barcode formats.
+        await BarcodeScanner.startScanning(
+          { targetedFormats: [SupportedFormat.QR_CODE] },
+          (result, err) => {
+            if (err) {
+              onError('Erro durante leitura')
+              return
+            }
+            if (result?.hasContent) {
+              onScan(result.content)
+            }
+          },
+        )
       } catch {
         onError('Erro ao iniciar câmera')
         document.body.classList.remove('scanner-active')
