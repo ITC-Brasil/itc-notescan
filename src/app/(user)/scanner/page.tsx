@@ -40,12 +40,18 @@ function UMSelectionPhase({
     selectedUmId || undefined,
   );
 
+  const ativos = notebooks?.filter((n) => n.status === "ATIVO").length ?? 0;
+  const manutencao = notebooks?.filter((n) => n.status === "MANUTENCAO").length ?? 0;
+
   const handleStart = () => {
     if (!selectedUM || !notebooks) return;
     const um: UMSlim = {
       id: selectedUM.id,
       nome: selectedUM.nome,
       project: { nome: selectedUM.project.nome, cor: selectedUM.project.cor },
+      mouses: selectedUM.mouses,
+      carregadores: selectedUM.carregadores,
+      fones: selectedUM.fones,
     };
     const nbs: NotebookSlim[] = notebooks.map((n) => ({
       id: n.id,
@@ -57,7 +63,7 @@ function UMSelectionPhase({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 px-6 gap-8">
+    <div className="flex flex-col items-center justify-center flex-1 px-5 gap-8">
       <div className="text-center">
         <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <ScanLine className="h-8 w-8 text-primary" />
@@ -68,9 +74,9 @@ function UMSelectionPhase({
         </p>
       </div>
 
-      <div className="w-full space-y-4">
+      <div className="w-full space-y-5">
         <Select value={selectedUmId} onValueChange={setSelectedUmId} disabled={loadingUMs}>
-          <SelectTrigger className="h-12 text-base">
+          <SelectTrigger className="h-14 text-base">
             <SelectValue placeholder={loadingUMs ? "Carregando..." : "Selecione a UM"} />
           </SelectTrigger>
           <SelectContent>
@@ -89,15 +95,23 @@ function UMSelectionPhase({
         </Select>
 
         {selectedUM && (
-          <div className="rounded-xl border border-border bg-card p-3 text-sm space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Esperados</span>
-              <span className="font-medium">{selectedUM.quantidadeEsperada}</span>
-            </div>
+          <div className="rounded-xl border border-border bg-card p-4 text-sm space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Cadastrados</span>
-              <span className="font-medium">
+              <span className="font-semibold text-foreground tabular-nums">
                 {loadingNotebooks ? "..." : (notebooks?.length ?? 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Ativos</span>
+              <span className="font-semibold text-green-500 tabular-nums">
+                {loadingNotebooks ? "..." : ativos}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Em Manutenção</span>
+              <span className="font-semibold text-muted-foreground tabular-nums">
+                {loadingNotebooks ? "..." : manutencao}
               </span>
             </div>
           </div>
@@ -105,12 +119,12 @@ function UMSelectionPhase({
 
         <Button
           size="lg"
-          className="w-full"
+          className="w-full h-14 text-base"
           disabled={!selectedUmId || loadingNotebooks || !notebooks?.length}
           onClick={handleStart}
         >
           Iniciar
-          <ChevronRight className="h-4 w-4 ml-1" />
+          <ChevronRight className="h-5 w-5 ml-1" />
         </Button>
       </div>
     </div>

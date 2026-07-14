@@ -15,6 +15,9 @@ export interface UMSlim {
   id: string;
   nome: string;
   project: { nome: string; cor: string };
+  mouses: boolean;
+  carregadores: boolean;
+  fones: boolean;
 }
 
 export type ConferencePhase = "idle" | "scanning" | "summary" | "saving" | "done";
