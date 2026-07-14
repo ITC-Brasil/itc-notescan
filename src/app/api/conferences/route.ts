@@ -38,7 +38,17 @@ export async function GET(request: Request) {
     take: limit,
     include: {
       user: { select: { id: true, nome: true } },
-      um: { select: { id: true, nome: true, project: { select: { id: true, nome: true, cor: true } } } },
+      um: {
+        select: {
+          id: true,
+          nome: true,
+          mouses: true,
+          carregadores: true,
+          fones: true,
+          project: { select: { id: true, nome: true, cor: true } },
+        },
+      },
+      items: { select: { status: true, notebook: { select: { hostname: true } } } },
       _count: { select: { items: true } },
     },
   });
@@ -62,7 +72,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
-  const { umId, dataInicio, dataFim, localizacao, status, items } = parsed.data;
+  const { umId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
 
   try {
     const conference = await prisma.conference.create({
@@ -73,6 +83,9 @@ export async function POST(request: Request) {
         dataFim: new Date(dataFim),
         localizacao,
         status,
+        mousesQtd,
+        carregadoresQtd,
+        fonesQtd,
         items: {
           create: items.map((item) => ({
             notebookId: item.notebookId,
@@ -82,7 +95,16 @@ export async function POST(request: Request) {
       },
       include: {
         user: { select: { id: true, nome: true } },
-        um: { select: { id: true, nome: true, project: { select: { nome: true, cor: true } } } },
+        um: {
+          select: {
+            id: true,
+            nome: true,
+            mouses: true,
+            carregadores: true,
+            fones: true,
+            project: { select: { nome: true, cor: true } },
+          },
+        },
         items: { include: { notebook: { select: { hostname: true } } } },
       },
     });
@@ -114,8 +136,11 @@ async function notifyTelegram(conference: {
   dataInicio: Date;
   dataFim: Date;
   localizacao?: string | null;
+  mousesQtd?: number | null;
+  carregadoresQtd?: number | null;
+  fonesQtd?: number | null;
   user: { nome: string };
-  um: { nome: string; project: { nome: string; cor: string } };
+  um: { nome: string; mouses: boolean; carregadores: boolean; fones: boolean; project: { nome: string; cor: string } };
   items: { status: string; notebook: { hostname: string } }[];
 }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -123,38 +148,76 @@ async function notifyTelegram(conference: {
   if (!token || !chatId) return;
 
   const escaneados = conference.items.filter((i) => i.status === "ESCANEADO").length;
-  const faltantes = conference.items.filter((i) => i.status === "FALTANTE").length;
-  const manutencao = conference.items.filter((i) => i.status === "MANUTENCAO").length;
-  const total = conference.items.length;
+  const faltanteItems = conference.items.filter((i) => i.status === "FALTANTE");
+  const manutencaoItems = conference.items.filter((i) => i.status === "MANUTENCAO");
+  const totalAtivos = escaneados + faltanteItems.length;
 
-  const data = new Date(conference.dataInicio).toLocaleDateString("pt-BR");
-  const hora = new Date(conference.dataInicio).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const statusLabel =
-    conference.status === "CONCLUIDO_OK" ? "CONCLUÍDO ✅" : "FALTANTES ⚠️";
+  const dataInicio = new Date(conference.dataInicio);
+  const dataFim = new Date(conference.dataFim);
+  const dataStr = dataInicio.toLocaleDateString("pt-BR");
+  const horaInicio = dataInicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const horaFim = dataFim.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-  const text = [
-    `🔍 *Conferência Concluída*`,
+  const localizacao = conference.localizacao
+    ? `[Ver no Mapa](https://www.google.com/maps?q=${conference.localizacao})`
+    : "Não informado";
+
+  const isOk = conference.status === "CONCLUIDO_OK";
+  const statusLabel = isOk ? "COMPLETO 🟢" : "INCOMPLETO 🔴";
+
+  const um = conference.um;
+  const hasPeripherals = um.mouses || um.carregadores || um.fones;
+
+  const lines: string[] = [
+    `🔍 *Conferência Concluída - ITC NoteScan*`,
     ``,
     `👤 Técnico: ${conference.user.nome}`,
-    `📦 UM: ${conference.um.nome} (${conference.um.project.nome})`,
-    `📅 Data: ${data} às ${hora}`,
-    `📍 Local: ${conference.localizacao ?? "Não informado"}`,
-    ``,
-    `✅ Escaneados: ${escaneados}/${total}`,
-    `❌ Faltantes: ${faltantes}`,
-    `🔧 Manutenção: ${manutencao}`,
-    ``,
-    `Status: ${statusLabel}`,
-  ].join("\n");
+    `🚚 UM: ${um.nome} (${um.project.nome})`,
+    `📅 Data: ${dataStr}`,
+    `🕒 Horário: ${horaInicio} às ${horaFim}`,
+    `📍 Localização: ${localizacao}`,
+  ];
+
+  if (hasPeripherals) {
+    lines.push(`\`------------------------------------\``);
+    lines.push(`Periféricos:`);
+    if (um.mouses) lines.push(`\\- Mouses: ${conference.mousesQtd ?? 0}`);
+    if (um.carregadores) lines.push(`\\- Carregadores: ${conference.carregadoresQtd ?? 0}`);
+    if (um.fones) lines.push(`\\- Fones: ${conference.fonesQtd ?? 0}`);
+  }
+
+  lines.push(`\`------------------------------------\``);
+  lines.push(`💻 Dispositivos Ativos \\(Esperados\\): ${totalAtivos}`);
+  lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
+  lines.push(`❗️ Dispositivos Faltantes: ${faltanteItems.length}`);
+  lines.push(`🔧 Dispositivos em Manutenção: ${manutencaoItems.length}`);
+
+  if (faltanteItems.length > 0) {
+    lines.push(``);
+    lines.push(`*Lista de Faltantes:*`);
+    for (const item of faltanteItems) {
+      lines.push(`\\- ${item.notebook.hostname}`);
+    }
+  }
+
+  if (manutencaoItems.length > 0) {
+    lines.push(``);
+    lines.push(`*Lista em Manutenção:*`);
+    for (const item of manutencaoItems) {
+      lines.push(`\\- ${item.notebook.hostname}`);
+    }
+  }
+
+  lines.push(``);
+  lines.push(`Status: *${statusLabel}*`);
+
+  const text = lines.join("\n");
 
   try {
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
     });
   } catch (err) {
     logger.warn("Telegram notification failed", { error: String(err) });

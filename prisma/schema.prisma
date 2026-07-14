@@ -72,17 +72,20 @@ enum NotebookStatus {
 }
 
 model Conference {
-  id          String           @id @default(cuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id])
-  umId        String
-  um          UM               @relation(fields: [umId], references: [id])
-  dataInicio  DateTime
-  dataFim     DateTime
-  localizacao String?
-  status      ConferenceStatus
-  createdAt   DateTime         @default(now())
-  items       ConferenceItem[]
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  umId            String
+  um              UM               @relation(fields: [umId], references: [id])
+  dataInicio      DateTime
+  dataFim         DateTime
+  localizacao     String?
+  status          ConferenceStatus
+  mousesQtd       Int?
+  carregadoresQtd Int?
+  fonesQtd        Int?
+  createdAt       DateTime         @default(now())
+  items           ConferenceItem[]
 }
 
 enum ConferenceStatus {

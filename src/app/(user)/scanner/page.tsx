@@ -12,7 +12,7 @@ import {
   Package,
   Wrench,
 } from "lucide-react";
-import { useConference, type NotebookSlim, type UMSlim } from "@/hooks/useConference";
+import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
 import { QRScanner } from "@/components/scanner/QRScanner";
@@ -40,12 +40,18 @@ function UMSelectionPhase({
     selectedUmId || undefined,
   );
 
+  const ativos = notebooks?.filter((n) => n.status === "ATIVO").length ?? 0;
+  const manutencao = notebooks?.filter((n) => n.status === "MANUTENCAO").length ?? 0;
+
   const handleStart = () => {
     if (!selectedUM || !notebooks) return;
     const um: UMSlim = {
       id: selectedUM.id,
       nome: selectedUM.nome,
       project: { nome: selectedUM.project.nome, cor: selectedUM.project.cor },
+      mouses: selectedUM.mouses,
+      carregadores: selectedUM.carregadores,
+      fones: selectedUM.fones,
     };
     const nbs: NotebookSlim[] = notebooks.map((n) => ({
       id: n.id,
@@ -57,7 +63,7 @@ function UMSelectionPhase({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 px-6 gap-8">
+    <div className="flex flex-col items-center justify-center flex-1 px-5 gap-8">
       <div className="text-center">
         <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <ScanLine className="h-8 w-8 text-primary" />
@@ -68,9 +74,9 @@ function UMSelectionPhase({
         </p>
       </div>
 
-      <div className="w-full space-y-4">
+      <div className="w-full space-y-5">
         <Select value={selectedUmId} onValueChange={setSelectedUmId} disabled={loadingUMs}>
-          <SelectTrigger className="h-12 text-base">
+          <SelectTrigger className="h-14 text-base">
             <SelectValue placeholder={loadingUMs ? "Carregando..." : "Selecione a UM"} />
           </SelectTrigger>
           <SelectContent>
@@ -89,15 +95,23 @@ function UMSelectionPhase({
         </Select>
 
         {selectedUM && (
-          <div className="rounded-xl border border-border bg-card p-3 text-sm space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Esperados</span>
-              <span className="font-medium">{selectedUM.quantidadeEsperada}</span>
-            </div>
+          <div className="rounded-xl border border-border bg-card p-4 text-sm space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Cadastrados</span>
-              <span className="font-medium">
+              <span className="font-semibold text-foreground tabular-nums">
                 {loadingNotebooks ? "..." : (notebooks?.length ?? 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Ativos</span>
+              <span className="font-semibold text-green-500 tabular-nums">
+                {loadingNotebooks ? "..." : ativos}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Em Manutenção</span>
+              <span className="font-semibold text-muted-foreground tabular-nums">
+                {loadingNotebooks ? "..." : manutencao}
               </span>
             </div>
           </div>
@@ -105,12 +119,12 @@ function UMSelectionPhase({
 
         <Button
           size="lg"
-          className="w-full"
+          className="w-full h-14 text-base"
           disabled={!selectedUmId || loadingNotebooks || !notebooks?.length}
           onClick={handleStart}
         >
           Iniciar
-          <ChevronRight className="h-4 w-4 ml-1" />
+          <ChevronRight className="h-5 w-5 ml-1" />
         </Button>
       </div>
     </div>
@@ -121,11 +135,13 @@ function UMSelectionPhase({
 function ScanningPhase({
   state,
   onScan,
-  onFinish,
+  onNext,
+  onReiniciar,
 }: {
   state: ReturnType<typeof useConference>["state"];
   onScan: (value: string) => void;
-  onFinish: () => void;
+  onNext: () => void;
+  onReiniciar: () => void;
 }) {
   const total = state.pending.length + state.scanned.length;
   const progress = total > 0 ? (state.scanned.length / total) * 100 : 0;
@@ -242,27 +258,151 @@ function ScanningPhase({
         </div>
       </div>
 
-      {/* Finish button */}
-      <div className="px-4 pb-2">
+      {/* Actions */}
+      <div className="px-4 pb-2 flex gap-2">
+        <Button
+          variant="outline"
+          size="lg"
+          className="flex-shrink-0"
+          onClick={onReiniciar}
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
         <Button
           variant={state.pending.length > 0 ? "destructive" : "default"}
           size="lg"
-          className="w-full"
-          onClick={onFinish}
+          className="flex-1"
+          onClick={onNext}
         >
           {state.pending.length > 0 ? (
             <>
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Finalizar com {state.pending.length} faltante{state.pending.length !== 1 ? "s" : ""}
+              Próximo — {state.pending.length} faltante{state.pending.length !== 1 ? "s" : ""}
             </>
           ) : (
             <>
               <Check className="h-4 w-4 mr-2" />
-              Finalizar — todos escaneados
+              Próximo — todos escaneados
             </>
           )}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/* ─── Phase: Peripherals ─── */
+function PeripheralsPhase({
+  state,
+  onFinalize,
+}: {
+  state: ReturnType<typeof useConference>["state"];
+  onFinalize: (peripherals: Peripherals) => void;
+}) {
+  const um = state.um!;
+  const [mouses, setMouses] = useState(0);
+  const [carregadores, setCarregadores] = useState(0);
+  const [fones, setFones] = useState(0);
+
+  const handleFinalize = () => {
+    onFinalize({ mouses, carregadores, fones });
+  };
+
+  return (
+    <div className="flex flex-col gap-5 p-4">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span
+            className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: um.project.cor }}
+          />
+          <span className="text-sm font-medium text-foreground">{um.nome}</span>
+        </div>
+        <h2 className="text-lg font-bold text-foreground">Periféricos</h2>
+        <p className="text-sm text-muted-foreground">Informe as quantidades conferidas</p>
+      </div>
+
+      <div className="space-y-4">
+        {um.mouses && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <span className="text-sm font-medium text-foreground">Mouses</span>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setMouses((v) => Math.max(0, v - 1))}
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-bold tabular-nums">{mouses}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setMouses((v) => v + 1)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {um.carregadores && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <span className="text-sm font-medium text-foreground">Carregadores</span>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setCarregadores((v) => Math.max(0, v - 1))}
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-bold tabular-nums">{carregadores}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setCarregadores((v) => v + 1)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {um.fones && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <span className="text-sm font-medium text-foreground">Fones de Ouvido</span>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setFones((v) => Math.max(0, v - 1))}
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-bold tabular-nums">{fones}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setFones((v) => v + 1)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Button size="lg" className="w-full mt-2" onClick={handleFinalize}>
+        <Check className="h-4 w-4 mr-2" />
+        Finalizar Conferência
+      </Button>
     </div>
   );
 }
@@ -278,9 +418,18 @@ function SummaryPhase({
   onBack: () => void;
 }) {
   const isOk = state.pending.length === 0;
+  const um = state.um!;
+  const totalAtivos = state.scanned.length + state.pending.length;
+
+  const startDate = state.startTime ? new Date(state.startTime) : null;
+  const nowStr = startDate
+    ? `${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+    : null;
+
+  const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4 pb-6 overflow-y-auto">
       {/* Status header */}
       <div
         className={cn(
@@ -296,28 +445,58 @@ function SummaryPhase({
         <h2 className="font-bold text-lg text-foreground">
           {isOk ? "Conferência OK" : `${state.pending.length} Faltante${state.pending.length !== 1 ? "s" : ""}`}
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {state.um?.project.nome} / {state.um?.nome}
-        </p>
+        <p className="text-sm text-muted-foreground mt-0.5">{um.project.nome} / {um.nome}</p>
+        {nowStr && <p className="text-xs text-muted-foreground mt-0.5">{nowStr}</p>}
+        {state.location && (
+          <p className="text-xs text-muted-foreground mt-0.5">📍 {state.location}</p>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border bg-card p-3 text-center">
-          <p className="text-2xl font-bold text-green-500 tabular-nums">{state.scanned.length}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Escaneados</p>
+      {/* Device stats */}
+      <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Dispositivos Ativos</span>
+          <span className="font-semibold tabular-nums">{totalAtivos}</span>
         </div>
-        <div className={cn("rounded-xl border p-3 text-center", state.pending.length > 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-card")}>
-          <p className={cn("text-2xl font-bold tabular-nums", state.pending.length > 0 ? "text-destructive" : "text-foreground")}>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Escaneados</span>
+          <span className="font-semibold text-green-500 tabular-nums">{state.scanned.length}</span>
+        </div>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Faltantes</span>
+          <span className={cn("font-semibold tabular-nums", state.pending.length > 0 ? "text-destructive" : "text-foreground")}>
             {state.pending.length}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">Faltantes</p>
+          </span>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3 text-center">
-          <p className="text-2xl font-bold text-foreground tabular-nums">{state.maintenance.length}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Manutenção</p>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-muted-foreground">Em Manutenção</span>
+          <span className="font-semibold tabular-nums">{state.maintenance.length}</span>
         </div>
       </div>
+
+      {/* Peripherals */}
+      {hasPeripherals && (
+        <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
+          {um.mouses && (
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-muted-foreground">Mouses</span>
+              <span className="font-semibold tabular-nums">{state.peripherals.mouses}</span>
+            </div>
+          )}
+          {um.carregadores && (
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-muted-foreground">Carregadores</span>
+              <span className="font-semibold tabular-nums">{state.peripherals.carregadores}</span>
+            </div>
+          )}
+          {um.fones && (
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-muted-foreground">Fones de Ouvido</span>
+              <span className="font-semibold tabular-nums">{state.peripherals.fones}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Faltantes list */}
       {state.pending.length > 0 && (
@@ -349,13 +528,6 @@ function SummaryPhase({
         </div>
       )}
 
-      {/* Location */}
-      {state.location && (
-        <p className="text-xs text-muted-foreground text-center">
-          📍 {state.location}
-        </p>
-      )}
-
       {/* Actions */}
       <div className="flex gap-3">
         <Button variant="outline" className="flex-1" onClick={onBack}>
@@ -367,7 +539,7 @@ function SummaryPhase({
           onClick={onConfirm}
         >
           <Check className="h-4 w-4 mr-1.5" />
-          Confirmar
+          Concluir e Enviar
         </Button>
       </div>
     </div>
@@ -413,7 +585,7 @@ function DonePhase({
 
 /* ─── Main Page ─── */
 export default function ScannerPage() {
-  const { state, startConference, processScan, proceedToSummary, backToScanning, finalize, reset } =
+  const { state, startConference, processScan, setPeripherals, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset } =
     useConference();
   const [savedOnline, setSavedOnline] = useState(true);
 
@@ -441,11 +613,52 @@ export default function ScannerPage() {
     [processScan, allNotebooks],
   );
 
+  const handleReiniciar = useCallback(() => {
+    if (state.um && activeUM) {
+      startConference(state.um, activeUM.notebooks);
+    }
+  }, [state.um, activeUM, startConference]);
+
+  const handleFinalizePeripherals = useCallback((peripherals: Peripherals) => {
+    setPeripherals(peripherals);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          proceedFromPeripherals(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
+        },
+        () => proceedFromPeripherals(null),
+        { timeout: 5_000 },
+      );
+    } else {
+      proceedFromPeripherals(null);
+    }
+  }, [setPeripherals, proceedFromPeripherals]);
+
+  // For UMs without peripherals, capture geolocation when clicking Próximo
+  const handleNext = useCallback(() => {
+    const um = state.um;
+    if (um && (um.mouses || um.carregadores || um.fones)) {
+      proceedToSummary("peripherals");
+    } else {
+      // No peripherals — capture location now and go directly to summary
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            proceedFromPeripherals(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
+          },
+          () => proceedFromPeripherals(null),
+          { timeout: 5_000 },
+        );
+      } else {
+        proceedFromPeripherals(null);
+      }
+    }
+  }, [state.um, proceedToSummary, proceedFromPeripherals]);
+
   const handleFinalize = useCallback(async () => {
     const ok = await finalize();
     setSavedOnline(ok);
   }, [finalize]);
-
 
   return (
     <div className="flex flex-col h-full min-h-[calc(100svh-4rem-3.5rem)]">
@@ -454,7 +667,14 @@ export default function ScannerPage() {
         <ScanningPhase
           state={state}
           onScan={handleScan}
-          onFinish={proceedToSummary}
+          onNext={handleNext}
+          onReiniciar={handleReiniciar}
+        />
+      )}
+      {state.phase === "peripherals" && (
+        <PeripheralsPhase
+          state={state}
+          onFinalize={handleFinalizePeripherals}
         />
       )}
       {state.phase === "summary" && (

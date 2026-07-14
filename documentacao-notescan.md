@@ -884,36 +884,85 @@ npm run audit:security   # npm audit --audit-level=high
 
 ### Infraestrutura
 
-- **Servidor:** GLPI-SRV (Dell PowerEdge R250)
-- **Container:** Docker + Nginx (reverse proxy)
-- **CI/CD:** Push na branch `main` → GitHub Actions → build + deploy
-- **Build:** `output: 'standalone'` no `next.config.ts` (obrigatório para Docker)
+| Campo | Valor |
+|---|---|
+| Servidor | GLPI-SRV — Dell PowerEdge R250 |
+| SO | Ubuntu 24.04.4 LTS |
+| Hardware | Xeon E-2324G, 16GB RAM, 2x SSD 480GB RAID |
+| IP externo | glpi.grupoitcbrasil.com.br (porta 2222 para SSH) |
+| IP Tailscale | 100.68.161.44 |
+| Interface Docker | eno8403 → RB750r2 → Claro 1Gbps |
+| Tunnel | Cloudflare Tunnel itcbr-tunnel |
+| Domínio | notescan.itcbr.xyz |
 
-### Branches
+### Containers
 
+```yaml
+# ~/docker/notescan/docker-compose.yml
+services:
+  notescan-app:   # Next.js standalone — porta 3010
+  notescan-db:    # PostgreSQL 16 — porta 5433 (interna)
 ```
-feature/xxx  → develop → main
+
+Os dois containers rodam na mesma rede Docker interna (`notescan_default`).
+O `notescan-app` conecta ao `notescan-db` via hostname `notescan-db:5432`.
+Apenas a porta `3010` é exposta ao host. O PostgreSQL não é acessível externamente.
+
+### Cloudflare Tunnel
+
+O tráfego externo chega via Cloudflare Tunnel — sem exposição direta de porta.
+
+Entrada no `~/.cloudflared/config.yml`:
+```yaml
+- hostname: notescan.itcbr.xyz
+  service: http://localhost:3010
 ```
 
-- Desenvolvimento em branches de feature
-- Merge em `develop` para integração
-- Merge em `main` aciona o pipeline de produção
+### Processo de Deploy Manual
 
-### Processo de Deploy
+Usado enquanto o CD automático via SSH não está configurado:
 
 ```bash
-# 1. Build da imagem
-docker build -t itc-notescan:latest .
+ssh glpissh@100.68.161.44  # ou glpi.grupoitcbrasil.com.br:2222
 
-# 2. Subir container
-docker run -d \
-  --name itc-notescan \
-  -p 3000:3000 \
-  --env-file /etc/notescan/.env.production \
-  itc-notescan:latest
+# Corrigir ownership se necessário
+sudo chown -R glpissh:glpissh /home/glpissh/docker/notescan
 
-# 3. Nginx faz proxy para localhost:3000
+cd ~/docker/notescan
+git pull origin main
+docker compose down
+docker compose up -d --build
 ```
+
+### Entrypoint — Migrations automáticas
+
+O `scripts/docker-entrypoint.sh` roda `prisma migrate deploy` antes de
+iniciar o Next.js. As migrations são aplicadas automaticamente a cada deploy.
+
+### Lições aprendidas no processo de dockerização
+
+| Problema | Causa | Solução |
+|---|---|---|
+| `node_modules/.prisma` not found | Prisma 7 não usa mais esse caminho | Copiar `src/generated` e `node_modules` completo do estágio deps |
+| `sh: prisma: not found` | output standalone não copia `.bin/` symlinks | Chamar `node node_modules/prisma/build/index.js` diretamente |
+| `Cannot find module 'effect'` | Dependência transitiva do @prisma/config | Copiar `node_modules` completo do estágio deps |
+| `datasource.url property is required` | prisma.config.ts não estava no runner | Adicionar `COPY prisma.config.ts` no Dockerfile |
+| `UntrustedHost` no NextAuth | Host de produção não estava na lista de hosts confiáveis | Adicionar `trustHost: true` no auth config |
+| `git pull: Permission denied` | chown para github-deploy bloqueou acesso do glpissh | Reverter ownership para glpissh antes do pull |
+
+### CD — Deploy Automático (pendente)
+
+O workflow `.github/workflows/deploy.yml` está configurado mas o CD via SSH
+ainda não está funcionando. O acesso externo ao servidor usa porta 2222 e
+requer configuração adicional nos secrets do GitHub.
+
+Secrets necessários:
+- `DEPLOY_HOST` — hostname do servidor
+- `DEPLOY_USER` — `github-deploy`
+- `DEPLOY_SSH_KEY` — chave privada ed25519
+
+Usuário `github-deploy` criado no servidor com acesso ao grupo docker.
+Chave pública em `/home/github-deploy/.ssh/authorized_keys`.
 
 ---
 
@@ -1230,4 +1279,4 @@ limite de 5 PRs abertos simultaneamente.
 
 ---
 
-*Última atualização: Junho de 2026 — CI/CD GitHub Actions configurado. Para atualizações, editar este arquivo e reimportar no BookStack.*
+*Última atualização: Junho de 2026 — deploy Docker no GLPI-SRV concluído. Para atualizações, editar este arquivo e reimportar no BookStack.*

@@ -16,7 +16,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "audit:security": "npm audit --audit-level=high",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:android": "npx cap sync android",
+    "open:android": "npx cap open android"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -25,6 +27,11 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
+    "@capacitor-community/barcode-scanner": "^4.0.1",
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/core": "^5.7.8",
+    "@capacitor/geolocation": "^5.0.8",
+    "@capacitor/local-notifications": "^5.0.8",
     "@hookform/resolvers": "^5.4.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",

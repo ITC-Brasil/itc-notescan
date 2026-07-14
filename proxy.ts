@@ -39,9 +39,23 @@ export default auth((req) => {
   }
 });
 
-// Não rodar o middleware em /api (cada API Route faz seu próprio auth()),
-// nem em assets estáticos/PWA. Sem este matcher, /api/auth/session é
-// redirecionado para "/" e retorna HTML, quebrando o NextAuth no cliente.
+// Listar explicitamente as rotas protegidas em vez de excluir /api/*.
+// O regex negativo com lookahead pode falhar no Turbopack em dev mode,
+// fazendo o proxy interceptar /api/auth/session e redirecionar para "/",
+// o que retorna HTML em vez de JSON e quebra o NextAuth no cliente.
+// Com a lista explícita, qualquer rota não listada (incluindo /api/*) nunca
+// passa pelo proxy — cada API Route já faz seu próprio auth().
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|manifest.json|icons|sw.js).*)"],
+  matcher: [
+    "/dashboard/:path*",
+    "/relatorios/:path*",
+    "/projetos/:path*",
+    "/ums/:path*",
+    "/notebooks/:path*",
+    "/notificacoes/:path*",
+    "/usuarios/:path*",
+    "/inicio/:path*",
+    "/scanner/:path*",
+    "/alterar-senha",
+  ],
 };

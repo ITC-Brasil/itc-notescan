@@ -14,6 +14,9 @@ const mockUM: UMSlim = {
   id: "um1",
   nome: "BSBIA01",
   project: { nome: "Brasil.IA", cor: "#008F95" },
+  mouses: false,
+  carregadores: false,
+  fones: false,
 };
 
 const notebooks: NotebookSlim[] = [
