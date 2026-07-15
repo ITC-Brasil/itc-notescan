@@ -188,7 +188,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="flex flex-col flex-1 min-w-0 min-h-screen">
           <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card sticky top-0 z-10">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-            <span className="font-semibold text-foreground text-sm">NoteScan</span>
           </header>
           <main className="admin-main flex-1 overflow-y-auto p-4 md:p-6">
             {children}

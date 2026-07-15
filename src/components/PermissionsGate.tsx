@@ -20,9 +20,9 @@ function isCapacitorApp() {
 
 async function requestCameraPermission(): Promise<boolean> {
   try {
-    const { BarcodeScanner } = await import("@capacitor-community/barcode-scanner");
-    const status = await BarcodeScanner.checkPermission({ force: true });
-    return !!status.granted;
+    const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
+    const { camera } = await BarcodeScanner.requestPermissions();
+    return camera === "granted" || camera === "limited";
   } catch {
     return false;
   }
@@ -50,8 +50,8 @@ async function requestNotificationsPermission(): Promise<boolean> {
 
 async function openAppSettings() {
   try {
-    const { BarcodeScanner } = await import("@capacitor-community/barcode-scanner");
-    await BarcodeScanner.openAppSettings();
+    const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
+    await BarcodeScanner.openSettings();
   } catch { /* noop */ }
 }
 

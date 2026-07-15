@@ -103,14 +103,8 @@ interface StatCardProps {
 }
 
 function StatCard({ title, value, icon: Icon, variant = "default", onClick }: StatCardProps) {
-  return (
-    <div
-      className={cn(
-        "rounded-lg border border-border bg-card p-4 space-y-3",
-        onClick && "cursor-pointer hover:bg-muted/30 transition-colors",
-      )}
-      onClick={onClick}
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{title}</p>
         <div
@@ -121,10 +115,35 @@ function StatCard({ title, value, icon: Icon, variant = "default", onClick }: St
             variant === "default" && "bg-[--itc-ciano-7]/10",
           )}
         >
-          <Icon className="h-4 w-4 text-[--itc-ciano-7]" />
+          <Icon
+            className={cn(
+              "h-4 w-4",
+              variant === "warning" && "text-[--itc-atencao]",
+              variant === "error" && "text-[--itc-erro]",
+              variant === "default" && "text-[--itc-ciano-7]",
+            )}
+          />
         </div>
       </div>
-      <p className="text-2xl font-semibold text-foreground">{value}</p>
+      <p className="text-2xl font-semibold text-foreground tabular-nums">{value}</p>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full h-full rounded-lg border border-border bg-card p-4 space-y-3 text-left cursor-pointer hover:bg-muted/30 transition-colors"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="h-full rounded-lg border border-border bg-card p-4 space-y-3">
+      {content}
     </div>
   );
 }
@@ -159,11 +178,13 @@ export default function DashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard
-              title="Conferências hoje"
-              value={data!.conferencesToday}
-              icon={ClipboardCheck}
-            />
+            <div className="col-span-2 sm:col-span-1">
+              <StatCard
+                title="Conferências hoje"
+                value={data!.conferencesToday}
+                icon={ClipboardCheck}
+              />
+            </div>
             <StatCard
               title="Técnicos ativos"
               value={data!.activeTechnicians}

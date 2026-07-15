@@ -489,6 +489,24 @@ ambiente do Docker no GLPI-SRV.
 
 ---
 
+## Ferramentas Ativas
+
+| Ferramenta | Propósito |
+|---|---|
+| Ponytail | Anti-over-engineering — força a solução mais simples que funciona |
+| interface-design | Design engineering — consistência visual e decisões de UI/UX |
+| Context7 | Documentação atualizada de bibliotecas em tempo real |
+
+**Ponytail** — instalado globalmente no Claude Code. Ativo em todas as sessões.
+Usar `/ponytail` para revisar diffs, `/ponytail-audit` para auditar o repositório.
+Repositório: https://github.com/DietrichGebert/ponytail
+
+**interface-design** — instalado globalmente no Claude Code. Usar `/interface-design`
+para construir ou auditar interfaces. O sistema de design fica em `.interface-design/system.md`.
+Repositório: https://github.com/Dammyjay93/interface-design
+
+---
+
 ## O que Não Mexer Sem Entender Bem
 
 | Arquivo / Área        | Risco                                                              |

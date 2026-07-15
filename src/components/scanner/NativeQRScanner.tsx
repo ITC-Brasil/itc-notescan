@@ -32,9 +32,9 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
   useEffect(() => {
     const stopScan = async () => {
       try {
-        const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner')
+        const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning')
+        await BarcodeScanner.removeAllListeners()
         await BarcodeScanner.stopScan()
-        BarcodeScanner.showBackground()
         document.body.classList.remove('scanner-active')
       } catch {
         // Ignore cleanup errors during unmount
@@ -48,26 +48,25 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
 
     const startScan = async (): Promise<void> => {
       try {
-        const { BarcodeScanner, SupportedFormat } = await import('@capacitor-community/barcode-scanner')
+        // ML Kit detects ALL barcodes visible in the frame per pass — the
+        // 'barcodeScanned' listener fires once per detected code, enabling
+        // multi-QR reading. Dedup of repeated reads is handled upstream
+        // (useConference ignores already-scanned hostnames).
+        const { BarcodeScanner, BarcodeFormat } = await import('@capacitor-mlkit/barcode-scanning')
 
-        const status = await BarcodeScanner.checkPermission({ force: true })
-        if (!status.granted) {
+        const { camera } = await BarcodeScanner.requestPermissions()
+        if (camera !== 'granted' && camera !== 'limited') {
           onError('Permissão de câmera negada')
           return
         }
 
         document.body.classList.add('scanner-active')
-        BarcodeScanner.hideBackground()
 
-        // startScanning() drives the full camera setup internally (_prepare + scan loop).
-        // targetedFormats: QR_CODE only — improves sensitivity on small 12×40mm labels.
-        await BarcodeScanner.startScanning(
-          { targetedFormats: [SupportedFormat.QR_CODE] },
-          (result, err) => {
-            if (err) { onError('Erro durante leitura'); return }
-            if (result?.hasContent) { onScan(result.content) }
-          },
-        )
+        await BarcodeScanner.addListener('barcodeScanned', ({ barcode }) => {
+          if (barcode.rawValue) { onScan(barcode.rawValue) }
+        })
+
+        await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] })
       } catch {
         onError('Erro ao iniciar câmera')
         document.body.classList.remove('scanner-active')
