@@ -29,13 +29,21 @@ const WHITE_DIM   = 'rgba(255,255,255,0.55)'
 const GREEN_DIM   = 'rgba(26,127,60,0.85)'
 
 export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScannerProps) {
+  // App chrome (header/nav) must be hidden whenever the full-screen overlay is
+  // mounted — independent of camera success, or a failed startScan leaves the
+  // overlay drawn on top of the app bars.
+  useEffect(() => {
+    if (!isActive) return
+    document.body.classList.add('scanner-active')
+    return () => { document.body.classList.remove('scanner-active') }
+  }, [isActive])
+
   useEffect(() => {
     const stopScan = async () => {
       try {
         const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning')
         await BarcodeScanner.removeAllListeners()
         await BarcodeScanner.stopScan()
-        document.body.classList.remove('scanner-active')
       } catch {
         // Ignore cleanup errors during unmount
       }
@@ -60,8 +68,6 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           return
         }
 
-        document.body.classList.add('scanner-active')
-
         await BarcodeScanner.addListener('barcodeScanned', ({ barcode }) => {
           if (barcode.rawValue) { onScan(barcode.rawValue) }
         })
@@ -69,7 +75,6 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] })
       } catch {
         onError('Erro ao iniciar câmera')
-        document.body.classList.remove('scanner-active')
       }
     }
 
