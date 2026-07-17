@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Check } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, RotateCcw, Check, ArrowLeft } from 'lucide-react'
 
 export interface NativeScanUi {
   umName: string
@@ -13,6 +13,8 @@ export interface NativeScanUi {
   scanError: string | null
   onNext: () => void
   onReiniciar: () => void
+  /** Back button in the top bar — asks for confirmation upstream */
+  onExit: () => void
 }
 
 interface NativeQRScannerProps {
@@ -117,11 +119,23 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '10px 16px',
+          padding: '10px 16px 10px 8px',
           background: OPAQUE_BAR,
           pointerEvents: 'auto',
         }}
       >
+        <button
+          type="button"
+          onClick={ui.onExit}
+          aria-label="Voltar"
+          style={{
+            width: 40, height: 40, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer',
+          }}
+        >
+          <ArrowLeft style={{ width: 20, height: 20 }} />
+        </button>
         <span style={{ width: 10, height: 10, borderRadius: '50%', background: ui.umColor, flexShrink: 0 }} />
         <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{ui.umName}</span>
         <span style={{ marginLeft: 'auto', fontSize: 13, fontFamily: 'monospace', color: WHITE_DIM }}>
