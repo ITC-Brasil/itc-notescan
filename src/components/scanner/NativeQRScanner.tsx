@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { CheckCircle2, AlertTriangle, RotateCcw, Check, ArrowLeft } from 'lucide-react'
 
 export interface NativeScanUi {
@@ -31,6 +31,17 @@ const WHITE_DIM   = 'rgba(255,255,255,0.55)'
 const GREEN_DIM   = 'rgba(26,127,60,0.85)'
 
 export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScannerProps) {
+  // Callbacks live in refs so the camera effect depends only on isActive.
+  // If the effect re-ran on every new onScan identity (parent re-creates it
+  // per render), each scan would tear down and restart the camera — the
+  // un-awaited stopScan races the new startScan and kills the live preview.
+  const onScanRef = useRef(onScan)
+  const onErrorRef = useRef(onError)
+  useEffect(() => {
+    onScanRef.current = onScan
+    onErrorRef.current = onError
+  }, [onScan, onError])
+
   // App chrome (header/nav) must be hidden whenever the full-screen overlay is
   // mounted — independent of camera success, or a failed startScan leaves the
   // overlay drawn on top of the app bars.
@@ -66,23 +77,23 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
 
         const { camera } = await BarcodeScanner.requestPermissions()
         if (camera !== 'granted' && camera !== 'limited') {
-          onError('Permissão de câmera negada')
+          onErrorRef.current('Permissão de câmera negada')
           return
         }
 
         await BarcodeScanner.addListener('barcodeScanned', ({ barcode }) => {
-          if (barcode.rawValue) { onScan(barcode.rawValue) }
+          if (barcode.rawValue) { onScanRef.current(barcode.rawValue) }
         })
 
         await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] })
       } catch {
-        onError('Erro ao iniciar câmera')
+        onErrorRef.current('Erro ao iniciar câmera')
       }
     }
 
     void startScan()
     return () => { void stopScan() }
-  }, [isActive, onScan, onError])
+  }, [isActive])
 
   // ─── No UI props: fallback to simple centered viewfinder ──────────
   if (!ui) {
