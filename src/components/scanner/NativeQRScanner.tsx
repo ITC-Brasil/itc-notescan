@@ -69,11 +69,12 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
 
     const startScan = async (): Promise<void> => {
       try {
-        // ML Kit detects ALL barcodes visible in the frame per pass — the
-        // 'barcodeScanned' listener fires once per detected code, enabling
-        // multi-QR reading. Dedup of repeated reads is handled upstream
+        // 'barcodesScanned' delivers ALL codes ML Kit detected in a frame at
+        // once (plugin >= 6.2), and 1080p analysis resolution makes several
+        // small QR codes in the same frame resolvable — both required for
+        // batch reading. Dedup of repeated reads is handled upstream
         // (useConference ignores already-scanned hostnames).
-        const { BarcodeScanner, BarcodeFormat } = await import('@capacitor-mlkit/barcode-scanning')
+        const { BarcodeScanner, BarcodeFormat, Resolution } = await import('@capacitor-mlkit/barcode-scanning')
 
         const { camera } = await BarcodeScanner.requestPermissions()
         if (camera !== 'granted' && camera !== 'limited') {
@@ -81,11 +82,16 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           return
         }
 
-        await BarcodeScanner.addListener('barcodeScanned', ({ barcode }) => {
-          if (barcode.rawValue) { onScanRef.current(barcode.rawValue) }
+        await BarcodeScanner.addListener('barcodesScanned', ({ barcodes }) => {
+          for (const barcode of barcodes) {
+            if (barcode.rawValue) { onScanRef.current(barcode.rawValue) }
+          }
         })
 
-        await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] })
+        await BarcodeScanner.startScan({
+          formats: [BarcodeFormat.QrCode],
+          resolution: Resolution['1920x1080'],
+        })
       } catch {
         onErrorRef.current('Erro ao iniciar câmera')
       }

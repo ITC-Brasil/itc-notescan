@@ -1,23 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Overrides Capacitor's bridge_layout_main to include the CameraX PreviewView
-     required by @capacitor-mlkit/barcode-scanning (findViewById R.id.preview_view).
-     Both capacitor-android and the plugin ship a bridge_layout_main; declaring it
-     in the app module guarantees this version wins the resource merge. -->
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Identical to capacitor-android 7's stock bridge_layout_main. The PreviewView
+     override needed by @capacitor-mlkit/barcode-scanning 5.x is gone: since v6 the
+     plugin creates its own PreviewView programmatically. Capacitor 7 also requires
+     CapacitorWebView here instead of a plain WebView. This file can be deleted;
+     it is kept only to shadow any stale copy in old build caches. -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.getcapacitor.BridgeActivity">
+    tools:context="com.getcapacitor.BridgeActivity"
+    >
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/preview_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <WebView
+    <com.getcapacitor.CapacitorWebView
         android:id="@+id/webview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
