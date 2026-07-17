@@ -5,6 +5,7 @@ import {
   ScanLine,
   CheckCircle2,
   AlertTriangle,
+  ArrowLeft,
   ChevronRight,
   RotateCcw,
   Check,
@@ -18,6 +19,7 @@ import { useNotebooks } from "@/hooks/useNotebooks";
 import { usePlatform } from "@/hooks/usePlatform";
 import { QRScanner } from "@/components/scanner/QRScanner";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -138,11 +140,13 @@ function ScanningPhase({
   onScan,
   onNext,
   onReiniciar,
+  onExit,
 }: {
   state: ReturnType<typeof useConference>["state"];
   onScan: (value: string) => void;
   onNext: () => void;
   onReiniciar: () => void;
+  onExit: () => void;
 }) {
   const platform = usePlatform();
 
@@ -163,6 +167,7 @@ function ScanningPhase({
           scanError: state.error ?? null,
           onNext,
           onReiniciar,
+          onExit,
         }}
       />
     );
@@ -175,6 +180,14 @@ function ScanningPhase({
     <div className="flex flex-col h-full">
       {/* UM header */}
       <div className="px-4 py-2 flex items-center gap-2 border-b border-border bg-card">
+        <button
+          type="button"
+          onClick={onExit}
+          aria-label="Voltar"
+          className="-ml-2 h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
         <span
           className="h-2.5 w-2.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: state.um?.project.cor }}
@@ -613,6 +626,7 @@ export default function ScannerPage() {
   const { state, startConference, processScan, setPeripherals, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset } =
     useConference();
   const [savedOnline, setSavedOnline] = useState(true);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   const [activeUM, setActiveUM] = useState<{ id: string; notebooks: NotebookSlim[] } | null>(null);
   const { data: rawNotebooks } = useNotebooks(activeUM?.id);
@@ -685,6 +699,12 @@ export default function ScannerPage() {
     setSavedOnline(ok);
   }, [finalize]);
 
+  const handleExit = useCallback(() => {
+    setExitConfirmOpen(false);
+    setActiveUM(null);
+    reset();
+  }, [reset]);
+
   return (
     <div className="flex flex-col h-full min-h-[calc(100svh-4rem-3.5rem)]">
       {state.phase === "idle" && <UMSelectionPhase onSelect={handleSelectUM} />}
@@ -694,8 +714,19 @@ export default function ScannerPage() {
           onScan={handleScan}
           onNext={handleNext}
           onReiniciar={handleReiniciar}
+          onExit={() => setExitConfirmOpen(true)}
         />
       )}
+      <ConfirmationDialog
+        open={exitConfirmOpen}
+        onOpenChange={setExitConfirmOpen}
+        title="Abandonar conferência?"
+        description="O progresso desta conferência será perdido e você voltará à seleção de UM."
+        confirmLabel="Abandonar"
+        cancelLabel="Continuar escaneando"
+        destructive
+        onConfirm={handleExit}
+      />
       {state.phase === "peripherals" && (
         <PeripheralsPhase
           state={state}

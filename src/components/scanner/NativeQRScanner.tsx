@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Check } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, RotateCcw, Check, ArrowLeft } from 'lucide-react'
 
 export interface NativeScanUi {
   umName: string
@@ -13,6 +13,8 @@ export interface NativeScanUi {
   scanError: string | null
   onNext: () => void
   onReiniciar: () => void
+  /** Back button in the top bar — asks for confirmation upstream */
+  onExit: () => void
 }
 
 interface NativeQRScannerProps {
@@ -29,13 +31,21 @@ const WHITE_DIM   = 'rgba(255,255,255,0.55)'
 const GREEN_DIM   = 'rgba(26,127,60,0.85)'
 
 export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScannerProps) {
+  // App chrome (header/nav) must be hidden whenever the full-screen overlay is
+  // mounted — independent of camera success, or a failed startScan leaves the
+  // overlay drawn on top of the app bars.
+  useEffect(() => {
+    if (!isActive) return
+    document.body.classList.add('scanner-active')
+    return () => { document.body.classList.remove('scanner-active') }
+  }, [isActive])
+
   useEffect(() => {
     const stopScan = async () => {
       try {
         const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning')
         await BarcodeScanner.removeAllListeners()
         await BarcodeScanner.stopScan()
-        document.body.classList.remove('scanner-active')
       } catch {
         // Ignore cleanup errors during unmount
       }
@@ -60,8 +70,6 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           return
         }
 
-        document.body.classList.add('scanner-active')
-
         await BarcodeScanner.addListener('barcodeScanned', ({ barcode }) => {
           if (barcode.rawValue) { onScan(barcode.rawValue) }
         })
@@ -69,7 +77,6 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] })
       } catch {
         onError('Erro ao iniciar câmera')
-        document.body.classList.remove('scanner-active')
       }
     }
 
@@ -112,11 +119,23 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '10px 16px',
+          padding: '10px 16px 10px 8px',
           background: OPAQUE_BAR,
           pointerEvents: 'auto',
         }}
       >
+        <button
+          type="button"
+          onClick={ui.onExit}
+          aria-label="Voltar"
+          style={{
+            width: 40, height: 40, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer',
+          }}
+        >
+          <ArrowLeft style={{ width: 20, height: 20 }} />
+        </button>
         <span style={{ width: 10, height: 10, borderRadius: '50%', background: ui.umColor, flexShrink: 0 }} />
         <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{ui.umName}</span>
         <span style={{ marginLeft: 'auto', fontSize: 13, fontFamily: 'monospace', color: WHITE_DIM }}>

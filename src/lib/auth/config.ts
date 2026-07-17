@@ -3,9 +3,15 @@ import type { NextAuthConfig } from "next-auth";
 // Edge-safe config — no Prisma, no bcrypt.
 // Used by proxy.ts (middleware/Edge Runtime).
 // The full Node.js config with adapter and providers lives in lib/auth/index.ts.
+// Technicians stay logged in for 7 days without re-authenticating.
+// The session cookie's Expires and the JWT's exp are both derived from this;
+// activity within the window refreshes the expiry.
+const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days in seconds
+
 export const authConfig: NextAuthConfig = {
   trustHost: true,
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE },
+  jwt: { maxAge: SESSION_MAX_AGE },
   pages: {
     signIn: "/",
   },
