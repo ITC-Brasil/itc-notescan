@@ -115,8 +115,27 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
       }
     }
 
+    // Android may release the camera while the app is backgrounded, leaving a
+    // frozen preview on return. Restart the scanner when the app comes back to
+    // the foreground. Scanned state lives in useConference (parent) and is not
+    // touched by restarting the camera, so nothing is lost.
+    let restarting = false
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible' || restarting) return
+      restarting = true
+      void (async () => {
+        await stopScan()
+        await startScan()
+        restarting = false
+      })()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
     void startScan()
-    return () => { void stopScan() }
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      void stopScan()
+    }
   }, [isActive])
 
   // ─── No UI props: fallback to simple centered viewfinder ──────────
