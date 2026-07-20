@@ -1,6 +1,7 @@
 import { UserLayout } from "@/components/layout/UserLayout";
 import { AuthGuard } from "@/components/layout/AuthGuard";
 import { PermissionsGate } from "@/components/PermissionsGate";
+import { BiometricGate } from "@/components/BiometricGate";
 
 export default function UserRouteLayout({
   children,
@@ -9,9 +10,11 @@ export default function UserRouteLayout({
 }) {
   return (
     <AuthGuard requiredRole="USER">
-      <PermissionsGate>
-        <UserLayout>{children}</UserLayout>
-      </PermissionsGate>
+      <BiometricGate>
+        <PermissionsGate>
+          <UserLayout>{children}</UserLayout>
+        </PermissionsGate>
+      </BiometricGate>
     </AuthGuard>
   );
 }
