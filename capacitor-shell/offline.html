@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sem conexão — ITC NoteScan</title>
+    <style>
+      /* Static fallback page shown by Capacitor server.errorPath when the WebView
+         cannot reach the remote app (e.g. airplane mode). No Capacitor plugins
+         available here — plain HTML/CSS/JS only. */
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      :root { color-scheme: dark; }
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+        background: #1b1b1b;
+        color: #e7e7e7;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        text-align: center;
+      }
+      .card { max-width: 20rem; }
+      .icon {
+        width: 64px; height: 64px; margin: 0 auto 20px;
+        border-radius: 16px;
+        background: rgba(192, 57, 43, 0.12);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .icon svg { width: 32px; height: 32px; stroke: #c0392b; }
+      h1 { font-size: 1.15rem; font-weight: 600; color: #fff; margin-bottom: 8px; }
+      p { font-size: 0.9rem; line-height: 1.5; color: #a4a4a4; margin-bottom: 24px; }
+      button {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 12px;
+        background: #008f95;
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:active { background: #007a80; }
+      .hint { margin-top: 16px; font-size: 0.75rem; color: #757575; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 1l22 22" />
+          <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+          <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+          <path d="M10.71 5.05A16 16 0 0 1 22.58 9" />
+          <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+          <line x1="12" y1="20" x2="12.01" y2="20" />
+        </svg>
+      </div>
+      <h1>Sem conexão</h1>
+      <p>Não foi possível conectar ao ITC NoteScan. Verifique sua internet e tente novamente.</p>
+      <button type="button" onclick="location.href='https://notescan.itcbr.xyz'">Tentar novamente</button>
+      <p class="hint">Reconectaremos automaticamente assim que a internet voltar.</p>
+    </div>
+    <script>
+      // Auto-retry as soon as connectivity is restored.
+      window.addEventListener('online', function () {
+        location.href = 'https://notescan.itcbr.xyz';
+      });
+    </script>
+  </body>
+</html>

@@ -22,8 +22,8 @@ export function UserLayout({ children }: UserLayoutProps) {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Top header mobile */}
-      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+      {/* Top header mobile — pt keeps clear of the Android status bar */}
+      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] border-b border-border bg-card">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center">
             <ScanLine className="h-3.5 w-3.5 text-primary-foreground" />
@@ -46,12 +46,12 @@ export function UserLayout({ children }: UserLayoutProps) {
       </header>
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto pb-16">
+      <main className="flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
 
-      {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-card">
+      {/* Bottom navigation — pb keeps clear of the Android gesture bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;

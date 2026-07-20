@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/providers/SessionProvider";
@@ -23,6 +23,12 @@ export const metadata: Metadata = {
   title: "ITC NoteScan",
   description: "Sistema de conferência de ativos via QR Code — ITC Brasil",
   manifest: "/manifest.json",
+};
+
+// viewport-fit=cover exposes the Android 15 edge-to-edge status/nav bar heights
+// as env(safe-area-inset-*), which the layouts pad against.
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

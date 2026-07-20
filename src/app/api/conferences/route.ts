@@ -147,6 +147,11 @@ async function notifyTelegram(conference: {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
 
+  // MarkdownV2 requires every reserved char to be escaped. A single stray one
+  // (e.g. the '-' in hostnames like BSBIA01-EST01) makes Telegram reject the
+  // whole message with HTTP 400. Escape all interpolated values.
+  const esc = (s: string) => s.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
+
   const escaneados = conference.items.filter((i) => i.status === "ESCANEADO").length;
   const faltanteItems = conference.items.filter((i) => i.status === "FALTANTE");
   const manutencaoItems = conference.items.filter((i) => i.status === "MANUTENCAO");
@@ -169,12 +174,12 @@ async function notifyTelegram(conference: {
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
   const lines: string[] = [
-    `🔍 *Conferência Concluída - ITC NoteScan*`,
+    `🔍 *Conferência Concluída \\- ITC NoteScan*`,
     ``,
-    `👤 Técnico: ${conference.user.nome}`,
-    `🚚 UM: ${um.nome} (${um.project.nome})`,
-    `📅 Data: ${dataStr}`,
-    `🕒 Horário: ${horaInicio} às ${horaFim}`,
+    `👤 Técnico: ${esc(conference.user.nome)}`,
+    `🚚 UM: ${esc(um.nome)} \\(${esc(um.project.nome)}\\)`,
+    `📅 Data: ${esc(dataStr)}`,
+    `🕒 Horário: ${esc(horaInicio)} às ${esc(horaFim)}`,
     `📍 Localização: ${localizacao}`,
   ];
 
@@ -196,7 +201,7 @@ async function notifyTelegram(conference: {
     lines.push(``);
     lines.push(`*Lista de Faltantes:*`);
     for (const item of faltanteItems) {
-      lines.push(`\\- ${item.notebook.hostname}`);
+      lines.push(`\\- ${esc(item.notebook.hostname)}`);
     }
   }
 
@@ -204,7 +209,7 @@ async function notifyTelegram(conference: {
     lines.push(``);
     lines.push(`*Lista em Manutenção:*`);
     for (const item of manutencaoItems) {
-      lines.push(`\\- ${item.notebook.hostname}`);
+      lines.push(`\\- ${esc(item.notebook.hostname)}`);
     }
   }
 
@@ -214,11 +219,19 @@ async function notifyTelegram(conference: {
   const text = lines.join("\n");
 
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
     });
+    if (!res.ok) {
+      // Telegram returns 400 with a description when parsing/escaping fails —
+      // surface it instead of silently dropping the notification.
+      logger.warn("Telegram notification rejected", {
+        status: res.status,
+        body: await res.text(),
+      });
+    }
   } catch (err) {
     logger.warn("Telegram notification failed", { error: String(err) });
   }
