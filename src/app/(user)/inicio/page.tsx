@@ -353,7 +353,11 @@ export default function InicioPage() {
       </div>
 
       {/* Stats cards */}
-      {isLoading ? (
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          Conferências diárias
+        </p>
+        {isLoading ? (
         <div className="grid grid-cols-3 gap-3">
           {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
         </div>
@@ -380,6 +384,7 @@ export default function InicioPage() {
           </div>
         </div>
       )}
+      </div>
 
       {/* INICIAR button — hidden on desktop (sm+) */}
       <Link href="/scanner" className="sm:hidden block">
