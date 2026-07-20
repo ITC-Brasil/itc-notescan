@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
 export interface ConferenceRecord {
   id: string;
@@ -17,6 +17,7 @@ export interface ConferenceRecord {
 
 export interface ConferencesFilters {
   limit?: number;
+  offset?: number;
   userId?: string;
   umId?: string;
   status?: string;
@@ -27,6 +28,7 @@ export interface ConferencesFilters {
 async function fetchConferences(filters: ConferencesFilters): Promise<ConferenceRecord[]> {
   const params = new URLSearchParams();
   if (filters.limit) params.set("limit", String(filters.limit));
+  if (filters.offset) params.set("offset", String(filters.offset));
   if (filters.userId) params.set("userId", filters.userId);
   if (filters.umId) params.set("umId", filters.umId);
   if (filters.status) params.set("status", filters.status);
@@ -42,5 +44,23 @@ export function useConferences(filters: ConferencesFilters = {}) {
   return useQuery({
     queryKey: ["conferences", filters],
     queryFn: () => fetchConferences(filters),
+  });
+}
+
+/**
+ * Paginated history via offset. Each page holds `pageSize` records; the next
+ * page is requested only when the last one was full ("Carregar mais").
+ */
+export function useInfiniteConferences(
+  filters: Omit<ConferencesFilters, "limit" | "offset"> = {},
+  pageSize = 10,
+) {
+  return useInfiniteQuery({
+    queryKey: ["conferences", "infinite", filters, pageSize],
+    queryFn: ({ pageParam }) =>
+      fetchConferences({ ...filters, limit: pageSize, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
   });
 }

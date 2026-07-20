@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones } from "lucide-react";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { useSession } from "next-auth/react";
-import { useConferences, type ConferenceRecord } from "@/hooks/useConferences";
+import { useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -260,10 +260,14 @@ export default function InicioPage() {
     userId: session?.user.id,
   });
 
-  const { data: allConferences, isLoading: loadingHistory } = useConferences({
-    limit: 20,
-    userId: session?.user.id,
-  });
+  const {
+    data: historyPages,
+    isLoading: loadingHistory,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteConferences({ userId: session?.user.id }, 10);
+  const allConferences = historyPages?.pages.flat();
 
   useEffect(() => {
     if (online && outboxCount > 0) {
@@ -388,6 +392,16 @@ export default function InicioPage() {
             {allConferences.map((c) => (
               <ConferenceRow key={c.id} conference={c} />
             ))}
+            {hasNextPage && (
+              <button
+                type="button"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="w-full rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors disabled:opacity-60"
+              >
+                {isFetchingNextPage ? "Carregando..." : "Carregar mais"}
+              </button>
+            )}
           </div>
         )}
       </div>

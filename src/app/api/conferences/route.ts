@@ -11,6 +11,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const limit = Math.min(Number(searchParams.get("limit") ?? "10"), 100);
+  const offset = Math.max(Number(searchParams.get("offset") ?? "0"), 0);
   const userId = searchParams.get("userId");
   const umId = searchParams.get("umId");
   const status = searchParams.get("status");
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
     where,
     orderBy: { dataInicio: "desc" },
     take: limit,
+    skip: offset,
     include: {
       user: { select: { id: true, nome: true } },
       um: {
