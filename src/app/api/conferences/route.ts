@@ -74,6 +74,36 @@ export async function POST(request: Request) {
 
   const { umId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
 
+  // Daily limit — hard block for interactive submissions only. Offline
+  // conferences replayed from the syncQueue carry X-Sync-Replay and are always
+  // recorded (they already happened; never drop data). Counts both statuses.
+  const isSyncReplay = request.headers.get("x-sync-replay") === "1";
+  if (!isSyncReplay) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { metaDiaria: true },
+    });
+    const meta = dbUser?.metaDiaria ?? 0;
+    if (meta > 0) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      const todayCount = await prisma.conference.count({
+        where: {
+          userId: session.user.id,
+          dataInicio: { gte: startOfDay, lte: endOfDay },
+        },
+      });
+      if (todayCount >= meta) {
+        return Response.json(
+          { message: "Meta diária atingida", code: "META_REACHED" },
+          { status: 409 },
+        );
+      }
+    }
+  }
+
   try {
     const conference = await prisma.conference.create({
       data: {

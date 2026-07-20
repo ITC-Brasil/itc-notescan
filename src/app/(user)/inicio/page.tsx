@@ -275,6 +275,7 @@ export default function InicioPage() {
   const todayOk = conferences?.filter((c) => c.status === "CONCLUIDO_OK").length ?? 0;
   const todayFaltantes = conferences?.filter((c) => c.status === "CONCLUIDO_FALTANTES").length ?? 0;
   const meta = session?.user.metaDiaria ?? 2;
+  const dailyLimitReached = meta > 0 && todayTotal >= meta;
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-2">
@@ -340,18 +341,30 @@ export default function InicioPage() {
       )}
       </div>
 
-      {/* INICIAR button — hidden on desktop (sm+) */}
-      <Link href="/scanner" className="sm:hidden block">
-        <div className="w-full rounded-2xl bg-primary p-5 flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-transform">
-          <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
-            <ScanLine className="h-7 w-7 text-primary-foreground" />
+      {/* INICIAR button — hidden on desktop (sm+); blocked when daily meta reached */}
+      {dailyLimitReached ? (
+        <div className="sm:hidden w-full rounded-2xl border border-itc-atencao/30 bg-itc-atencao/10 p-5 flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-itc-atencao/15 flex items-center justify-center shrink-0">
+            <AlertTriangle className="h-7 w-7 text-itc-atencao" />
           </div>
           <div className="text-left">
-            <p className="text-lg font-bold text-primary-foreground leading-tight">Iniciar Conferência</p>
-            <p className="text-sm text-primary-foreground/70 leading-tight">Escanear notebooks da UM</p>
+            <p className="text-lg font-bold text-itc-atencao leading-tight">Meta diária atingida</p>
+            <p className="text-sm text-muted-foreground leading-tight">Você já concluiu {meta} conferência{meta !== 1 ? "s" : ""} hoje.</p>
           </div>
         </div>
-      </Link>
+      ) : (
+        <Link href="/scanner" className="sm:hidden block">
+          <div className="w-full rounded-2xl bg-primary p-5 flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-transform">
+            <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
+              <ScanLine className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <div className="text-left">
+              <p className="text-lg font-bold text-primary-foreground leading-tight">Iniciar Conferência</p>
+              <p className="text-sm text-primary-foreground/70 leading-tight">Escanear notebooks da UM</p>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Histórico */}
       <div className="mt-2">

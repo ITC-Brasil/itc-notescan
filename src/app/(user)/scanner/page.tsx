@@ -17,9 +17,12 @@ import {
   Cable,
   type LucideIcon,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
+import { useConferences } from "@/hooks/useConferences";
 import { usePlatform } from "@/hooks/usePlatform";
 import { QRScanner } from "@/components/scanner/QRScanner";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
@@ -37,8 +40,10 @@ import {
 /* ─── Phase: UM Selection ─── */
 function UMSelectionPhase({
   onSelect,
+  dailyLimitReached,
 }: {
   onSelect: (um: UMSlim, notebooks: NotebookSlim[]) => void;
+  dailyLimitReached: boolean;
 }) {
   const { data: ums, isLoading: loadingUMs } = useUMs();
   const [selectedUmId, setSelectedUmId] = useState("");
@@ -125,10 +130,19 @@ function UMSelectionPhase({
           </div>
         )}
 
+        {dailyLimitReached && (
+          <div className="rounded-xl border border-itc-atencao/30 bg-itc-atencao/10 p-3 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-itc-atencao shrink-0" />
+            <p className="text-sm text-itc-atencao">
+              Você atingiu sua meta diária de conferências.
+            </p>
+          </div>
+        )}
+
         <Button
           size="lg"
           className="w-full h-14 text-base"
-          disabled={!selectedUmId || loadingNotebooks || !notebooks?.length}
+          disabled={!selectedUmId || loadingNotebooks || !notebooks?.length || dailyLimitReached}
           onClick={handleStart}
         >
           Iniciar
@@ -576,8 +590,18 @@ function DonePhase({
 export default function ScannerPage() {
   const { state, startConference, processScan, setPeripherals, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset } =
     useConference();
+  const { data: session } = useSession();
   const [savedOnline, setSavedOnline] = useState(true);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+
+  // Daily-limit gate — mirrors the server block so the technician can't start
+  // a conference past metaDiaria (server still enforces it authoritatively).
+  const meta = session?.user.metaDiaria ?? 0;
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+  const { data: todayConferences } = useConferences({ from, to, userId: session?.user.id });
+  const dailyLimitReached = meta > 0 && (todayConferences?.length ?? 0) >= meta;
 
   const [activeUM, setActiveUM] = useState<{ id: string; notebooks: NotebookSlim[] } | null>(null);
   const { data: rawNotebooks } = useNotebooks(activeUM?.id);
@@ -646,9 +670,15 @@ export default function ScannerPage() {
   }, [state.um, proceedToSummary, proceedFromPeripherals]);
 
   const handleFinalize = useCallback(async () => {
-    const ok = await finalize();
-    setSavedOnline(ok);
-  }, [finalize]);
+    const result = await finalize();
+    if (result === "blocked") {
+      toast.error("Você atingiu sua meta diária de conferências.");
+      reset();
+      setActiveUM(null);
+      return;
+    }
+    setSavedOnline(result === "online");
+  }, [finalize, reset]);
 
   const handleExit = useCallback(() => {
     setExitConfirmOpen(false);
@@ -658,7 +688,7 @@ export default function ScannerPage() {
 
   return (
     <div className="flex flex-col h-full min-h-[calc(100svh-4rem-3.5rem)]">
-      {state.phase === "idle" && <UMSelectionPhase onSelect={handleSelectUM} />}
+      {state.phase === "idle" && <UMSelectionPhase onSelect={handleSelectUM} dailyLimitReached={dailyLimitReached} />}
       {state.phase === "scanning" && (
         <ScanningPhase
           state={state}

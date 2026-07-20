@@ -52,6 +52,7 @@ type Action =
   | { type: "BACK_TO_SCANNING" }
   | { type: "SAVING" }
   | { type: "DONE" }
+  | { type: "BLOCKED" }
   | { type: "RESET" };
 
 function reducer(state: ConferenceState, action: Action): ConferenceState {
@@ -97,6 +98,8 @@ function reducer(state: ConferenceState, action: Action): ConferenceState {
       return { ...state, phase: "saving" };
     case "DONE":
       return { ...state, phase: "done" };
+    case "BLOCKED":
+      return { ...state, phase: "summary", error: "Meta diária atingida" };
     case "RESET":
       return initialState;
     default:
@@ -172,8 +175,8 @@ export function useConference() {
     dispatch({ type: "BACK_TO_SCANNING" });
   }, []);
 
-  const finalize = useCallback(async (): Promise<boolean> => {
-    if (!state.um || !state.startTime) return false;
+  const finalize = useCallback(async (): Promise<"online" | "offline" | "blocked"> => {
+    if (!state.um || !state.startTime) return "offline";
     const um = state.um;
 
     dispatch({ type: "SAVING" });
@@ -207,14 +210,24 @@ export function useConference() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (res.ok) {
+        dispatch({ type: "DONE" });
+        return "online";
+      }
 
-      dispatch({ type: "DONE" });
-      return true;
+      // 409 = daily limit reached. Hard block: do NOT queue — queuing would
+      // resync with the exempt header and bypass the limit. Revert to summary
+      // so the caller can inform the user.
+      if (res.status === 409) {
+        dispatch({ type: "BLOCKED" });
+        return "blocked";
+      }
+
+      throw new Error(`HTTP ${res.status}`);
     } catch {
       await saveToOutbox(payload);
       dispatch({ type: "DONE" });
-      return false;
+      return "offline";
     }
   }, [state]);
 
