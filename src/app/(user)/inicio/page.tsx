@@ -106,7 +106,7 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
           <div className="divide-y divide-destructive/10 rounded-xl border border-destructive/20 bg-destructive/5 max-h-64 overflow-y-auto">
             {faltantes.map((item, i) => (
               <div key={i} className="flex items-center gap-2 px-3 py-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
                 <span className="text-sm font-mono text-foreground">{item.notebook.hostname}</span>
               </div>
             ))}
@@ -136,7 +136,7 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
           <DialogTitle>Resumo</DialogTitle>
         </DialogHeader>
 
-        <div className={cn("rounded-xl p-3 text-center text-sm", isOk ? "bg-[--itc-sucesso]/10 border border-[--itc-sucesso]/30" : "bg-destructive/10 border border-destructive/30")}>
+        <div className={cn("rounded-xl p-3 text-center text-sm", isOk ? "bg-itc-sucesso/10 border border-itc-sucesso/30" : "bg-destructive/10 border border-destructive/30")}>
           <p className="font-bold text-foreground">{um.project.nome} / {um.nome}</p>
           <p className="text-muted-foreground">
             {startDate.toLocaleDateString("pt-BR")} · {startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às {endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -151,7 +151,7 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-muted-foreground">Escaneados</span>
-            <span className="font-semibold text-[--itc-sucesso]">{escaneados}</span>
+            <span className="font-semibold text-itc-sucesso">{escaneados}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-muted-foreground">Faltantes</span>
@@ -192,7 +192,7 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
             <div className="divide-y divide-destructive/10 rounded-xl border border-destructive/20 bg-destructive/5">
               {faltantes.map((item, i) => (
                 <div key={i} className="flex items-center gap-2 px-3 py-1.5">
-                  <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
+                  <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
                   <span className="text-xs font-mono text-foreground">{item.notebook.hostname}</span>
                 </div>
               ))}
@@ -235,7 +235,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: um.project.cor }} />
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: um.project.cor }} />
               <span className="text-sm font-medium text-foreground truncate">{um.nome}</span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -243,7 +243,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
             </p>
           </div>
           <Badge
-            className={cn("text-xs flex-shrink-0", isOk ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] border-[--itc-sucesso]/30" : "bg-destructive/10 text-destructive border-destructive/30")}
+            className={cn("text-xs shrink-0", isOk ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] border-[--itc-sucesso]/30" : "bg-destructive/10 text-destructive border-destructive/30")}
             variant="outline"
           >
             {isOk ? "COMPLETO" : "INCOMPLETO"}
@@ -363,8 +363,8 @@ export default function InicioPage() {
             <p className="text-2xl font-bold text-foreground tabular-nums">{todayTotal}</p>
             <p className="text-xs text-muted-foreground mt-0.5">de {meta} hoje</p>
           </div>
-          <div className="rounded-xl border border-[--itc-sucesso]/30 bg-[--itc-sucesso]/5 p-3 text-center">
-            <p className="text-2xl font-bold text-[--itc-sucesso] tabular-nums">{todayOk}</p>
+          <div className="rounded-xl border border-itc-sucesso/30 bg-itc-sucesso/5 p-3 text-center">
+            <p className="text-2xl font-bold text-itc-sucesso tabular-nums">{todayOk}</p>
             <p className="text-xs text-muted-foreground mt-0.5">OK</p>
           </div>
           <div className={cn(
@@ -384,7 +384,7 @@ export default function InicioPage() {
       {/* INICIAR button — hidden on desktop (sm+) */}
       <Link href="/scanner" className="sm:hidden block">
         <div className="w-full rounded-2xl bg-primary p-5 flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-transform">
-          <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center flex-shrink-0">
+          <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
             <ScanLine className="h-7 w-7 text-primary-foreground" />
           </div>
           <div className="text-left">

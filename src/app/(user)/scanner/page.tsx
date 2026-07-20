@@ -189,7 +189,7 @@ function ScanningPhase({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <span
-          className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+          className="h-2.5 w-2.5 rounded-full shrink-0"
           style={{ backgroundColor: state.um?.project.cor }}
         />
         <span className="text-sm font-medium text-foreground">{state.um?.nome}</span>
@@ -238,7 +238,7 @@ function ScanningPhase({
       )}
       {state.lastScanned && !state.error && (
         <div className="mx-4 mt-2 rounded-lg bg-green-500/10 border border-green-500/30 px-3 py-2 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
           <p className="text-sm text-green-600 dark:text-green-400 font-medium">
             {state.lastScanned}
           </p>
@@ -301,7 +301,7 @@ function ScanningPhase({
         <Button
           variant="outline"
           size="lg"
-          className="flex-shrink-0"
+          className="shrink-0"
           onClick={onReiniciar}
         >
           <RotateCcw className="h-4 w-4" />
@@ -342,7 +342,7 @@ function PhaseTopBar({ um, onExit }: { um: UMSlim; onExit: () => void }) {
         <ArrowLeft className="h-4 w-4" />
       </button>
       <span
-        className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+        className="h-2.5 w-2.5 rounded-full shrink-0"
         style={{ backgroundColor: um.project.cor }}
       />
       <span className="text-sm font-medium text-foreground">{um.nome}</span>
@@ -536,7 +536,7 @@ function SummaryPhase({
           <div className="rounded-xl border border-destructive/20 bg-destructive/5 divide-y divide-destructive/10">
             {state.pending.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
                 <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
               </div>
             ))}
@@ -551,7 +551,7 @@ function SummaryPhase({
           <div className="rounded-xl border border-border divide-y divide-border">
             {state.maintenance.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
-                <Wrench className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
               </div>
             ))}

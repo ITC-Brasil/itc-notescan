@@ -120,7 +120,7 @@ function UMCombobox({
           {selected ? (
             <span className="flex items-center gap-2 text-left min-w-0">
               <span
-                className="h-2 w-2 rounded-full flex-shrink-0"
+                className="h-2 w-2 rounded-full shrink-0"
                 style={{ backgroundColor: selected.project.cor }}
               />
               <span className="truncate">{selected.nome}</span>
@@ -145,10 +145,10 @@ function UMCombobox({
                   className="flex items-start gap-3 py-2"
                 >
                   <Check
-                    className={cn("mt-0.5 h-4 w-4 flex-shrink-0", value === um.id ? "opacity-100" : "opacity-0")}
+                    className={cn("mt-0.5 h-4 w-4 shrink-0", value === um.id ? "opacity-100" : "opacity-0")}
                   />
                   <span
-                    className="h-2 w-2 rounded-full flex-shrink-0 mt-1.5"
+                    className="h-2 w-2 rounded-full shrink-0 mt-1.5"
                     style={{ backgroundColor: um.project.cor }}
                   />
                   <div className="min-w-0">
@@ -670,7 +670,7 @@ function HistoryModal({
                   i < history.length - 1 && "border-b border-border",
                 )}
               >
-                <div className="flex-shrink-0 mt-0.5">{lifecycleIcon(item.tipo)}</div>
+                <div className="shrink-0 mt-0.5">{lifecycleIcon(item.tipo)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{item.tipo}</p>
                   <p className="text-xs text-muted-foreground">{item.descricao}</p>
@@ -885,12 +885,12 @@ export default function NotebooksPage() {
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left">
                     {expandedProjects.has(pg.projectId) ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                     )}
                     <span
-                      className="h-3 w-3 rounded-full flex-shrink-0"
+                      className="h-3 w-3 rounded-full shrink-0"
                       style={{ backgroundColor: pg.projectCor }}
                     />
                     <span className="font-semibold text-sm text-foreground">{pg.projectNome}</span>
@@ -912,9 +912,9 @@ export default function NotebooksPage() {
                           <CollapsibleTrigger asChild>
                             <button className="flex-1 flex items-center gap-3 px-4 py-2.5 pl-10 hover:bg-muted/30 transition-colors text-left">
                               {expandedUMs.has(ug.umId) ? (
-                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                               ) : (
-                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                               )}
                               <span className="text-sm font-medium text-foreground">{ug.umNome}</span>
                               <Badge variant="secondary" className="text-xs ml-auto">
@@ -930,7 +930,7 @@ export default function NotebooksPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 mx-2 text-xs text-muted-foreground hover:text-destructive flex-shrink-0"
+                            className="h-6 px-2 mx-2 text-xs text-muted-foreground hover:text-destructive shrink-0"
                             onClick={() => {
                               setBulkDeletingUmId(ug.umId);
                               setBulkDeletingUmNome(ug.umNome);
@@ -976,7 +976,7 @@ export default function NotebooksPage() {
                                     {nb.status === "ATIVO" ? "Ativo" : "Manutenção"}
                                   </Badge>
                                 </div>
-                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                <div className="flex items-center gap-0.5 shrink-0">
                                   <Button
                                     variant="ghost"
                                     size="icon"

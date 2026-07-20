@@ -173,7 +173,7 @@ function UMFormDialog({
                         <Checkbox
                           checked={field.value as boolean}
                           onCheckedChange={field.onChange}
-                          className="flex-shrink-0"
+                          className="shrink-0"
                         />
                         <span className="text-xs min-w-0 truncate">{label}</span>
                       </label>
@@ -285,12 +285,12 @@ export default function UMsPage() {
                   onClick={() => toggleProject(project.id)}
                 >
                   {isExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
                   <span
-                    className="h-3 w-3 rounded-full flex-shrink-0"
+                    className="h-3 w-3 rounded-full shrink-0"
                     style={{ backgroundColor: project.cor }}
                   />
                   <span className="font-medium text-sm text-foreground">{project.nome}</span>
@@ -331,7 +331,7 @@ export default function UMsPage() {
                               </Badge>
                             ))}
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <Button
                             variant="ghost"
                             size="icon"
