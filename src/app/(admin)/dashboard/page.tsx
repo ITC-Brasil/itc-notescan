@@ -40,13 +40,13 @@ const columns: ColumnDef<ConferenceRow>[] = [
     header: "Status",
     cell: ({ row }) =>
       row.original.status === "CONCLUIDO_OK" ? (
-        <div className="flex items-center gap-1.5 text-[--itc-sucesso]">
-          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+        <div className="flex items-center gap-1.5 text-itc-sucesso">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span className="text-xs font-medium">OK</span>
         </div>
       ) : (
-        <div className="flex items-center gap-1.5 text-[--itc-erro]">
-          <XCircle className="h-4 w-4 flex-shrink-0" />
+        <div className="flex items-center gap-1.5 text-itc-erro">
+          <XCircle className="h-4 w-4 shrink-0" />
           <span className="text-xs font-medium">Faltantes</span>
         </div>
       ),
@@ -64,7 +64,7 @@ const columns: ColumnDef<ConferenceRow>[] = [
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <span
-          className="h-2 w-2 rounded-full flex-shrink-0"
+          className="h-2 w-2 rounded-full shrink-0"
           style={{ backgroundColor: row.original.um.project.cor }}
         />
         <span className="text-sm text-muted-foreground">
@@ -110,17 +110,17 @@ function StatCard({ title, value, icon: Icon, variant = "default", onClick }: St
         <div
           className={cn(
             "rounded-md p-1.5",
-            variant === "warning" && "bg-[--itc-atencao]/10",
-            variant === "error" && "bg-[--itc-erro]/10",
-            variant === "default" && "bg-[--itc-ciano-7]/10",
+            variant === "warning" && "bg-itc-atencao/10",
+            variant === "error" && "bg-itc-erro/10",
+            variant === "default" && "bg-itc-ciano-7/10",
           )}
         >
           <Icon
             className={cn(
               "h-4 w-4",
-              variant === "warning" && "text-[--itc-atencao]",
-              variant === "error" && "text-[--itc-erro]",
-              variant === "default" && "text-[--itc-ciano-7]",
+              variant === "warning" && "text-itc-atencao",
+              variant === "error" && "text-itc-erro",
+              variant === "default" && "text-itc-ciano-7",
             )}
           />
         </div>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
                   )}
                 >
                   <span
-                    className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: nb.um.project.cor }}
                   />
                   <div className="flex-1 min-w-0">
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                       {nb.serial && ` · ${nb.serial}`}
                     </p>
                   </div>
-                  <Badge className="text-xs bg-[--itc-atencao]/15 text-[--itc-atencao] border-[--itc-atencao]/30 hover:bg-[--itc-atencao]/15">
+                  <Badge className="text-xs bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15">
                     Manutenção
                   </Badge>
                 </div>

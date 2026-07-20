@@ -427,7 +427,7 @@ export default function UsuariosPage() {
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                     <span className="text-xs font-semibold text-foreground">
                       {user.nome.charAt(0).toUpperCase()}
                     </span>
@@ -447,7 +447,7 @@ export default function UsuariosPage() {
                       {user.email}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Badge variant={roleVariants[user.role]} className="text-xs gap-1">
                       <RoleIcon className="h-3 w-3" />
                       {roleLabels[user.role]}
@@ -459,7 +459,7 @@ export default function UsuariosPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"

@@ -66,11 +66,16 @@
 
 **SEMPRE usar o token ITC. NUNCA usar Tailwind hardcoded para semântica.**
 
+⚠️ **Tailwind v4:** os tokens são registrados em `@theme inline` (`--color-itc-*`),
+então use o utilitário nomeado `text-itc-sucesso`. **NUNCA** a sintaxe de colchete
+`text-[--itc-sucesso]` — no v4 ela compila `color: --itc-sucesso` (sem `var()`),
+CSS inválido que o navegador ignora silenciosamente.
+
 ```
-✅ text-[--itc-sucesso]          ❌ text-green-500
-✅ border-[--itc-sucesso]/30     ❌ border-green-500/30
-✅ bg-[--itc-sucesso]/10         ❌ bg-green-500/5
-✅ text-[--itc-erro]             ❌ text-red-500
+✅ text-itc-sucesso              ❌ text-[--itc-sucesso]  (quebra no v4)
+✅ border-itc-sucesso/30         ❌ text-green-500
+✅ bg-itc-sucesso/10             ❌ bg-green-500/5
+✅ text-itc-erro                 ❌ text-red-500
 ✅ text-destructive              ✅ (alias para --itc-erro no tema)
 ```
 
@@ -180,9 +185,9 @@ Divisores:        divide-border
 // Ícone: h-4 w-4, dentro de container rounded-md p-1.5
 
 // REGRA: ícone DEVE seguir a variante
-variant="default"  → icon color: text-[--itc-ciano-7],  container: bg-[--itc-ciano-7]/10
-variant="warning"  → icon color: text-[--itc-atencao],  container: bg-[--itc-atencao]/10
-variant="error"    → icon color: text-[--itc-erro],     container: bg-[--itc-erro]/10
+variant="default"  → icon color: text-itc-ciano-7,  container: bg-itc-ciano-7/10
+variant="warning"  → icon color: text-itc-atencao,  container: bg-itc-atencao/10
+variant="error"    → icon color: text-itc-erro,     container: bg-itc-erro/10
 
 // REGRA: StatCard clicável deve ser <button> ou <div role="button" tabIndex={0}>
 // com onKeyDown para Enter/Space — nunca <div onClick> sem ARIA
@@ -195,8 +200,8 @@ Container: rounded-xl border border-border bg-card px-3 py-3
 Dot de projeto: h-2 w-2 rounded-full (cor do projeto via style)
 UM nome: text-sm font-medium text-foreground
 Data: text-xs text-muted-foreground
-Badge OK: bg-[--itc-sucesso]/15 text-[--itc-sucesso] border-[--itc-sucesso]/30
-Badge INCOMPLETO: bg-[--itc-erro]/10 text-[--itc-erro] border-[--itc-erro]/30
+Badge OK: bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30
+Badge INCOMPLETO: bg-itc-erro/10 text-itc-erro border-itc-erro/30
 Contagem: text-xs text-muted-foreground tabular-nums
 ```
 
@@ -297,7 +302,7 @@ Durante scanning nativo (`body.scanner-active`):
 | Badge/inline | h-3 w-3 ou h-3.5 w-3.5 | padrão |
 | Nav ativo (bottom) | h-5 w-5 | stroke-[2.25] |
 
-Ícone ativo na nav bottom: `stroke-[2.25]` (mais pesado). Ícone ativo na sidebar: `text-[--itc-ciano-7]`.
+Ícone ativo na nav bottom: `stroke-[2.25]` (mais pesado). Ícone ativo na sidebar: `text-itc-ciano-7`.
 
 ---
 
@@ -325,7 +330,7 @@ Durante scanning nativo (`body.scanner-active`):
 
 ```
 ❌ bg-white, bg-black             → usar bg-background, bg-card, bg-foreground
-❌ text-green-500                 → usar text-[--itc-sucesso]
+❌ text-green-500                 → usar text-itc-sucesso
 ❌ border-gray-200                → usar border-border
 ❌ text-gray-500                  → usar text-muted-foreground
 ❌ shadow-lg em cards             → estratégia é borders-only

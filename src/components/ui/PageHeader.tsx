@@ -25,7 +25,7 @@ export function PageHeader({
     >
       <div className="flex items-center gap-3 min-w-0">
         {Icon && (
-          <div className="flex-shrink-0 rounded-lg bg-primary/10 p-2">
+          <div className="shrink-0 rounded-lg bg-primary/10 p-2">
             <Icon className="h-5 w-5 text-primary" />
           </div>
         )}
@@ -38,7 +38,7 @@ export function PageHeader({
           )}
         </div>
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

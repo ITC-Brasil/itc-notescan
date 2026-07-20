@@ -60,7 +60,7 @@ const columns: ColumnDef<ConferenceRecord>[] = [
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <span
-          className="h-2 w-2 rounded-full flex-shrink-0"
+          className="h-2 w-2 rounded-full shrink-0"
           style={{ backgroundColor: row.original.um.project.cor }}
         />
         <span className="text-sm">
@@ -144,7 +144,7 @@ function ComboboxFilter({ value, onChange, placeholder, options }: ComboboxFilte
           <span className="flex items-center gap-2 truncate min-w-0">
             {selected?.color && (
               <span
-                className="h-2 w-2 rounded-full flex-shrink-0"
+                className="h-2 w-2 rounded-full shrink-0"
                 style={{ backgroundColor: selected.color }}
               />
             )}
@@ -182,7 +182,7 @@ function ComboboxFilter({ value, onChange, placeholder, options }: ComboboxFilte
                   />
                   {opt.color && (
                     <span
-                      className="h-2 w-2 rounded-full mr-2 flex-shrink-0"
+                      className="h-2 w-2 rounded-full mr-2 shrink-0"
                       style={{ backgroundColor: opt.color }}
                     />
                   )}
@@ -220,7 +220,7 @@ function DateRangeFilter({
           className="flex-1 min-w-0 h-8 text-sm justify-between font-normal"
         >
           <span className="flex items-center gap-2 truncate">
-            <CalendarIcon className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0 opacity-60" />
             <span className="truncate">{label}</span>
           </span>
           {value?.from && (

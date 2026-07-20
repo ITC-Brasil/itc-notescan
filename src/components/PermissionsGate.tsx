@@ -168,7 +168,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
                   : "border-border bg-card"
               }`}
             >
-              <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isGranted ? "bg-green-500/15" : "bg-muted"}`}>
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isGranted ? "bg-green-500/15" : "bg-muted"}`}>
                 {isGranted
                   ? <CheckCircle2 className="h-4 w-4 text-green-500" />
                   : <Icon className="h-4 w-4 text-muted-foreground" />
@@ -187,7 +187,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
                 <Button
                   size="sm"
                   variant={isDenied ? "outline" : "default"}
-                  className="flex-shrink-0"
+                  className="shrink-0"
                   disabled={requesting === key}
                   onClick={() => handleRequest(key)}
                 >

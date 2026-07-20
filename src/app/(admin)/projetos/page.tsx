@@ -206,7 +206,7 @@ export default function ProjetosPage() {
             >
               <div className="flex items-center gap-3">
                 <span
-                  className="h-4 w-4 rounded-full flex-shrink-0 border border-border/50"
+                  className="h-4 w-4 rounded-full shrink-0 border border-border/50"
                   style={{ backgroundColor: project.cor }}
                 />
                 <span className="font-medium text-sm text-foreground">
