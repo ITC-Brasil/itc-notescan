@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Check, ArrowLeft } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { CheckCircle2, AlertTriangle, RotateCcw, Check, ArrowLeft, Flashlight, FlashlightOff } from 'lucide-react'
 
 export interface NativeScanUi {
   umName: string
@@ -42,6 +42,20 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
     onErrorRef.current = onError
   }, [onScan, onError])
 
+  // Torch (flashlight) — only shown when the device reports it available.
+  const [torchAvailable, setTorchAvailable] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
+
+  const toggleTorch = async () => {
+    try {
+      const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning')
+      await BarcodeScanner.toggleTorch()
+      setTorchOn((v) => !v)
+    } catch {
+      // Ignore — torch just won't toggle on unsupported hardware
+    }
+  }
+
   // App chrome (header/nav) must be hidden whenever the full-screen overlay is
   // mounted — independent of camera success, or a failed startScan leaves the
   // overlay drawn on top of the app bars.
@@ -57,6 +71,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning')
         await BarcodeScanner.removeAllListeners()
         await BarcodeScanner.stopScan()
+        setTorchOn(false)
       } catch {
         // Ignore cleanup errors during unmount
       }
@@ -92,6 +107,9 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           formats: [BarcodeFormat.QrCode],
           resolution: Resolution['1920x1080'],
         })
+
+        const { available } = await BarcodeScanner.isTorchAvailable()
+        setTorchAvailable(available)
       } catch {
         onErrorRef.current('Erro ao iniciar câmera')
       }
@@ -159,6 +177,26 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         <span style={{ marginLeft: 'auto', fontSize: 13, fontFamily: 'monospace', color: WHITE_DIM }}>
           {ui.scanned.length}/{total}
         </span>
+        {torchAvailable && (
+          <button
+            type="button"
+            onClick={toggleTorch}
+            aria-label={torchOn ? 'Desligar flash' : 'Ligar flash'}
+            aria-pressed={torchOn}
+            style={{
+              width: 40, height: 40, flexShrink: 0, marginLeft: 4,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 10, cursor: 'pointer',
+              border: torchOn ? '1.5px solid #f2c94c' : '1.5px solid rgba(255,255,255,0.3)',
+              background: torchOn ? 'rgba(242,201,76,0.2)' : 'rgba(255,255,255,0.1)',
+              color: torchOn ? '#f2c94c' : '#fff',
+            }}
+          >
+            {torchOn
+              ? <Flashlight style={{ width: 18, height: 18 }} />
+              : <FlashlightOff style={{ width: 18, height: 18 }} />}
+          </button>
+        )}
       </div>
 
       {/* ── Camera area — TRANSPARENT — camera shows through ──────── */}
