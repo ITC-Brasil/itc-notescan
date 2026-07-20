@@ -12,6 +12,11 @@ import {
   Loader2,
   Package,
   Wrench,
+  Mouse,
+  BatteryCharging,
+  Headphones,
+  Cable,
+  type LucideIcon,
 } from "lucide-react";
 import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
 import { useUMs } from "@/hooks/useUMs";
@@ -107,7 +112,7 @@ function UMSelectionPhase({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Ativos</span>
-              <span className="font-semibold text-green-500 tabular-nums">
+              <span className="font-semibold text-itc-sucesso tabular-nums">
                 {loadingNotebooks ? "..." : ativos}
               </span>
             </div>
@@ -237,9 +242,9 @@ function ScanningPhase({
         </div>
       )}
       {state.lastScanned && !state.error && (
-        <div className="mx-4 mt-2 rounded-lg bg-green-500/10 border border-green-500/30 px-3 py-2 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-          <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+        <div className="mx-4 mt-2 rounded-lg bg-itc-sucesso/10 border border-itc-sucesso/30 px-3 py-2 flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-itc-sucesso shrink-0" />
+          <p className="text-sm text-itc-sucesso font-medium">
             {state.lastScanned}
           </p>
         </div>
@@ -257,7 +262,10 @@ function ScanningPhase({
           </div>
           <div className="flex-1 overflow-y-auto space-y-1 rounded-lg bg-muted/30 p-1.5">
             {state.pending.length === 0 ? (
-              <p className="text-xs text-center text-muted-foreground py-2">Todos escaneados!</p>
+              <div className="flex flex-col items-center gap-1 text-muted-foreground py-3">
+                <CheckCircle2 className="h-5 w-5 text-itc-sucesso" />
+                <p className="text-xs text-center">Todos escaneados!</p>
+              </div>
             ) : (
               state.pending.map((nb) => (
                 <div
@@ -274,19 +282,22 @@ function ScanningPhase({
         {/* Scanned */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center gap-1.5 mb-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-itc-sucesso" />
             <span className="text-xs font-medium text-muted-foreground">
               Escaneados ({state.scanned.length})
             </span>
           </div>
           <div className="flex-1 overflow-y-auto space-y-1 rounded-lg bg-muted/30 p-1.5">
             {state.scanned.length === 0 ? (
-              <p className="text-xs text-center text-muted-foreground py-2">Nenhum ainda</p>
+              <div className="flex flex-col items-center gap-1 text-muted-foreground py-3">
+                <ScanLine className="h-5 w-5" />
+                <p className="text-xs text-center">Nenhum ainda</p>
+              </div>
             ) : (
               [...state.scanned].reverse().map((nb) => (
                 <div
                   key={nb.id}
-                  className="text-xs font-mono px-2 py-1 rounded bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400"
+                  className="text-xs font-mono px-2 py-1 rounded bg-itc-sucesso/10 border border-itc-sucesso/20 text-itc-sucesso"
                 >
                   {nb.hostname}
                 </div>
@@ -351,10 +362,13 @@ function PhaseTopBar({ um, onExit }: { um: UMSlim; onExit: () => void }) {
 }
 
 /* ─── Quantity stepper with editable numeric input ─── */
-function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function Stepper({ label, icon: Icon, value, onChange }: { label: string; icon: LucideIcon; value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-      <span className="text-sm font-medium text-foreground">{label}</span>
+      <span className="flex items-center gap-2.5 text-sm font-medium text-foreground">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        {label}
+      </span>
       <div className="flex items-center gap-3">
         <Button
           variant="outline"
@@ -414,15 +428,20 @@ function PeripheralsPhase({
       <PhaseTopBar um={um} onExit={onExit} />
 
       <div className="flex flex-col gap-5 p-4">
-        <div>
-          <h2 className="text-lg font-bold text-foreground">Periféricos</h2>
-          <p className="text-sm text-muted-foreground">Informe as quantidades conferidas</p>
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Cable className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Periféricos</h2>
+            <p className="text-sm text-muted-foreground">Informe as quantidades conferidas</p>
+          </div>
         </div>
 
         <div className="space-y-4">
-          {um.mouses && <Stepper label="Mouses" value={mouses} onChange={setMouses} />}
-          {um.carregadores && <Stepper label="Carregadores" value={carregadores} onChange={setCarregadores} />}
-          {um.fones && <Stepper label="Fones de Ouvido" value={fones} onChange={setFones} />}
+          {um.mouses && <Stepper label="Mouses" icon={Mouse} value={mouses} onChange={setMouses} />}
+          {um.carregadores && <Stepper label="Carregadores" icon={BatteryCharging} value={carregadores} onChange={setCarregadores} />}
+          {um.fones && <Stepper label="Fones de Ouvido" icon={Headphones} value={fones} onChange={setFones} />}
         </div>
 
         <Button size="lg" className="w-full mt-2" onClick={handleFinalize}>
@@ -465,11 +484,11 @@ function SummaryPhase({
       <div
         className={cn(
           "rounded-2xl p-4 text-center",
-          isOk ? "bg-green-500/10 border border-green-500/30" : "bg-destructive/10 border border-destructive/30",
+          isOk ? "bg-itc-sucesso/10 border border-itc-sucesso/30" : "bg-destructive/10 border border-destructive/30",
         )}
       >
         {isOk ? (
-          <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
+          <CheckCircle2 className="h-10 w-10 text-itc-sucesso mx-auto mb-2" />
         ) : (
           <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-2" />
         )}
@@ -486,21 +505,33 @@ function SummaryPhase({
       {/* Device stats */}
       <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-muted-foreground">Dispositivos Ativos</span>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Package className="h-4 w-4" />
+            Dispositivos Ativos
+          </span>
           <span className="font-semibold tabular-nums">{totalAtivos}</span>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-muted-foreground">Escaneados</span>
-          <span className="font-semibold text-green-500 tabular-nums">{state.scanned.length}</span>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-itc-sucesso" />
+            Escaneados
+          </span>
+          <span className="font-semibold text-itc-sucesso tabular-nums">{state.scanned.length}</span>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-muted-foreground">Faltantes</span>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <AlertTriangle className={cn("h-4 w-4", state.pending.length > 0 && "text-destructive")} />
+            Faltantes
+          </span>
           <span className={cn("font-semibold tabular-nums", state.pending.length > 0 ? "text-destructive" : "text-foreground")}>
             {state.pending.length}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-muted-foreground">Em Manutenção</span>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Wrench className="h-4 w-4" />
+            Em Manutenção
+          </span>
           <span className="font-semibold tabular-nums">{state.maintenance.length}</span>
         </div>
       </div>
@@ -510,19 +541,28 @@ function SummaryPhase({
         <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
           {um.mouses && (
             <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-muted-foreground">Mouses</span>
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Mouse className="h-4 w-4" />
+                Mouses
+              </span>
               <span className="font-semibold tabular-nums">{state.peripherals.mouses}</span>
             </div>
           )}
           {um.carregadores && (
             <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-muted-foreground">Carregadores</span>
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <BatteryCharging className="h-4 w-4" />
+                Carregadores
+              </span>
               <span className="font-semibold tabular-nums">{state.peripherals.carregadores}</span>
             </div>
           )}
           {um.fones && (
             <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-muted-foreground">Fones de Ouvido</span>
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Headphones className="h-4 w-4" />
+                Fones de Ouvido
+              </span>
               <span className="font-semibold tabular-nums">{state.peripherals.fones}</span>
             </div>
           )}
@@ -598,7 +638,7 @@ function DonePhase({
 }) {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-6 px-6 text-center">
-      <CheckCircle2 className="h-16 w-16 text-green-500" />
+      <CheckCircle2 className="h-16 w-16 text-itc-sucesso" />
       <div>
         <h2 className="text-xl font-bold text-foreground">Conferência salva!</h2>
         {!saved && (

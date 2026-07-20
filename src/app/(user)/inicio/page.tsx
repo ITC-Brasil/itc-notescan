@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ScanLine, AlertTriangle, Wifi, WifiOff } from "lucide-react";
+import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useConferences, type ConferenceRecord } from "@/hooks/useConferences";
 import { Badge } from "@/components/ui/badge";
@@ -404,7 +404,10 @@ export default function InicioPage() {
             ))}
           </div>
         ) : !allConferences?.length ? (
-          <div className="rounded-xl border border-border p-6 text-center">
+          <div className="rounded-xl border border-border p-6 text-center flex flex-col items-center">
+            <div className="h-11 w-11 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <ClipboardList className="h-5 w-5 text-muted-foreground" />
+            </div>
             <p className="text-sm text-muted-foreground">Nenhuma conferência realizada.</p>
             <p className="text-xs text-muted-foreground mt-1">Inicie sua primeira conferência acima.</p>
           </div>
