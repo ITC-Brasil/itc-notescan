@@ -243,7 +243,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
             </p>
           </div>
           <Badge
-            className={cn("text-xs shrink-0", isOk ? "bg-[--itc-sucesso]/15 text-[--itc-sucesso] border-[--itc-sucesso]/30" : "bg-destructive/10 text-destructive border-destructive/30")}
+            className={cn("text-xs shrink-0", isOk ? "bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30" : "bg-destructive/10 text-destructive border-destructive/30")}
             variant="outline"
           >
             {isOk ? "COMPLETO" : "INCOMPLETO"}
