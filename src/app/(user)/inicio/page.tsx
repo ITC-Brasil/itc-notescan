@@ -337,10 +337,18 @@ export default function InicioPage() {
               {outboxCount} pendente{outboxCount !== 1 ? "s" : ""}
             </Badge>
           )}
-          <div className={cn("flex items-center gap-1 text-xs", online ? "text-[--itc-sucesso]" : "text-muted-foreground")}>
+          <Badge
+            variant="outline"
+            className={cn(
+              "gap-1 font-medium",
+              online
+                ? "border-[--itc-sucesso]/40 text-[--itc-sucesso] shadow-[0_0_8px_-1px_var(--itc-sucesso)]"
+                : "border-destructive/40 text-destructive shadow-[0_0_8px_-1px_var(--destructive)]",
+            )}
+          >
             {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
             <span>{online ? "Online" : "Offline"}</span>
-          </div>
+          </Badge>
         </div>
       </div>
 
