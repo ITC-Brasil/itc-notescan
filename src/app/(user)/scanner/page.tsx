@@ -11,7 +11,6 @@ import {
   Check,
   Loader2,
   Package,
-  Wrench,
   Mouse,
   BatteryCharging,
   Headphones,
@@ -23,6 +22,7 @@ import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
 import { usePlatform } from "@/hooks/usePlatform";
 import { QRScanner } from "@/components/scanner/QRScanner";
+import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { cn } from "@/lib/utils";
@@ -502,102 +502,19 @@ function SummaryPhase({
         )}
       </div>
 
-      {/* Device stats */}
-      <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Package className="h-4 w-4" />
-            Dispositivos Ativos
-          </span>
-          <span className="font-semibold tabular-nums">{totalAtivos}</span>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-itc-sucesso" />
-            Escaneados
-          </span>
-          <span className="font-semibold text-itc-sucesso tabular-nums">{state.scanned.length}</span>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <AlertTriangle className={cn("h-4 w-4", state.pending.length > 0 && "text-destructive")} />
-            Faltantes
-          </span>
-          <span className={cn("font-semibold tabular-nums", state.pending.length > 0 ? "text-destructive" : "text-foreground")}>
-            {state.pending.length}
-          </span>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Wrench className="h-4 w-4" />
-            Em Manutenção
-          </span>
-          <span className="font-semibold tabular-nums">{state.maintenance.length}</span>
-        </div>
-      </div>
-
-      {/* Peripherals */}
-      {hasPeripherals && (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
-          {um.mouses && (
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Mouse className="h-4 w-4" />
-                Mouses
-              </span>
-              <span className="font-semibold tabular-nums">{state.peripherals.mouses}</span>
-            </div>
-          )}
-          {um.carregadores && (
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <BatteryCharging className="h-4 w-4" />
-                Carregadores
-              </span>
-              <span className="font-semibold tabular-nums">{state.peripherals.carregadores}</span>
-            </div>
-          )}
-          {um.fones && (
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Headphones className="h-4 w-4" />
-                Fones de Ouvido
-              </span>
-              <span className="font-semibold tabular-nums">{state.peripherals.fones}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Faltantes list */}
-      {state.pending.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2">Notebooks faltantes</p>
-          <div className="rounded-xl border border-destructive/20 bg-destructive/5 divide-y divide-destructive/10">
-            {state.pending.map((nb) => (
-              <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Maintenance list */}
-      {state.maintenance.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2">Em manutenção</p>
-          <div className="rounded-xl border border-border divide-y divide-border">
-            {state.maintenance.map((nb) => (
-              <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
-                <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <ConferenceSummary
+        totalAtivos={totalAtivos}
+        escaneados={state.scanned.length}
+        faltantes={state.pending.length}
+        manutencao={state.maintenance.length}
+        peripherals={hasPeripherals ? {
+          ...(um.mouses && { mouses: state.peripherals.mouses }),
+          ...(um.carregadores && { carregadores: state.peripherals.carregadores }),
+          ...(um.fones && { fones: state.peripherals.fones }),
+        } : undefined}
+        faltantesList={state.pending}
+        manutencaoList={state.maintenance}
+      />
 
       {/* Actions */}
       <div className="flex gap-3">
