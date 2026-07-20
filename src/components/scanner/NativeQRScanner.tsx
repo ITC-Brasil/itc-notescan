@@ -136,7 +136,8 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '10px 16px 10px 8px',
+          // top padding clears the Android status bar (overlay hides app chrome)
+          padding: 'calc(10px + env(safe-area-inset-top)) 16px 10px 8px',
           background: OPAQUE_BAR,
           pointerEvents: 'auto',
         }}
@@ -259,7 +260,8 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           flexShrink: 0,
           display: 'flex',
           gap: 10,
-          padding: '12px 16px',
+          // bottom padding clears the Android gesture/navigation bar
+          padding: '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px',
           background: OPAQUE_BAR,
           pointerEvents: 'auto',
         }}
