@@ -4,10 +4,15 @@
 const config = {
   appId: 'com.itcbrasil.notescan',
   appName: 'ITC NoteScan',
-  webDir: 'out',
+  // The app runs from server.url (remote); webDir only supplies the local
+  // fallback bundle. capacitor-shell holds offline.html, synced into the APK.
+  webDir: 'capacitor-shell',
   server: {
     url: 'https://notescan.itcbr.xyz',
     cleartext: false,
+    // Local page shown when the WebView can't reach server.url (e.g. airplane
+    // mode) instead of the native net::ERR_INTERNET_DISCONNECTED error page.
+    errorPath: 'offline.html',
     // Allows the WebView to follow 302 redirects (e.g. post-login to /inicio).
     // Without these entries Capacitor intercepts navigations that don't match the
     // server.url exactly and opens them in the external browser instead, causing
