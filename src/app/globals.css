@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Docs and prompt notes (.md) contain illustrative class strings such as the
+   deprecated text-[--itc-x] form. Exclude them from Tailwind's automatic
+   content detection so they don't emit dead/invalid utilities. */
+@source not "../../**/*.md";
+
 /* Fundo do <main> do admin.
    O utilitário bg-background e o inline var(--background) não pintavam este
    elemento (var(--background) não resolvia no contexto do SidebarProvider),
