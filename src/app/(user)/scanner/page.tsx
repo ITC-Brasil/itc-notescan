@@ -329,13 +329,76 @@ function ScanningPhase({
   );
 }
 
+/* ─── Top bar with back button (peripherals / summary) ─── */
+function PhaseTopBar({ um, onExit }: { um: UMSlim; onExit: () => void }) {
+  return (
+    <div className="px-4 py-2 flex items-center gap-2 border-b border-border bg-card">
+      <button
+        type="button"
+        onClick={onExit}
+        aria-label="Voltar"
+        className="-ml-2 h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </button>
+      <span
+        className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+        style={{ backgroundColor: um.project.cor }}
+      />
+      <span className="text-sm font-medium text-foreground">{um.nome}</span>
+    </div>
+  );
+}
+
+/* ─── Quantity stepper with editable numeric input ─── */
+function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+      <span className="text-sm font-medium text-foreground">{label}</span>
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9"
+          onClick={() => onChange(Math.max(0, value - 1))}
+        >
+          −
+        </Button>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={value}
+          onChange={(e) => {
+            const n = Math.floor(Number(e.target.value));
+            onChange(Number.isFinite(n) && n > 0 ? n : 0);
+          }}
+          onFocus={(e) => e.target.select()}
+          className="w-14 text-center text-lg font-bold tabular-nums rounded-md border border-border bg-background py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          aria-label={label}
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9"
+          onClick={() => onChange(value + 1)}
+        >
+          +
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Phase: Peripherals ─── */
 function PeripheralsPhase({
   state,
   onFinalize,
+  onExit,
 }: {
   state: ReturnType<typeof useConference>["state"];
   onFinalize: (peripherals: Peripherals) => void;
+  onExit: () => void;
 }) {
   const um = state.um!;
   const [mouses, setMouses] = useState(0);
@@ -347,100 +410,26 @@ function PeripheralsPhase({
   };
 
   return (
-    <div className="flex flex-col gap-5 p-4">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span
-            className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: um.project.cor }}
-          />
-          <span className="text-sm font-medium text-foreground">{um.nome}</span>
+    <div className="flex flex-col h-full">
+      <PhaseTopBar um={um} onExit={onExit} />
+
+      <div className="flex flex-col gap-5 p-4">
+        <div>
+          <h2 className="text-lg font-bold text-foreground">Periféricos</h2>
+          <p className="text-sm text-muted-foreground">Informe as quantidades conferidas</p>
         </div>
-        <h2 className="text-lg font-bold text-foreground">Periféricos</h2>
-        <p className="text-sm text-muted-foreground">Informe as quantidades conferidas</p>
+
+        <div className="space-y-4">
+          {um.mouses && <Stepper label="Mouses" value={mouses} onChange={setMouses} />}
+          {um.carregadores && <Stepper label="Carregadores" value={carregadores} onChange={setCarregadores} />}
+          {um.fones && <Stepper label="Fones de Ouvido" value={fones} onChange={setFones} />}
+        </div>
+
+        <Button size="lg" className="w-full mt-2" onClick={handleFinalize}>
+          <Check className="h-4 w-4 mr-2" />
+          Finalizar Conferência
+        </Button>
       </div>
-
-      <div className="space-y-4">
-        {um.mouses && (
-          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-            <span className="text-sm font-medium text-foreground">Mouses</span>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setMouses((v) => Math.max(0, v - 1))}
-              >
-                −
-              </Button>
-              <span className="w-8 text-center text-lg font-bold tabular-nums">{mouses}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setMouses((v) => v + 1)}
-              >
-                +
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {um.carregadores && (
-          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-            <span className="text-sm font-medium text-foreground">Carregadores</span>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setCarregadores((v) => Math.max(0, v - 1))}
-              >
-                −
-              </Button>
-              <span className="w-8 text-center text-lg font-bold tabular-nums">{carregadores}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setCarregadores((v) => v + 1)}
-              >
-                +
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {um.fones && (
-          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-            <span className="text-sm font-medium text-foreground">Fones de Ouvido</span>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setFones((v) => Math.max(0, v - 1))}
-              >
-                −
-              </Button>
-              <span className="w-8 text-center text-lg font-bold tabular-nums">{fones}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setFones((v) => v + 1)}
-              >
-                +
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <Button size="lg" className="w-full mt-2" onClick={handleFinalize}>
-        <Check className="h-4 w-4 mr-2" />
-        Finalizar Conferência
-      </Button>
     </div>
   );
 }
@@ -450,10 +439,12 @@ function SummaryPhase({
   state,
   onConfirm,
   onBack,
+  onExit,
 }: {
   state: ReturnType<typeof useConference>["state"];
   onConfirm: () => void;
   onBack: () => void;
+  onExit: () => void;
 }) {
   const isOk = state.pending.length === 0;
   const um = state.um!;
@@ -467,7 +458,9 @@ function SummaryPhase({
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-6 overflow-y-auto">
+    <div className="flex flex-col h-full">
+      <PhaseTopBar um={um} onExit={onExit} />
+      <div className="flex flex-col gap-4 p-4 pb-6 overflow-y-auto flex-1">
       {/* Status header */}
       <div
         className={cn(
@@ -579,6 +572,7 @@ function SummaryPhase({
           <Check className="h-4 w-4 mr-1.5" />
           Concluir e Enviar
         </Button>
+      </div>
       </div>
     </div>
   );
@@ -731,6 +725,7 @@ export default function ScannerPage() {
         <PeripheralsPhase
           state={state}
           onFinalize={handleFinalizePeripherals}
+          onExit={() => setExitConfirmOpen(true)}
         />
       )}
       {state.phase === "summary" && (
@@ -738,6 +733,7 @@ export default function ScannerPage() {
           state={state}
           onConfirm={handleFinalize}
           onBack={backToScanning}
+          onExit={() => setExitConfirmOpen(true)}
         />
       )}
       {state.phase === "saving" && <SavingPhase />}
