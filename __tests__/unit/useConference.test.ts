@@ -207,33 +207,33 @@ describe("useConference — resumo e status", () => {
 });
 
 describe("useConference — finalize", () => {
-  it("returns false when conference not started", async () => {
+  it("returns offline when conference not started", async () => {
     const { result } = renderHook(() => useConference());
-    let success: boolean | undefined;
-    await act(async () => { success = await result.current.finalize(); });
-    expect(success).toBe(false);
+    let outcome: string | undefined;
+    await act(async () => { outcome = await result.current.finalize(); });
+    expect(outcome).toBe("offline");
   });
 
-  it("returns true and transitions to done on successful save", async () => {
+  it("returns online and transitions to done on successful save", async () => {
     const { result } = renderHook(() => useConference());
     await startConference(result);
 
-    let success: boolean | undefined;
-    await act(async () => { success = await result.current.finalize(); });
+    let outcome: string | undefined;
+    await act(async () => { outcome = await result.current.finalize(); });
 
-    expect(success).toBe(true);
+    expect(outcome).toBe("online");
     expect(result.current.state.phase).toBe("done");
   });
 
-  it("saves to outbox and returns false when fetch fails", async () => {
+  it("saves to outbox and returns offline when fetch fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const { result } = renderHook(() => useConference());
     await startConference(result);
 
-    let success: boolean | undefined;
-    await act(async () => { success = await result.current.finalize(); });
+    let outcome: string | undefined;
+    await act(async () => { outcome = await result.current.finalize(); });
 
-    expect(success).toBe(false);
+    expect(outcome).toBe("offline");
     expect(saveToOutbox).toHaveBeenCalled();
     expect(result.current.state.phase).toBe("done");
   });
@@ -248,6 +248,18 @@ describe("useConference — finalize", () => {
     expect(saveToOutbox).toHaveBeenCalledWith(
       expect.objectContaining({ umId: mockUM.id }),
     );
+  });
+
+  it("returns blocked and does NOT outbox on 409 (daily limit)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 409 }));
+    const { result } = renderHook(() => useConference());
+    await startConference(result);
+
+    let outcome: string | undefined;
+    await act(async () => { outcome = await result.current.finalize(); });
+
+    expect(outcome).toBe("blocked");
+    expect(saveToOutbox).not.toHaveBeenCalled();
   });
 });
 

@@ -11,18 +11,21 @@ import {
   Check,
   Loader2,
   Package,
-  Wrench,
   Mouse,
   BatteryCharging,
   Headphones,
   Cable,
   type LucideIcon,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
+import { useConferences } from "@/hooks/useConferences";
 import { usePlatform } from "@/hooks/usePlatform";
 import { QRScanner } from "@/components/scanner/QRScanner";
+import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { cn } from "@/lib/utils";
@@ -37,8 +40,10 @@ import {
 /* ─── Phase: UM Selection ─── */
 function UMSelectionPhase({
   onSelect,
+  dailyLimitReached,
 }: {
   onSelect: (um: UMSlim, notebooks: NotebookSlim[]) => void;
+  dailyLimitReached: boolean;
 }) {
   const { data: ums, isLoading: loadingUMs } = useUMs();
   const [selectedUmId, setSelectedUmId] = useState("");
@@ -125,10 +130,19 @@ function UMSelectionPhase({
           </div>
         )}
 
+        {dailyLimitReached && (
+          <div className="rounded-xl border border-itc-atencao/30 bg-itc-atencao/10 p-3 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-itc-atencao shrink-0" />
+            <p className="text-sm text-itc-atencao">
+              Você atingiu sua meta diária de conferências.
+            </p>
+          </div>
+        )}
+
         <Button
           size="lg"
           className="w-full h-14 text-base"
-          disabled={!selectedUmId || loadingNotebooks || !notebooks?.length}
+          disabled={!selectedUmId || loadingNotebooks || !notebooks?.length || dailyLimitReached}
           onClick={handleStart}
         >
           Iniciar
@@ -502,102 +516,19 @@ function SummaryPhase({
         )}
       </div>
 
-      {/* Device stats */}
-      <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Package className="h-4 w-4" />
-            Dispositivos Ativos
-          </span>
-          <span className="font-semibold tabular-nums">{totalAtivos}</span>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-itc-sucesso" />
-            Escaneados
-          </span>
-          <span className="font-semibold text-itc-sucesso tabular-nums">{state.scanned.length}</span>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <AlertTriangle className={cn("h-4 w-4", state.pending.length > 0 && "text-destructive")} />
-            Faltantes
-          </span>
-          <span className={cn("font-semibold tabular-nums", state.pending.length > 0 ? "text-destructive" : "text-foreground")}>
-            {state.pending.length}
-          </span>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Wrench className="h-4 w-4" />
-            Em Manutenção
-          </span>
-          <span className="font-semibold tabular-nums">{state.maintenance.length}</span>
-        </div>
-      </div>
-
-      {/* Peripherals */}
-      {hasPeripherals && (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
-          {um.mouses && (
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Mouse className="h-4 w-4" />
-                Mouses
-              </span>
-              <span className="font-semibold tabular-nums">{state.peripherals.mouses}</span>
-            </div>
-          )}
-          {um.carregadores && (
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <BatteryCharging className="h-4 w-4" />
-                Carregadores
-              </span>
-              <span className="font-semibold tabular-nums">{state.peripherals.carregadores}</span>
-            </div>
-          )}
-          {um.fones && (
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Headphones className="h-4 w-4" />
-                Fones de Ouvido
-              </span>
-              <span className="font-semibold tabular-nums">{state.peripherals.fones}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Faltantes list */}
-      {state.pending.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2">Notebooks faltantes</p>
-          <div className="rounded-xl border border-destructive/20 bg-destructive/5 divide-y divide-destructive/10">
-            {state.pending.map((nb) => (
-              <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Maintenance list */}
-      {state.maintenance.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2">Em manutenção</p>
-          <div className="rounded-xl border border-border divide-y divide-border">
-            {state.maintenance.map((nb) => (
-              <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
-                <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <ConferenceSummary
+        totalAtivos={totalAtivos}
+        escaneados={state.scanned.length}
+        faltantes={state.pending.length}
+        manutencao={state.maintenance.length}
+        peripherals={hasPeripherals ? {
+          ...(um.mouses && { mouses: state.peripherals.mouses }),
+          ...(um.carregadores && { carregadores: state.peripherals.carregadores }),
+          ...(um.fones && { fones: state.peripherals.fones }),
+        } : undefined}
+        faltantesList={state.pending}
+        manutencaoList={state.maintenance}
+      />
 
       {/* Actions */}
       <div className="flex gap-3">
@@ -659,8 +590,18 @@ function DonePhase({
 export default function ScannerPage() {
   const { state, startConference, processScan, setPeripherals, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset } =
     useConference();
+  const { data: session } = useSession();
   const [savedOnline, setSavedOnline] = useState(true);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+
+  // Daily-limit gate — mirrors the server block so the technician can't start
+  // a conference past metaDiaria (server still enforces it authoritatively).
+  const meta = session?.user.metaDiaria ?? 0;
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+  const { data: todayConferences } = useConferences({ from, to, userId: session?.user.id });
+  const dailyLimitReached = meta > 0 && (todayConferences?.length ?? 0) >= meta;
 
   const [activeUM, setActiveUM] = useState<{ id: string; notebooks: NotebookSlim[] } | null>(null);
   const { data: rawNotebooks } = useNotebooks(activeUM?.id);
@@ -729,9 +670,15 @@ export default function ScannerPage() {
   }, [state.um, proceedToSummary, proceedFromPeripherals]);
 
   const handleFinalize = useCallback(async () => {
-    const ok = await finalize();
-    setSavedOnline(ok);
-  }, [finalize]);
+    const result = await finalize();
+    if (result === "blocked") {
+      toast.error("Você atingiu sua meta diária de conferências.");
+      reset();
+      setActiveUM(null);
+      return;
+    }
+    setSavedOnline(result === "online");
+  }, [finalize, reset]);
 
   const handleExit = useCallback(() => {
     setExitConfirmOpen(false);
@@ -741,7 +688,7 @@ export default function ScannerPage() {
 
   return (
     <div className="flex flex-col h-full min-h-[calc(100svh-4rem-3.5rem)]">
-      {state.phase === "idle" && <UMSelectionPhase onSelect={handleSelectUM} />}
+      {state.phase === "idle" && <UMSelectionPhase onSelect={handleSelectUM} dailyLimitReached={dailyLimitReached} />}
       {state.phase === "scanning" && (
         <ScanningPhase
           state={state}

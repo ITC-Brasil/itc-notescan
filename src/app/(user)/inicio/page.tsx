@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList } from "lucide-react";
+import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones } from "lucide-react";
+import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { useSession } from "next-auth/react";
-import { useConferences, type ConferenceRecord } from "@/hooks/useConferences";
+import { useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -69,19 +70,28 @@ function PeripheralsModal({ conference, onClose }: { conference: ConferenceRecor
           <div className="divide-y divide-border rounded-xl border border-border">
             {um.mouses && (
               <div className="flex items-center justify-between px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">Mouses</span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Mouse className="h-4 w-4" />
+                  Mouses
+                </span>
                 <span className="font-semibold">{conference.mousesQtd ?? "—"}</span>
               </div>
             )}
             {um.carregadores && (
               <div className="flex items-center justify-between px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">Carregadores</span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <BatteryCharging className="h-4 w-4" />
+                  Carregadores
+                </span>
                 <span className="font-semibold">{conference.carregadoresQtd ?? "—"}</span>
               </div>
             )}
             {um.fones && (
               <div className="flex items-center justify-between px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">Fones de Ouvido</span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Headphones className="h-4 w-4" />
+                  Fones de Ouvido
+                </span>
                 <span className="font-semibold">{conference.fonesQtd ?? "—"}</span>
               </div>
             )}
@@ -122,7 +132,6 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
   const escaneados = conference.items.filter((i) => i.status === "ESCANEADO").length;
   const faltantes = conference.items.filter((i) => i.status === "FALTANTE");
   const manutencao = conference.items.filter((i) => i.status === "MANUTENCAO");
-  const totalAtivos = escaneados + faltantes.length;
   const um = conference.um;
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
@@ -144,74 +153,19 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
           {conference.localizacao && <p className="text-muted-foreground text-xs mt-0.5">📍 {conference.localizacao}</p>}
         </div>
 
-        <div className="divide-y divide-border rounded-xl border border-border text-sm">
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-muted-foreground">Dispositivos Ativos</span>
-            <span className="font-semibold">{totalAtivos}</span>
-          </div>
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-muted-foreground">Escaneados</span>
-            <span className="font-semibold text-itc-sucesso">{escaneados}</span>
-          </div>
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-muted-foreground">Faltantes</span>
-            <span className={cn("font-semibold", faltantes.length > 0 ? "text-destructive" : "text-foreground")}>{faltantes.length}</span>
-          </div>
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-muted-foreground">Em Manutenção</span>
-            <span className="font-semibold">{manutencao.length}</span>
-          </div>
-        </div>
-
-        {hasPeripherals && (
-          <div className="divide-y divide-border rounded-xl border border-border text-sm">
-            {um.mouses && (
-              <div className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-muted-foreground">Mouses</span>
-                <span className="font-semibold">{conference.mousesQtd ?? "—"}</span>
-              </div>
-            )}
-            {um.carregadores && (
-              <div className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-muted-foreground">Carregadores</span>
-                <span className="font-semibold">{conference.carregadoresQtd ?? "—"}</span>
-              </div>
-            )}
-            {um.fones && (
-              <div className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-muted-foreground">Fones</span>
-                <span className="font-semibold">{conference.fonesQtd ?? "—"}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {faltantes.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">Faltantes</p>
-            <div className="divide-y divide-destructive/10 rounded-xl border border-destructive/20 bg-destructive/5">
-              {faltantes.map((item, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-1.5">
-                  <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
-                  <span className="text-xs font-mono text-foreground">{item.notebook.hostname}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {manutencao.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">Em Manutenção</p>
-            <div className="divide-y divide-border rounded-xl border border-border">
-              {manutencao.map((item, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-1.5">
-                  <span className="text-xs font-mono text-foreground">{item.notebook.hostname}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <ConferenceSummary
+          totalAtivos={escaneados + faltantes.length}
+          escaneados={escaneados}
+          faltantes={faltantes.length}
+          manutencao={manutencao.length}
+          peripherals={hasPeripherals ? {
+            ...(um.mouses && { mouses: conference.mousesQtd }),
+            ...(um.carregadores && { carregadores: conference.carregadoresQtd }),
+            ...(um.fones && { fones: conference.fonesQtd }),
+          } : undefined}
+          faltantesList={faltantes.map((item, i) => ({ id: String(i), hostname: item.notebook.hostname }))}
+          manutencaoList={manutencao.map((item, i) => ({ id: String(i), hostname: item.notebook.hostname }))}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -306,10 +260,14 @@ export default function InicioPage() {
     userId: session?.user.id,
   });
 
-  const { data: allConferences, isLoading: loadingHistory } = useConferences({
-    limit: 20,
-    userId: session?.user.id,
-  });
+  const {
+    data: historyPages,
+    isLoading: loadingHistory,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteConferences({ userId: session?.user.id }, 10);
+  const allConferences = historyPages?.pages.flat();
 
   useEffect(() => {
     if (online && outboxCount > 0) {
@@ -321,6 +279,7 @@ export default function InicioPage() {
   const todayOk = conferences?.filter((c) => c.status === "CONCLUIDO_OK").length ?? 0;
   const todayFaltantes = conferences?.filter((c) => c.status === "CONCLUIDO_FALTANTES").length ?? 0;
   const meta = session?.user.metaDiaria ?? 2;
+  const dailyLimitReached = meta > 0 && todayTotal >= meta;
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-2">
@@ -386,18 +345,30 @@ export default function InicioPage() {
       )}
       </div>
 
-      {/* INICIAR button — hidden on desktop (sm+) */}
-      <Link href="/scanner" className="sm:hidden block">
-        <div className="w-full rounded-2xl bg-primary p-5 flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-transform">
-          <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
-            <ScanLine className="h-7 w-7 text-primary-foreground" />
+      {/* INICIAR button — hidden on desktop (sm+); blocked when daily meta reached */}
+      {dailyLimitReached ? (
+        <div className="sm:hidden w-full rounded-2xl border border-itc-atencao/30 bg-itc-atencao/10 p-5 flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-itc-atencao/15 flex items-center justify-center shrink-0">
+            <AlertTriangle className="h-7 w-7 text-itc-atencao" />
           </div>
           <div className="text-left">
-            <p className="text-lg font-bold text-primary-foreground leading-tight">Iniciar Conferência</p>
-            <p className="text-sm text-primary-foreground/70 leading-tight">Escanear notebooks da UM</p>
+            <p className="text-lg font-bold text-itc-atencao leading-tight">Meta diária atingida</p>
+            <p className="text-sm text-muted-foreground leading-tight">Você já concluiu {meta} conferência{meta !== 1 ? "s" : ""} hoje.</p>
           </div>
         </div>
-      </Link>
+      ) : (
+        <Link href="/scanner" className="sm:hidden block">
+          <div className="w-full rounded-2xl bg-primary p-5 flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-transform">
+            <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
+              <ScanLine className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <div className="text-left">
+              <p className="text-lg font-bold text-primary-foreground leading-tight">Iniciar Conferência</p>
+              <p className="text-sm text-primary-foreground/70 leading-tight">Escanear notebooks da UM</p>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Histórico */}
       <div className="mt-2">
@@ -421,6 +392,16 @@ export default function InicioPage() {
             {allConferences.map((c) => (
               <ConferenceRow key={c.id} conference={c} />
             ))}
+            {hasNextPage && (
+              <button
+                type="button"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="w-full rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors disabled:opacity-60"
+              >
+                {isFetchingNextPage ? "Carregando..." : "Carregar mais"}
+              </button>
+            )}
           </div>
         )}
       </div>

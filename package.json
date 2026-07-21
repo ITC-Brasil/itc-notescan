@@ -32,6 +32,7 @@
     "@capacitor/core": "^7.0.0",
     "@capacitor/geolocation": "^7.0.0",
     "@capacitor/local-notifications": "^7.0.0",
+    "@capgo/capacitor-native-biometric": "^7.6.0",
     "@hookform/resolvers": "^5.4.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",

@@ -22,7 +22,9 @@ export async function processOutbox(): Promise<void> {
     try {
       const response = await fetch("/api/conferences", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        // X-Sync-Replay exempts offline conferences from the daily-limit block:
+        // they already happened and must never be dropped on sync.
+        headers: { "Content-Type": "application/json", "X-Sync-Replay": "1" },
         body: JSON.stringify(item.data),
       });
 
