@@ -15,6 +15,8 @@ import {
   BatteryCharging,
   Headphones,
   Cable,
+  Laptop,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -110,19 +112,28 @@ function UMSelectionPhase({
         {selectedUM && (
           <div className="rounded-xl border border-border bg-card p-4 text-sm space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Cadastrados</span>
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Laptop className="h-4 w-4" />
+                Cadastrados
+              </span>
               <span className="font-semibold text-foreground tabular-nums">
                 {loadingNotebooks ? "..." : (notebooks?.length ?? 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Ativos</span>
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-itc-sucesso" />
+                Ativos
+              </span>
               <span className="font-semibold text-itc-sucesso tabular-nums">
                 {loadingNotebooks ? "..." : ativos}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Em Manutenção</span>
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Wrench className="h-4 w-4" />
+                Em Manutenção
+              </span>
               <span className="font-semibold text-muted-foreground tabular-nums">
                 {loadingNotebooks ? "..." : manutencao}
               </span>
