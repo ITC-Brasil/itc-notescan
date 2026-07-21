@@ -28,7 +28,7 @@ export function UserLayout({ children }: UserLayoutProps) {
           <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center">
             <ScanLine className="h-3.5 w-3.5 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-sm text-foreground">NoteScan</span>
+          <span className="font-semibold text-sm text-foreground">ITC NoteScan</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">
