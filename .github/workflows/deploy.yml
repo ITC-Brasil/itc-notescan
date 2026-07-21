@@ -20,6 +20,8 @@ jobs:
           port: 2222
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          # Default é 10m; margem de segurança para o build frio ocasional.
+          command_timeout: 20m
           script: |
             set -e
             cd /home/glpissh/docker/notescan
