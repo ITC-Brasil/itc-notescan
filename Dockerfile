@@ -1,10 +1,13 @@
+# syntax=docker/dockerfile:1
 # Estágio 1 — Dependências
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-RUN npm ci
+# Cache mount do BuildKit: reaproveita o cache do npm (~/.npm) entre builds,
+# evitando redownload de todos os pacotes em cada deploy.
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Estágio 2 — Build
 FROM node:20-alpine AS builder
