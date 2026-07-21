@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ScanLine, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -19,6 +21,7 @@ interface UserLayoutProps {
 export function UserLayout({ children }: UserLayoutProps) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -38,12 +41,24 @@ export function UserLayout({ children }: UserLayoutProps) {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            aria-label="Sair"
+            onClick={() => setLogoutOpen(true)}
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       </header>
+
+      <ConfirmationDialog
+        open={logoutOpen}
+        onOpenChange={setLogoutOpen}
+        title="Deseja sair do aplicativo?"
+        description="Você precisará entrar novamente com email e senha."
+        confirmLabel="Sair"
+        cancelLabel="Cancelar"
+        destructive
+        onConfirm={() => signOut({ callbackUrl: "/" })}
+      />
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))]">
