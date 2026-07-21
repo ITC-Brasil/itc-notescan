@@ -15,14 +15,15 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (!session) {
+    // Only redirect on a CONFIRMED unauthenticated status — never on a transient
+    // null/loading (e.g. right after returning from background). The server
+    // (proxy.ts) is the real gate; this is the client-side belt.
+    if (status === "unauthenticated") {
       router.replace("/");
       return;
     }
 
-    if (!requiredRole) return;
+    if (status !== "authenticated" || !session || !requiredRole) return;
 
     const role = session.user.role;
     const roleHierarchy: Record<string, number> = { USER: 1, ADMIN: 2, MASTER: 3 };
@@ -44,7 +45,7 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     );
   }
 
-  if (!session) return null;
+  if (status !== "authenticated") return null;
 
   return <>{children}</>;
 }

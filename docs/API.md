@@ -16,21 +16,26 @@ Handler do NextAuth.js. Gerencia login (`credentials`), logout e refresh de sess
 ## Conferences
 
 ### GET /api/conferences
-Autenticação: ADMIN ou MASTER  
-Query: `userId`, `umId`, `projectId`, `status`, `dateFrom`, `dateTo` (todos opcionais)  
-Resposta 200: `{ conferences: ConferenceWithRelations[] }`  
-Lista conferências com filtros para a página Relatórios.
+Autenticação: qualquer sessão ativa (USER, ADMIN ou MASTER)  
+Query: `userId`, `umId`, `status`, `from`, `to`, `limit` (máx 100, default 10), `offset` (default 0) — todos opcionais  
+Resposta 200: `ConferenceWithRelations[]` (array direto)  
+Lista conferências (Relatórios admin e histórico do técnico). Para `role === "USER"`
+o filtro é **forçado** ao próprio `userId` (técnico só vê as suas). `offset` habilita
+a paginação "Carregar mais" do `/inicio`.
 
 ### POST /api/conferences
 Autenticação: sessão ativa (USER, ADMIN ou MASTER)  
-Body: `{ umId, dataInicio, dataFim, localizacao?, items: { notebookId, status }[] }`  
-Resposta 200: `{ id: string }`  
-Cria conferência imutável. API cria `ConferenceItem` para cada item, `LifecycleEvent`
-para cada FALTANTE, e dispara notificação Telegram.
+Body: `{ umId, dataInicio, dataFim, localizacao?, status, mousesQtd?, carregadoresQtd?, fonesQtd?, items: { notebookId, status }[] }`  
+Resposta 201: conferência criada  
+Resposta 409: `{ code: "META_REACHED" }` — técnico atingiu `metaDiaria` no dia (bloqueio interativo)  
+Cria conferência imutável, `ConferenceItem` por item e dispara notificação Telegram
+(MarkdownV2 escapado). **Trava de meta diária:** conta as conferências do dia do
+usuário e retorna 409 se ≥ `metaDiaria` — exceto quando a request traz o header
+`X-Sync-Replay: 1` (replay da `syncQueue`, sempre aceito).
 
 ### GET /api/conferences/dashboard
 Autenticação: ADMIN ou MASTER  
-Resposta 200: `{ totalConferences, totalOk, totalFaltantes, totalNotebooks, maintenanceNotebooks[], recentConferences[] }`  
+Resposta 200: `{ conferencesToday, activeTechnicians, notebooksTotal, notebooksInMaintenance, conferencesWithMissing, latestConferences[], maintenanceNotebooks[] }`  
 Stats para o dashboard. Usado com polling de 30s via React Query.
 
 ---

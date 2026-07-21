@@ -55,7 +55,10 @@ Esta é a **v2.0** — reescrita completa do sistema ScanPRO. O repositório ori
 | Cache/Fetching | TanStack Query (React Query) | 5.101.x |
 | Validação | Zod | 4.4.x |
 | Formulários | React Hook Form | 7.80.x |
-| Scanner QR | @yudiel/react-qr-scanner + zxing-wasm | 2.6.x / 3.1.x |
+| Scanner QR (web) | @yudiel/react-qr-scanner + zxing-wasm | 2.6.x / 3.1.x |
+| Scanner nativo (APK) | @capacitor-mlkit/barcode-scanning | 7.5.x |
+| Mobile nativo | Capacitor (APK sobre server.url remoto) | 7.x |
+| Biometria (APK) | @capgo/capacitor-native-biometric | 7.x |
 | Tema (dark/light) | next-themes | 0.4.x |
 | PWA / SW | @serwist/next | 9.5.x |
 | Banco Offline | Dexie.js (IndexedDB) | 4.4.x |
@@ -538,7 +541,7 @@ Documentação detalhada de cada módulo em `docs/modules/`.
 | 4 — Docker/Deploy | [04-docker-deploy.md](docs/modules/04-docker-deploy.md) | Dockerfile multi-stage, docker-compose, Cloudflare Tunnel, GLPI-SRV |
 | 5 — Testes | [05-tests.md](docs/modules/05-tests.md) | Vitest 110+ testes 93%+ cobertura, Playwright 70 testes E2E |
 | 6 — CI/CD | [06-cicd.md](docs/modules/06-cicd.md) | GitHub Actions Quality Check, workflow Deploy (pendente) |
-| 7 — Capacitor APK | [07-capacitor-apk.md](docs/modules/07-capacitor-apk.md) | Android APK, câmera nativa, split-screen, PermissionsGate |
+| 7 — Capacitor APK | [07-capacitor-apk.md](docs/modules/07-capacitor-apk.md) | Android APK (Capacitor 7), scanner ML Kit em lote + flash, biometria, offline.html, persistência de sessão |
 
 ---
 
@@ -578,7 +581,7 @@ Documentação detalhada de cada módulo em `docs/modules/`.
 
 | Componente | Descrição |
 |---|---|
-| `hooks/useConference.ts` | Máquina de estados com `useReducer`: `idle → scanning → summary → saving → done` |
+| `hooks/useConference.ts` | Máquina de estados com `useReducer`: `idle → scanning → (peripherals) → summary → saving → done` (+ `blocked` quando a meta diária é atingida) |
 | `QRScanner.tsx` | Import dinâmico do scanner, viewfinder overlay com cantos, fallback de erro |
 | `/inicio` | Cards diários (total, OK, faltantes), INICIAR oculto em desktop, histórico pessoal, indicador online/offline |
 | `/scanner` | Seleção de UM → scan → resumo com faltantes/manutenção → confirmar → offline fallback |

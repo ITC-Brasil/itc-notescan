@@ -1,6 +1,10 @@
 # Módulo 7 — Capacitor APK (Android)
 
-**Data de conclusão:** 2026-07-14
+**Data de conclusão inicial:** 2026-07-14 · **Última atualização:** 2026-07-21
+
+> **Estado atual:** Capacitor **7.x** + `@capacitor-mlkit/barcode-scanning@7.5`.
+> A versão inicial (Capacitor 5 + `@capacitor-community/barcode-scanner@4`) foi
+> substituída — ver DECISIONS [m7-05](../DECISIONS.md). Este documento reflete o estado atual.
 
 ---
 
@@ -13,10 +17,11 @@
 {
   appId: 'com.itcbrasil.notescan',
   appName: 'ITC NoteScan',
-  webDir: 'out',                         // build estático Next.js
+  webDir: 'capacitor-shell',             // só o fallback offline.html (não é o app)
   server: {
     url: 'https://notescan.itcbr.xyz',  // app carrega o site de produção
     cleartext: false,
+    errorPath: 'offline.html',           // tela offline em vez do erro nativo do WebView
     allowNavigation: ['notescan.itcbr.xyz', '*.notescan.itcbr.xyz'],
   },
   android: { minWebViewVersion: 96 },
@@ -28,16 +33,23 @@
 
 O APK carrega o site de produção (`server.url`), não um bundle estático local.
 `allowNavigation` cobre o domínio apex e subdomínios para seguir redirects do NextAuth.
+`webDir` aponta para `capacitor-shell/` (versionado), que contém apenas o
+`offline.html` exibido via `server.errorPath` quando não há rede (ver [m7-06](../DECISIONS.md)).
 
-### Plugin de câmera — @capacitor-community/barcode-scanner@4.0.1
+### Plugin de câmera — @capacitor-mlkit/barcode-scanning@7.5
 
 **Mecanismo nativo:**
-O plugin coloca uma `BarcodeView` Android full-screen como sibling do WebView (por trás).
-O WebView é trazido para frente (`bringToFront()`). A câmera aparece apenas
-onde o WebView tem pixels transparentes (`hideBackground()` torna o WebView transparente).
+O plugin usa ML Kit + CameraX. Cria sua própria `PreviewView` full-screen atrás do
+WebView; a câmera aparece onde o WebView tem pixels transparentes. `startScan()`
+inicia a sessão e o evento **`barcodesScanned`** entrega **todos** os QR detectados
+em cada frame (leitura em lote). Usa `resolution: Resolution['1920x1080']` para
+tornar QR pequenos legíveis no mesmo frame.
 
-**Não existe API para redimensionar ou reposicionar a câmera** — ela é sempre full-screen.
-A visibilidade é controlada 100% pela transparência dos elementos do WebView.
+**Flash:** `isTorchAvailable()` mostra o botão só em aparelhos capazes; `toggleTorch()`
+liga/desliga durante o scan.
+
+**Retomada:** um listener de `visibilitychange` reinicia o scan ao voltar do
+background (o preview congela quando o Android libera a câmera) — ver [m7-07](../DECISIONS.md).
 
 ### NativeQRScanner — Layout em zonas
 
@@ -91,21 +103,29 @@ Aplicado quando o scan nativo inicia, removido ao finalizar.
 - Se negada: tela de instrução com botão para abrir configurações do sistema
 - Se concedida: renderiza o scanner normalmente
 
+### Bloqueio biométrico + persistência de sessão
+
+- **`BiometricGate`** (`src/components/BiometricGate.tsx`, `@capgo/capacitor-native-biometric`):
+  trava a UI por digital no **cold start** (montado no layout do técnico, não
+  re-dispara no resume). Fallback para aparelhos sem biometria. Permissão
+  `USE_BIOMETRIC` no Manifest. Ver [m3-02](../DECISIONS.md).
+- **Sessão de 7 dias:** `MainActivity` faz `setAcceptCookie(true)` no `onCreate` e
+  `CookieManager.flush()` em `onPause`/`onStop`; o `SessionProvider` não revalida no
+  foco. Ver [m7-08](../DECISIONS.md).
+
 ### Como gerar o APK
 
-```bash
-# 1. Build Next.js estático (não necessário se usando server.url de produção)
-# npm run build:export
+Requer **JDK 21** (use o JBR do Android Studio) — Gradle 8.11.1, AGP 8.7.2.
 
-# 2. Sincronizar com Android
+```bash
+# 1. Sincronizar o site remoto + plugins com o projeto Android
 npx cap sync android
 
-# 3. Abrir no Android Studio
-npx cap open android
+# 2. Build via CLI (JAVA_HOME apontando para o JBR do Android Studio)
+cd android && ./gradlew assembleDebug      # ou assembleRelease (assinado)
 
-# 4. Build no Android Studio
-# Build → Generate Signed Bundle/APK → APK
-# Ou via CLI: ./gradlew assembleRelease
+# Alternativa: abrir no Android Studio e Build → Generate Signed Bundle/APK
+npx cap open android
 ```
 
 ---
@@ -123,20 +143,26 @@ npx cap open android
 
 ## Decisões
 
-- `CapacitorHttp: false` → ver [DECISIONS.md m7-03](../DECISIONS.md)
-- Layout em zonas com transparência → ver [DECISIONS.md m7-02](../DECISIONS.md)
-- `prepare()` removido → ver [DECISIONS.md m7-04](../DECISIONS.md)
-- Capacitor v5 + barcode-scanner v4 → ver [DECISIONS.md m7-01](../DECISIONS.md)
+- Capacitor 7 + `@capacitor-mlkit/barcode-scanning` (leitura em lote) → [m7-05](../DECISIONS.md)
+- Página offline via `server.errorPath` → [m7-06](../DECISIONS.md)
+- Retomada da câmera no foreground → [m7-07](../DECISIONS.md)
+- Persistência de sessão (cookie flush + sem revalidação no foco) → [m7-08](../DECISIONS.md)
+- Biometria como tela de bloqueio → [m3-02](../DECISIONS.md)
+- Layout em zonas com transparência → [m7-02](../DECISIONS.md)
+- `CapacitorHttp: false` → [m7-03](../DECISIONS.md)
+- _(histórico)_ Capacitor v5 + community scanner [m7-01](../DECISIONS.md); `prepare()` removido [m7-04](../DECISIONS.md)
 
 ---
 
 ## Pontos de atenção
 
-- **Não chamar `BarcodeScanner.prepare()` antes de `startScanning()`** — quebra o callback de detecção
-- **Elementos na zona da câmera não podem ter background opaco** — bloqueariam a visão da câmera
-- **`CapacitorHttp: false` é obrigatório** — habilitá-lo quebra a autenticação NextAuth no APK
-- **`server.url` aponta para produção** — o APK não funciona offline (só carrega o site remoto)
-- Se o domínio de produção mudar, atualizar `server.url` e `allowNavigation` no `capacitor.config.ts` e regar o APK
+- **Build exige JDK 21** (JBR do Android Studio); arquivos Gradle em `android/` são gitignored.
+- **Elementos na zona da câmera não podem ter background opaco** — bloqueariam a visão da câmera.
+- **`CapacitorHttp: false` é obrigatório** — habilitá-lo quebra a autenticação NextAuth no APK.
+- **`server.url` aponta para produção** — o APK carrega o site remoto; sem rede exibe `offline.html`.
+- Mudanças em web (ícones, meta diária, paginação etc.) chegam via **deploy**; mudanças nativas
+  (plugins, `MainActivity`, Manifest) exigem **rebuild do APK**.
+- Se o domínio de produção mudar, atualizar `server.url` e `allowNavigation` no `capacitor.config.ts` e regerar o APK.
 
 ---
 
