@@ -47,8 +47,8 @@ Transições de scan:
 - Botão Reiniciar (volta ao estado inicial do scan) e Próximo
 
 **Fase 3 — Periféricos:**
-- Exibida apenas se a UM tem periféricos configurados (`perifericos || mouses || carregadores || fones`)
-- Checkboxes para confirmar quais periféricos estão presentes
+- Exibida apenas se a UM tem periféricos configurados (`mouses || carregadores || fones`)
+- Steppers de quantidade com **input numérico editável** entre os botões +/− (digitar direto p/ volumes grandes), com ícones por tipo (Mouse, BatteryCharging, Headphones)
 
 **Fase 4 — Resumo:**
 - Cards: escaneados, faltantes, manutenção
@@ -86,6 +86,18 @@ Transições de scan:
 - Fluxo offline: conferência salva no Dexie e enviada quando connection retorna
 - Botão "Iniciar" invisível em desktop (testado em viewport 1024px)
 - Histórico pessoal mostrando apenas conferências do técnico logado
+
+---
+
+## Atualizações posteriores (2026-07)
+
+- **Trava de meta diária:** o botão "Iniciar" (início e seleção de UM) é bloqueado
+  quando o técnico atinge `metaDiaria`; o servidor confirma com 409. Ver DECISIONS [m3-01](../DECISIONS.md).
+- **Paginação do histórico:** "Carregar mais" via `useInfiniteConferences` (offset). [m3-03](../DECISIONS.md).
+- **Botão voltar** nas fases de periféricos e resumo (mesmo dialog de confirmação do scanner).
+- **Resumo componentizado** em `<ConferenceSummary>`, reutilizado pelo resumo ao vivo e pelo modal do histórico, com ícones consistentes.
+- **APK:** leitura de QR em lote (ML Kit), botão de flash, retomada da câmera e bloqueio biométrico — ver [módulo 7](07-capacitor-apk.md).
+- **Máquina de estados** agora inclui as fases `peripherals` e o estado `blocked` (meta atingida) além de `idle → scanning → summary → saving → done`.
 
 ---
 

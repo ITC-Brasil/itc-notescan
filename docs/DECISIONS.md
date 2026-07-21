@@ -118,6 +118,9 @@ não tinha este arquivo e o Prisma falhava com `datasource.url property is requi
 
 ## m7-01 — @capacitor-community/barcode-scanner v4 com Capacitor v5
 
+> ⚠️ **Superada em 2026-07 por [m7-05](#m7-05).** O projeto migrou para Capacitor 7
+> + `@capacitor-mlkit/barcode-scanning`. O texto abaixo é mantido como registro histórico.
+
 **Contexto:** O Capacitor v5 foi escolhido por ser a versão estável LTS. A v6
 tem breaking changes e menor ecossistema de plugins.
 
@@ -135,6 +138,10 @@ A v5 do plugin exige Capacitor v6.
 ---
 
 ## m7-02 — Layout do scanner em zonas com transparência seletiva do WebView
+
+> ℹ️ **Atualização 2026-07:** o mecanismo continua válido (split-screen por
+> transparência), mas agora sobre o `@capacitor-mlkit/barcode-scanning`, que cria
+> sua própria `PreviewView`. Ver [m7-05](#m7-05).
 
 **Contexto:** O `@capacitor-community/barcode-scanner` coloca a câmera como uma
 `BarcodeView` nativa full-screen atrás do WebView. Não existe API para redimensionar
@@ -174,6 +181,10 @@ pois as requests são pequenas e a autenticação é crítica.
 
 ## m7-04 — prepare() removido antes do startScanning()
 
+> ⚠️ **Obsoleta desde 2026-07.** Específica do `@capacitor-community/barcode-scanner`,
+> que não é mais usado. O `@capacitor-mlkit/barcode-scanning` usa `startScan()` +
+> listener `barcodesScanned`; não há `prepare()`/`startScanning()`. Registro histórico.
+
 **Contexto:** Chamar `BarcodeScanner.prepare()` antes de `startScanning()` definia
 `didRunCameraPrepare = true` internamente. Isso fazia o `scan()` (chamado dentro
 de `startScanning`) pular o caminho `_prepare(savedCall)` que corretamente registra
@@ -184,3 +195,129 @@ correta. Chamar `prepare()` explicitamente interfere nesse mecanismo.
 
 **Consequências:** Não chamar `prepare()` antes de `startScanning()`. Se for
 necessário pré-aquecer a câmera, investigar a versão v5 do plugin.
+
+---
+
+## m7-05 — Migração para Capacitor 7 + @capacitor-mlkit/barcode-scanning (leitura em lote)
+
+**Contexto:** O requisito central do scanner é conferir ~106 notebooks lendo
+vários QR simultaneamente. O `@capacitor-community/barcode-scanner@4` (Cap 5)
+analisava frames a 640×480 e lia um código por vez, de forma errática.
+
+**Alternativas consideradas:**
+- Manter Cap 5 + community scanner (rejeitado: sem leitura em lote confiável)
+- Capacitor 7 + `@capacitor-mlkit/barcode-scanning@7.5` (escolhido)
+
+**Justificativa:** O plugin ML Kit expõe o evento `barcodesScanned` (todos os
+códigos de um frame) e a opção `resolution: 1920x1080`, tornando vários QR
+pequenos legíveis no mesmo frame. Exige Capacitor ≥ 6, então foi feita a migração
+completa 5→7 (`cap migrate` nos dois saltos).
+
+**Consequências:**
+- Build do APK exige **JDK 21** (JBR do Android Studio); Gradle 8.11.1, AGP 8.7.2.
+- `android/build.gradle`, `variables.gradle` e o wrapper são gitignored — mudanças de Gradle valem só localmente.
+- O override `bridge_layout_main.xml` deixou de ser necessário (o plugin cria sua própria `PreviewView`); mantido como cópia do layout stock do Capacitor 7.
+- Torch (flash) disponível via `isTorchAvailable()`/`toggleTorch()`.
+- Supera [m7-01](#m7-01) e a parte de mecanismo de [m7-04](#m7-04).
+
+---
+
+## m7-06 — Página offline nativa via server.errorPath
+
+**Contexto:** O APK roda de `server.url` remoto. Sem rede, o WebView exibia a
+página de erro nativa do Android (`net::ERR_INTERNET_DISCONNECTED`).
+
+**Justificativa:** `webDir` aponta para `capacitor-shell/` (versionado) contendo
+`offline.html`, e `server.errorPath: 'offline.html'` faz o Capacitor exibir essa
+página temática (com auto-reload ao voltar a conexão) em vez do erro nativo.
+
+**Consequências:** O `offline.html` é um HTML estático sem plugins Capacitor.
+Não torna o app funcional offline (o shell remoto ainda não carrega sem rede) —
+apenas melhora a tela de erro.
+
+---
+
+## m7-07 — Retomada da câmera ao voltar do background
+
+**Contexto:** Ao mandar o app para segundo plano, o Android libera a câmera; ao
+voltar, o preview ficava congelado (o efeito do `NativeQRScanner` só dependia de
+`isActive`).
+
+**Justificativa:** Um listener de `visibilitychange` reinicia o scan quando o app
+volta ao foreground — sem dependência nova (`@capacitor/app` não é necessário). O
+estado escaneado vive no `useConference` (pai) e não se perde no restart da câmera.
+
+**Consequências:** Se o Android *matar* o processo por memória, o estado em
+andamento se perde (persistir conferência em andamento seria escopo à parte).
+
+---
+
+## m7-08 — Persistência de sessão no WebView (cookie flush + sem revalidação no foco)
+
+**Contexto:** O app pedia login ao retornar do multitarefas, apesar do `maxAge`
+de 7 dias. O cookie do Auth.js é persistente por design (Expires ≈ +7 dias), mas
+o WebView do Android mantém cookies em memória e faz flush em horário imprevisível;
+um kill de processo em background podia descartá-los.
+
+**Justificativa (camadas):**
+- **Nativo:** `MainActivity` faz `CookieManager.setAcceptCookie(true)` no `onCreate`
+  e `flush()` em `onPause` e `onStop` — garante o cookie em disco antes do kill.
+- **Cliente:** `SessionProvider` com `refetchOnWindowFocus={false}` e
+  `refetchWhenOffline={false}` (não revalida a cada resume); `AuthGuard` só
+  redireciona para login em `status === "unauthenticated"` confirmado, nunca em
+  estado transitório.
+
+**Consequências:** A sessão não é revalidada no foco; o servidor (`proxy.ts` e
+`auth()` nas rotas) continua validando cada request, então não há perda de
+segurança. Requer rebuild do APK para a parte nativa.
+
+---
+
+## m3-01 — Trava de meta diária no servidor, isentando a syncQueue
+
+**Contexto:** O limite `metaDiaria` por técnico não era aplicado — só exibido.
+
+**Justificativa:** O `POST /api/conferences` conta as conferências do dia do
+usuário (`CONCLUIDO_OK` + `CONCLUIDO_FALTANTES`) e retorna **409** quando atinge a
+meta. O cliente também bloqueia o botão "Iniciar". Conferências reenviadas pela
+`syncQueue` enviam o header `X-Sync-Replay: 1` e são **sempre aceitas** (já
+aconteceram offline — regra "nunca perder dados").
+
+**Consequências:** O `finalize()` trata 409 como bloqueio e **não** enfileira
+(enfileirar burlaria a trava via replay isento).
+
+---
+
+## m3-02 — Biometria como tela de bloqueio (cold start), não substituindo o NextAuth
+
+**Contexto:** Pedido de desbloqueio por digital ao abrir o app.
+
+**Justificativa:** `BiometricGate` (com `@capgo/capacitor-native-biometric`, compatível
+com Capacitor 7) trava a UI no cold start, montado no layout do técnico — não
+re-dispara no resume. Não substitui o NextAuth. Aparelhos sem biometria passam
+direto (fallback); falha/cancelamento mostra botão de repetir. Permissão
+`USE_BIOMETRIC` no Manifest.
+
+---
+
+## m3-03 — Paginação do histórico do técnico por offset
+
+**Contexto:** O `/inicio` mostrava só as 20 conferências mais recentes.
+
+**Justificativa:** O `GET /api/conferences` aceita `offset` (além de `limit`), e
+o cliente usa `useInfiniteConferences` com botão "Carregar mais" (10 por página).
+
+---
+
+## m2-01 — Sintaxe de variável CSS do Tailwind v4
+
+**Contexto:** 18 usos de `text-[--itc-x]` (sintaxe v3) compilavam `color: --itc-x`
+sem `var()` no Tailwind v4 — CSS inválido, ignorado silenciosamente (cores
+"quebradas"). Também 46 usos de `flex-shrink-0` (removido no v4).
+
+**Justificativa:** Os tokens estão em `@theme inline` (`--color-itc-*`), então a
+forma canônica é o utilitário nomeado `text-itc-sucesso` / `bg-itc-sucesso/10`.
+`flex-shrink-0` → `shrink-0`. `@source not "../../**/*.md"` evita que exemplos em
+docs `.md` gerem CSS inválido.
+
+**Consequências:** Nunca usar `[--itc-x]`; usar `itc-x` (tema) ou `(--itc-x)`.

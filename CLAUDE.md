@@ -54,19 +54,22 @@ confiabilidade. Nunca perder dados. Nunca duplicar registros.
 
 | Camada               | Tecnologia                                       |
 | -------------------- | ------------------------------------------------ |
-| Framework            | Next.js 16.2.7 (App Router, Turbopack, proxy.ts) |
+| Framework            | Next.js 16.2.9 (App Router, Turbopack, proxy.ts) |
 | Linguagem            | TypeScript 5.x — strict: true sem exceções       |
-| Estilização          | Tailwind CSS 4.x                                 |
+| Estilização          | Tailwind CSS 4.x (tokens via @theme; usar `text-itc-*`, nunca `[--itc-*]`) |
 | Componentes          | shadcn/ui — único sistema de componentes         |
 | Tabelas              | TanStack Table (via DataTable genérico)          |
 | Ícones               | Lucide React                                     |
 | Autenticação         | NextAuth.js 5.x — Credentials provider           |
-| ORM                  | Prisma 6.x                                       |
+| ORM                  | Prisma 7.x — driver adapter @prisma/adapter-pg   |
 | Banco de Dados       | PostgreSQL 16                                    |
 | Cache e Fetching     | React Query 5.x (TanStack Query)                 |
-| Validação            | Zod 3.x — obrigatório em todas as API Routes     |
-| Scanner              | @yudiel/react-qr-scanner + zxing-wasm            |
-| PWA / Service Worker | @ducanh2912/next-pwa                             |
+| Validação            | Zod 4.x — obrigatório em todas as API Routes     |
+| Scanner web          | @yudiel/react-qr-scanner + zxing-wasm            |
+| Scanner nativo (APK) | @capacitor-mlkit/barcode-scanning 7.5 (ML Kit)   |
+| Mobile nativo        | Capacitor 7.x (APK carrega server.url remoto)    |
+| Biometria (APK)      | @capgo/capacitor-native-biometric                |
+| PWA / Service Worker | @serwist/next                                   |
 | Banco Offline        | Dexie.js 4.x (IndexedDB)                         |
 | Sincronização        | syncQueue + background sync                      |
 | Notificações Push    | web-push (VAPID)                                 |
