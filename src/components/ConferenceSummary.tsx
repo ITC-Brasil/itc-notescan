@@ -1,5 +1,5 @@
 import {
-  Package,
+  Laptop,
   CheckCircle2,
   AlertTriangle,
   Wrench,
@@ -56,7 +56,7 @@ export function ConferenceSummary({
       <div className="rounded-xl border border-border bg-card divide-y divide-border text-sm">
         <div className="flex items-center justify-between px-4 py-2.5">
           <span className="flex items-center gap-2 text-muted-foreground">
-            <Package className="h-4 w-4" />
+            <Laptop className="h-4 w-4" />
             Dispositivos Ativos
           </span>
           <span className="font-semibold tabular-nums">{totalAtivos}</span>

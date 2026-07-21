@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones } from "lucide-react";
+import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones, CheckCircle2, XCircle, Cable, FileText } from "lucide-react";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { useSession } from "next-auth/react";
 import { useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
@@ -200,6 +200,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
             className={cn("text-xs shrink-0", isOk ? "bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30" : "bg-destructive/10 text-destructive border-destructive/30")}
             variant="outline"
           >
+            {isOk ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
             {isOk ? "COMPLETO" : "INCOMPLETO"}
           </Badge>
         </div>
@@ -212,9 +213,10 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
           <div className="flex items-center gap-1.5 ml-auto flex-wrap justify-end">
             {hasPeripherals && (
               <button
-                className="text-xs px-2 py-0.5 rounded-md border border-border bg-muted/50 text-muted-foreground hover:bg-muted transition-colors"
+                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border border-border bg-muted/50 text-muted-foreground hover:bg-muted transition-colors"
                 onClick={() => setModal("perifericos")}
               >
+                <Cable className="h-3 w-3" />
                 Periféricos
               </button>
             )}
@@ -227,9 +229,10 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
               </button>
             )}
             <button
-              className="text-xs px-2 py-0.5 rounded-md border border-border bg-muted/50 text-muted-foreground hover:bg-muted transition-colors"
+              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border border-border bg-muted/50 text-muted-foreground hover:bg-muted transition-colors"
               onClick={() => setModal("resumo")}
             >
+              <FileText className="h-3 w-3" />
               Ver Resumo
             </button>
           </div>

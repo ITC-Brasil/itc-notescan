@@ -285,6 +285,19 @@ body.scanner-active main {
   padding-bottom: 0 !important;
 }
 
+/* Radix portals render as direct children of <body>, so the rule above would
+   blank out any modal shown during a scan (e.g. the abandon-conference
+   confirmation). Re-assert dialog backdrop/content backgrounds so they stay
+   readable over the live camera. */
+body.scanner-active [data-slot="alert-dialog-overlay"],
+body.scanner-active [data-slot="dialog-overlay"] {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+body.scanner-active [data-slot="alert-dialog-content"],
+body.scanner-active [data-slot="dialog-content"] {
+  background: var(--popover) !important;
+}
+
 .native-scanner-overlay {
   position: fixed;
   inset: 0;
