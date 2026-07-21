@@ -25,4 +25,4 @@ jobs:
             cd /home/glpissh/docker/notescan
             git pull origin main
             docker compose up -d --build
-            docker system prune -f
+            docker image prune -f
