@@ -321,3 +321,47 @@ forma canônica é o utilitário nomeado `text-itc-sucesso` / `bg-itc-sucesso/10
 docs `.md` gerem CSS inválido.
 
 **Consequências:** Nunca usar `[--itc-x]`; usar `itc-x` (tema) ou `(--itc-x)`.
+
+---
+
+## sec-01 — Vulnerabilidades de dependências corrigidas via `overrides`
+
+**Contexto:** O CI (`npm audit --audit-level=high`) falhava com 8 vulnerabilidades
+(3 high, 5 moderate), a maioria em dependências **transitivas** que não podem ser
+atualizadas pelo pai diretamente. O `npm audit fix` puxava uma árvore enorme e
+incontrolada, e o `--force` propunha absurdos (baixar o Next para 9.3.3).
+
+**Decisão:** usar `overrides` no `package.json` para forçar versões corrigidas das
+transitivas, sem tocar nos pais:
+- `fast-uri` → `3.1.4` (high — host confusion; via `@sentry/*` → webpack → ajv). Compatível com ajv `^3`.
+- `sharp` → `^0.35.0` (high — CVEs libvips; dep opcional do Next para otimização de imagem). 0.35.3, minor sobre o `^0.34.5` do Next.
+- `postcss` → `^8.5.10` (moderate — XSS no stringify; bundled do Next). 8.5.21, patch seguro.
+- `@hono/node-server` → `^2.0.5` (moderate — path traversal; via `@prisma/dev` e `shadcn`→mcp-sdk, ferramentas dev, sem exposição em runtime).
+
+**Verificação:** `npm audit --audit-level=high` sai 0; `npx prisma generate`, `tsc`
+e `next build` continuam OK (2026-07-21).
+
+**Consequências:** As `overrides` fixam versões — revisar ao atualizar Next/Sentry.
+Os avisos npm sobre `--force` (downgrade do Next) devem ser **ignorados**.
+
+---
+
+## sec-02 — @capgo/capacitor-native-biometric: fix adiado (exige Capacitor 8)
+
+**Contexto:** `@capgo/capacitor-native-biometric <8.3.6` tem um Authentication Bypass
+(moderate, GHSA-vx5f-vmr6-32wf). A correção está em **8.3.6+**, e **todas** as
+versões ≥8.3.6 exigem `@capacitor/core >=8.0.0`. O projeto está em **Capacitor 7**
+(a maior 7.x do plugin, 7.6.0, ainda é vulnerável).
+
+**Por que não corrigir agora:** subir para 8.x obrigaria migrar todo o app para
+**Capacitor 8** (outra migração major nativa + rebuild do APK + revalidar
+`@capacitor-mlkit/barcode-scanning`, geolocation e local-notifications em v8). É um
+breaking change grande, fora do escopo desta correção de segurança.
+
+**Mitigação / risco real baixo:** a biometria é apenas uma **tela de bloqueio de
+UI** no cold start (`BiometricGate`), não a fronteira de segurança. O acesso real é
+protegido pelo NextAuth (cookie JWT validado no servidor via `proxy.ts` e `auth()`).
+Um bypass do lock local **não** concede acesso a dados sem sessão válida. É moderate
+e **não** bloqueia o gate `--audit-level=high` do CI.
+
+**Quando corrigir:** junto de uma futura migração planejada para Capacitor 8.
