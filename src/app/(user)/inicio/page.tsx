@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones } from "lucide-react";
+import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones, CheckCircle2, XCircle } from "lucide-react";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { useSession } from "next-auth/react";
 import { useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
@@ -200,6 +200,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
             className={cn("text-xs shrink-0", isOk ? "bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30" : "bg-destructive/10 text-destructive border-destructive/30")}
             variant="outline"
           >
+            {isOk ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
             {isOk ? "COMPLETO" : "INCOMPLETO"}
           </Badge>
         </div>
