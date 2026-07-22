@@ -52,6 +52,9 @@ export default withSentryConfig(withPWA(nextConfig), {
   org: "grupo-itc-brasil",
   project: "itc-notescan",
   silent: !process.env.CI,
+  // Disable @sentry/cli telemetry — it makes network calls to sentry.io during
+  // the build, which can hang the Docker build on a server with restricted egress.
+  telemetry: false,
   widenClientFileUpload: true,
   webpack: {
     automaticVercelMonitors: true,

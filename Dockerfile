@@ -1,15 +1,21 @@
+# syntax=docker/dockerfile:1
 # Estágio 1 — Dependências
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-RUN npm ci
+# Cache mount do BuildKit: reaproveita o cache do npm (~/.npm) entre builds,
+# evitando redownload de todos os pacotes em cada deploy.
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Estágio 2 — Build
 FROM node:20-alpine AS builder
 RUN apk add --no-cache openssl
 WORKDIR /app
+# Sem SENTRY_AUTH_TOKEN no build → suprime o aviso do @sentry/nextjs sobre
+# upload de source maps (não há upload aqui).
+ENV SENTRY_SUPPRESS_NEXT_CONFIG_WARNING=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
