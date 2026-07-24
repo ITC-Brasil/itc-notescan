@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowLeft,
-  ChevronRight,
   RotateCcw,
   Check,
   Loader2,
@@ -19,6 +18,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
@@ -77,67 +77,66 @@ function UMSelectionPhase({
     onSelect(um, nbs);
   };
 
+  const statRows = [
+    { icon: Laptop, tint: "bg-itc-ciano-7/10", color: "text-itc-ciano-7", label: "Cadastrados", value: loadingNotebooks ? "..." : (notebooks?.length ?? 0) },
+    { icon: CheckCircle2, tint: "bg-itc-sucesso/10", color: "text-itc-sucesso", label: "Ativos", value: loadingNotebooks ? "..." : ativos },
+    { icon: Wrench, tint: "bg-itc-atencao/10", color: "text-itc-atencao", label: "Em manutenção", value: loadingNotebooks ? "..." : manutencao },
+  ];
+
   return (
-    <div className="flex flex-col items-center justify-center flex-1 px-5 gap-8">
-      <div className="text-center">
-        <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-          <ScanLine className="h-8 w-8 text-primary" />
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-4 py-3 flex items-center gap-3 border-b border-border bg-card">
+        <Link
+          href="/inicio"
+          aria-label="Voltar"
+          className="-ml-1 h-11 w-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <div>
+          <h1 className="text-lg font-bold text-foreground leading-tight">Selecionar UM</h1>
+          <p className="text-sm text-muted-foreground leading-tight">Escolha a unidade móvel a conferir</p>
         </div>
-        <h1 className="text-xl font-bold text-foreground">Iniciar Conferência</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Selecione a Unidade Móvel para conferir
-        </p>
       </div>
 
-      <div className="w-full space-y-5">
-        <Select value={selectedUmId} onValueChange={setSelectedUmId} disabled={loadingUMs}>
-          <SelectTrigger className="h-14 text-base">
-            <SelectValue placeholder={loadingUMs ? "Carregando..." : "Selecione a UM"} />
-          </SelectTrigger>
-          <SelectContent>
-            {ums?.map((um) => (
-              <SelectItem key={um.id} value={um.id}>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: um.project.cor }}
-                  />
-                  {um.project.nome} / {um.nome}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Body */}
+      <div className="flex-1 flex flex-col gap-5 p-4 overflow-y-auto">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            Unidade Móvel
+          </label>
+          <Select value={selectedUmId} onValueChange={setSelectedUmId} disabled={loadingUMs}>
+            <SelectTrigger className={cn("h-14 text-base", selectedUmId && "border-primary")}>
+              <SelectValue placeholder={loadingUMs ? "Carregando..." : "Selecione a UM"} />
+            </SelectTrigger>
+            <SelectContent>
+              {ums?.map((um) => (
+                <SelectItem key={um.id} value={um.id}>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: um.project.cor }}
+                    />
+                    {um.project.nome} / {um.nome}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {selectedUM && (
-          <div className="rounded-xl border border-border bg-card p-4 text-sm space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Laptop className="h-4 w-4" />
-                Cadastrados
-              </span>
-              <span className="font-semibold text-foreground tabular-nums">
-                {loadingNotebooks ? "..." : (notebooks?.length ?? 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-itc-sucesso" />
-                Ativos
-              </span>
-              <span className="font-semibold text-itc-sucesso tabular-nums">
-                {loadingNotebooks ? "..." : ativos}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Wrench className="h-4 w-4" />
-                Em Manutenção
-              </span>
-              <span className="font-semibold text-muted-foreground tabular-nums">
-                {loadingNotebooks ? "..." : manutencao}
-              </span>
-            </div>
+          <div className="rounded-xl border border-border bg-card shadow-1 divide-y divide-border">
+            {statRows.map(({ icon: Icon, tint, color, label, value }) => (
+              <div key={label} className="flex items-center gap-3 px-4 py-3.5">
+                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", tint)}>
+                  <Icon className={cn("h-5 w-5", color)} />
+                </div>
+                <span className="flex-1 text-sm font-medium text-foreground">{label}</span>
+                <span className="text-xl font-bold text-foreground tabular-nums">{value}</span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -149,15 +148,18 @@ function UMSelectionPhase({
             </p>
           </div>
         )}
+      </div>
 
+      {/* Footer */}
+      <div className="p-4 border-t border-border bg-card">
         <Button
           size="lg"
-          className="w-full h-14 text-base"
+          className="w-full h-14 text-base font-semibold uppercase tracking-wide"
           disabled={!selectedUmId || loadingNotebooks || !notebooks?.length || dailyLimitReached}
           onClick={handleStart}
         >
-          Iniciar
-          <ChevronRight className="h-5 w-5 ml-1" />
+          <ScanLine className="h-5 w-5 mr-2" />
+          Iniciar Conferência
         </Button>
       </div>
     </div>
