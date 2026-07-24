@@ -164,13 +164,13 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
                 isDenied
                   ? "border-destructive/30 bg-destructive/5"
                   : isGranted
-                  ? "border-green-500/30 bg-green-500/5"
+                  ? "border-itc-sucesso/30 bg-itc-sucesso/5"
                   : "border-border bg-card"
               }`}
             >
-              <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isGranted ? "bg-green-500/15" : "bg-muted"}`}>
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isGranted ? "bg-itc-sucesso/15" : "bg-muted"}`}>
                 {isGranted
-                  ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ? <CheckCircle2 className="h-4 w-4 text-itc-sucesso" />
                   : <Icon className="h-4 w-4 text-muted-foreground" />
                 }
               </div>
