@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Minus,
   Plus,
+  Send,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -421,27 +422,6 @@ function ScanningPhase({
   );
 }
 
-/* ─── Top bar with back button (peripherals / summary) ─── */
-function PhaseTopBar({ um, onExit }: { um: UMSlim; onExit: () => void }) {
-  return (
-    <div className="px-4 py-2 flex items-center gap-2 border-b border-border bg-card">
-      <button
-        type="button"
-        onClick={onExit}
-        aria-label="Voltar"
-        className="-ml-2 h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-      </button>
-      <span
-        className="h-2.5 w-2.5 rounded-full shrink-0"
-        style={{ backgroundColor: um.project.cor }}
-      />
-      <span className="text-sm font-medium text-foreground">{um.nome}</span>
-    </div>
-  );
-}
-
 /* ─── Quantity stepper with editable numeric input ─── */
 function Stepper({ label, icon: Icon, value, onChange }: { label: string; icon: LucideIcon; value: number; onChange: (v: number) => void }) {
   return (
@@ -562,78 +542,68 @@ function SummaryPhase({
   state,
   onConfirm,
   onBack,
-  onExit,
+  tecnico,
 }: {
   state: ReturnType<typeof useConference>["state"];
   onConfirm: () => void;
   onBack: () => void;
-  onExit: () => void;
+  tecnico?: string;
 }) {
-  const isOk = state.pending.length === 0;
   const um = state.um!;
-  const totalAtivos = state.scanned.length + state.pending.length;
 
   const startDate = state.startTime ? new Date(state.startTime) : null;
-  const nowStr = startDate
-    ? `${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
-    : null;
+  const subtitle = startDate
+    ? `${um.nome} · ${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+    : um.nome;
 
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
   return (
     <div className="flex flex-col h-full">
-      <PhaseTopBar um={um} onExit={onExit} />
-      <div className="flex flex-col gap-4 p-4 pb-6 overflow-y-auto flex-1">
-      {/* Status header */}
-      <div
-        className={cn(
-          "rounded-2xl p-4 text-center",
-          isOk ? "bg-itc-sucesso/10 border border-itc-sucesso/30" : "bg-destructive/10 border border-destructive/30",
-        )}
-      >
-        {isOk ? (
-          <CheckCircle2 className="h-10 w-10 text-itc-sucesso mx-auto mb-2" />
-        ) : (
-          <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-2" />
-        )}
-        <h2 className="font-bold text-lg text-foreground">
-          {isOk ? "Conferência OK" : `${state.pending.length} Faltante${state.pending.length !== 1 ? "s" : ""}`}
-        </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">{um.project.nome} / {um.nome}</p>
-        {nowStr && <p className="text-xs text-muted-foreground mt-0.5">{nowStr}</p>}
-        {state.location && (
-          <p className="text-xs text-muted-foreground mt-0.5">📍 {state.location}</p>
-        )}
+      {/* Header */}
+      <div className="px-4 py-3 flex items-center gap-3 border-b border-border bg-card">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Voltar"
+          className="-ml-1 h-11 w-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-foreground leading-tight">Resumo</h1>
+          <p className="text-xs text-muted-foreground leading-tight truncate">{subtitle}</p>
+        </div>
       </div>
 
-      <ConferenceSummary
-        totalAtivos={totalAtivos}
-        escaneados={state.scanned.length}
-        faltantes={state.pending.length}
-        manutencao={state.maintenance.length}
-        peripherals={hasPeripherals ? {
-          ...(um.mouses && { mouses: state.peripherals.mouses }),
-          ...(um.carregadores && { carregadores: state.peripherals.carregadores }),
-          ...(um.fones && { fones: state.peripherals.fones }),
-        } : undefined}
-        faltantesList={state.pending}
-        manutencaoList={state.maintenance}
-      />
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <ConferenceSummary
+          tecnico={tecnico}
+          localizacao={state.location}
+          escaneados={state.scanned.length}
+          faltantes={state.pending.length}
+          manutencao={state.maintenance.length}
+          peripherals={hasPeripherals ? {
+            ...(um.mouses && { mouses: state.peripherals.mouses }),
+            ...(um.carregadores && { carregadores: state.peripherals.carregadores }),
+            ...(um.fones && { fones: state.peripherals.fones }),
+          } : undefined}
+          faltantesList={state.pending.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))}
+          manutencaoList={state.maintenance.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))}
+        />
+      </div>
 
-      {/* Actions */}
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1" onClick={onBack}>
-          <RotateCcw className="h-4 w-4 mr-1.5" />
-          Continuar
-        </Button>
+      {/* Footer */}
+      <div className="p-4 border-t border-border bg-card">
         <Button
-          className={cn("flex-1", !isOk && "bg-destructive hover:bg-destructive/90")}
+          size="lg"
+          className="w-full h-14 text-base font-semibold uppercase tracking-wide"
           onClick={onConfirm}
         >
-          <Check className="h-4 w-4 mr-1.5" />
+          <Send className="h-5 w-5 mr-2" />
           Concluir e Enviar
         </Button>
-      </div>
       </div>
     </div>
   );
@@ -810,7 +780,7 @@ export default function ScannerPage() {
           state={state}
           onConfirm={handleFinalize}
           onBack={backToScanning}
-          onExit={() => setExitConfirmOpen(true)}
+          tecnico={session?.user.nome}
         />
       )}
       {state.phase === "saving" && <SavingPhase />}

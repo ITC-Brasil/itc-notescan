@@ -128,7 +128,6 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
 }
 
 function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; onClose: () => void }) {
-  const isOk = conference.status === "CONCLUIDO_OK";
   const escaneados = conference.items.filter((i) => i.status === "ESCANEADO").length;
   const faltantes = conference.items.filter((i) => i.status === "FALTANTE");
   const manutencao = conference.items.filter((i) => i.status === "MANUTENCAO");
@@ -137,24 +136,19 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
 
   const startDate = new Date(conference.dataInicio);
   const endDate = new Date(conference.dataFim);
+  const subtitle = `${um.nome} · ${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={cn(SHEET_CLASS, "max-h-[85vh] overflow-y-auto")}>
         <DialogHeader>
           <DialogTitle>Resumo</DialogTitle>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </DialogHeader>
 
-        <div className={cn("rounded-xl p-3 text-center text-sm", isOk ? "bg-itc-sucesso/10 border border-itc-sucesso/30" : "bg-destructive/10 border border-destructive/30")}>
-          <p className="font-bold text-foreground">{um.project.nome} / {um.nome}</p>
-          <p className="text-muted-foreground">
-            {startDate.toLocaleDateString("pt-BR")} · {startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às {endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-          </p>
-          {conference.localizacao && <p className="text-muted-foreground text-xs mt-0.5">📍 {conference.localizacao}</p>}
-        </div>
-
         <ConferenceSummary
-          totalAtivos={escaneados + faltantes.length}
+          tecnico={conference.user.nome}
+          localizacao={conference.localizacao}
           escaneados={escaneados}
           faltantes={faltantes.length}
           manutencao={manutencao.length}
