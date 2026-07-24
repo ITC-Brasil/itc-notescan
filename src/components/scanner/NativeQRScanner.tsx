@@ -26,11 +26,26 @@ interface NativeQRScannerProps {
   ui?: NativeScanUi
 }
 
-// Reusable inline-style constants
+// Reusable inline-style constants.
+//
+// ⚠️ SINCRONIA COM globals.css: este overlay é desenhado com estilos inline
+// porque sobrepõe camadas semi-transparentes sobre a câmera NATIVA — utilitários
+// Tailwind com alpha não se aplicam à camada nativa. Os triplets rgb abaixo são
+// cópia manual dos tokens funcionais ITC e DEVEM ser mantidos em sincronia com o
+// globals.css numa futura troca de paleta:
+//   --itc-sucesso #1a7f3c → 26,127,60
+//   --itc-atencao #cc7a00 → 204,122,0
+//   --itc-erro    #c0392b → 192,57,43
+const ITC_SUCESSO_RGB = '26,127,60'
+const ITC_ATENCAO_RGB = '204,122,0'
+const ITC_ERRO_RGB    = '192,57,43'
+// Amarelo clareado do --itc-atencao para contraste de texto sobre fundo escuro.
+const ATENCAO_TEXT_DARK = '#eab34a'
+
 const OPAQUE_DARK = 'rgba(14,14,14,0.94)'
 const OPAQUE_BAR  = 'rgba(0,0,0,0.82)'
 const WHITE_DIM   = 'rgba(255,255,255,0.55)'
-const GREEN_DIM   = 'rgba(26,127,60,0.85)'
+const GREEN_DIM   = `rgba(${ITC_SUCESSO_RGB},0.85)`
 
 export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScannerProps) {
   // Callbacks live in refs so the camera effect depends only on isActive.
@@ -234,9 +249,9 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         }}
       >
         {[
-          { n: ui.pending.length, label: 'pendentes', rgb: '192,57,43' },
-          { n: ui.scanned.length, label: 'lidos', rgb: '26,127,60' },
-          { n: ui.maintenance.length, label: 'manut.', rgb: '204,122,0' },
+          { n: ui.pending.length, label: 'pendentes', rgb: ITC_ERRO_RGB },
+          { n: ui.scanned.length, label: 'lidos', rgb: ITC_SUCESSO_RGB },
+          { n: ui.maintenance.length, label: 'manut.', rgb: ITC_ATENCAO_RGB },
         ].map((p) => (
           <div
             key={p.label}
@@ -281,7 +296,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
             alignItems: 'center',
             gap: 8,
             padding: '7px 16px',
-            background: ui.scanError ? 'rgba(192,57,43,0.93)' : 'rgba(26,127,60,0.93)',
+            background: ui.scanError ? `rgba(${ITC_ERRO_RGB},0.93)` : `rgba(${ITC_SUCESSO_RGB},0.93)`,
             pointerEvents: 'auto',
           }}
         >
@@ -304,12 +319,12 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           style={{
             flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 12px 8px 16px',
-            background: 'rgba(204,122,0,0.18)', borderTop: '1px solid rgba(204,122,0,0.3)',
+            background: `rgba(${ITC_ATENCAO_RGB},0.18)`, borderTop: `1px solid rgba(${ITC_ATENCAO_RGB},0.3)`,
             pointerEvents: 'auto',
           }}
         >
-          <Wrench style={{ width: 15, height: 15, color: '#eab34a', flexShrink: 0 }} />
-          <span style={{ fontSize: 12.5, color: '#eab34a' }}>
+          <Wrench style={{ width: 15, height: 15, color: ATENCAO_TEXT_DARK, flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: ATENCAO_TEXT_DARK }}>
             {ui.maintenance.length} em manutenção · fora da meta
           </span>
           <button
@@ -319,7 +334,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
             style={{
               marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
               height: 32, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
-              border: '1px solid rgba(204,122,0,0.5)', background: 'rgba(204,122,0,0.15)', color: '#eab34a',
+              border: `1px solid rgba(${ITC_ATENCAO_RGB},0.5)`, background: `rgba(${ITC_ATENCAO_RGB},0.15)`, color: ATENCAO_TEXT_DARK,
               fontSize: 13, fontWeight: 600,
             }}
           >
@@ -343,7 +358,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           /* Maintenance panel (opened from the yellow strip) */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#eab34a', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: ATENCAO_TEXT_DARK, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Em manutenção · {ui.maintenance.length}
               </p>
               <button
@@ -356,7 +371,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {ui.maintenance.map((nb) => (
-                <div key={nb.id} style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: '#eab34a', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(204,122,0,0.12)' }}>
+                <div key={nb.id} style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: ATENCAO_TEXT_DARK, padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: `rgba(${ITC_ATENCAO_RGB},0.12)` }}>
                   {nb.hostname}
                 </div>
               ))}
@@ -392,7 +407,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
                   <p style={{ fontSize: 11, color: WHITE_DIM, textAlign: 'center', paddingTop: 6 }}>Nenhum ainda</p>
                 ) : (
                   [...ui.scanned].reverse().map((nb) => (
-                    <div key={nb.id} style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'rgba(74,222,128,0.9)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(26,127,60,0.14)' }}>
+                    <div key={nb.id} style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'rgba(74,222,128,0.9)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: `rgba(${ITC_SUCESSO_RGB},0.14)` }}>
                       {nb.hostname}
                     </div>
                   ))
