@@ -255,7 +255,7 @@ export default function DashboardPage() {
                     style={{ backgroundColor: nb.um.project.cor }}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-mono font-medium text-foreground">{nb.hostname}</p>
+                    <p className="text-sm tabular-nums font-medium text-foreground">{nb.hostname}</p>
                     <p className="text-xs text-muted-foreground">
                       {nb.um.project.nome} / {nb.um.nome}
                       {nb.serial && ` · ${nb.serial}`}

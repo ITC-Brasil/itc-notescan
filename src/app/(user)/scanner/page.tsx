@@ -295,7 +295,7 @@ function ScanningPhase({
               state.pending.map((nb) => (
                 <div
                   key={nb.id}
-                  className="text-xs font-mono px-2 py-1 rounded bg-card border border-border text-foreground"
+                  className="text-xs tabular-nums px-2 py-1 rounded bg-card border border-border text-foreground"
                 >
                   {nb.hostname}
                 </div>
@@ -322,7 +322,7 @@ function ScanningPhase({
               [...state.scanned].reverse().map((nb) => (
                 <div
                   key={nb.id}
-                  className="text-xs font-mono px-2 py-1 rounded bg-itc-sucesso/10 border border-itc-sucesso/20 text-itc-sucesso"
+                  className="text-xs tabular-nums px-2 py-1 rounded bg-itc-sucesso/10 border border-itc-sucesso/20 text-itc-sucesso"
                 >
                   {nb.hostname}
                 </div>

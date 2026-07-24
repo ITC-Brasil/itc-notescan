@@ -117,7 +117,7 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
             {faltantes.map((item, i) => (
               <div key={i} className="flex items-center gap-2 px-3 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                <span className="text-sm font-mono text-foreground">{item.notebook.hostname}</span>
+                <span className="text-sm tabular-nums text-foreground">{item.notebook.hostname}</span>
               </div>
             ))}
           </div>

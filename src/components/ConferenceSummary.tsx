@@ -109,7 +109,7 @@ export function ConferenceSummary({
             {faltantesList.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
+                <span className="text-sm tabular-nums text-foreground">{nb.hostname}</span>
               </div>
             ))}
           </div>
@@ -124,7 +124,7 @@ export function ConferenceSummary({
             {manutencaoList.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
                 <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-sm font-mono text-foreground">{nb.hostname}</span>
+                <span className="text-sm tabular-nums text-foreground">{nb.hostname}</span>
               </div>
             ))}
           </div>

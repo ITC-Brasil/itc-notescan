@@ -429,7 +429,7 @@ function BatchDialog({
               />
             </div>
             {preview && (
-              <p className="text-xs text-muted-foreground font-mono bg-muted rounded px-2 py-1.5">
+              <p className="text-xs text-muted-foreground tabular-nums bg-muted rounded px-2 py-1.5">
                 Prévia: {preview} ({end - start + 1} notebooks)
               </p>
             )}
@@ -578,7 +578,7 @@ function ImportDialog({
                     i < Math.min(4, preview.length - 1) && "border-b border-border",
                   )}
                 >
-                  <span className="font-mono font-medium">{row.hostname}</span>
+                  <span className="tabular-nums font-medium">{row.hostname}</span>
                   {row.serial && <span className="text-muted-foreground text-xs">{row.serial}</span>}
                   {row.patrimonio && (
                     <span className="text-muted-foreground text-xs">{row.patrimonio}</span>
@@ -952,7 +952,7 @@ export default function NotebooksPage() {
                                 )}
                               >
                                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                                  <span className="text-sm font-mono font-medium text-foreground truncate max-w-[160px]">
+                                  <span className="text-sm tabular-nums font-medium text-foreground truncate max-w-[160px]">
                                     {nb.hostname}
                                   </span>
                                   {nb.serial && (
