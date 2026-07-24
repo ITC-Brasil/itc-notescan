@@ -134,7 +134,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", onClick }: St
       <button
         type="button"
         onClick={onClick}
-        className="w-full h-full rounded-lg border border-border bg-card p-4 space-y-3 text-left cursor-pointer hover:bg-muted/30 transition-colors"
+        className="w-full h-full rounded-lg border border-border bg-card shadow-1 p-4 space-y-3 text-left cursor-pointer hover:bg-muted/30 transition-colors"
       >
         {content}
       </button>
@@ -142,7 +142,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", onClick }: St
   }
 
   return (
-    <div className="h-full rounded-lg border border-border bg-card p-4 space-y-3">
+    <div className="h-full rounded-lg border border-border bg-card shadow-1 p-4 space-y-3">
       {content}
     </div>
   );

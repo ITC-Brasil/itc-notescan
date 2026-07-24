@@ -184,7 +184,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
 
   return (
     <>
-      <div className="rounded-xl border border-border bg-card px-3 py-3 space-y-2">
+      <div className="rounded-xl border border-border bg-card shadow-1 px-3 py-3 space-y-2">
         {/* Row 1: date + UM + status */}
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
