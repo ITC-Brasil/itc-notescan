@@ -50,28 +50,38 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center bg-background px-6 py-10">
-      <div className="w-full max-w-sm mx-auto">
+    // Single responsive login: mobile keeps the Fase 2 layout (brand row, fields
+    // on the background, no card); from `md` up it becomes a centered column with
+    // a card — same component, no duplication.
+    <div className="min-h-screen flex flex-col justify-center bg-background px-6 py-10 md:items-center">
+      <div className="w-full max-w-sm mx-auto md:max-w-101">
         {/* Marca */}
-        <div className="flex items-center gap-3 mb-10">
-          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
-            <ScanLine className="h-6 w-6 text-primary-foreground" />
+        <div className="flex items-center gap-3 mb-8 md:flex-col md:items-center md:text-center md:gap-3 md:mb-6">
+          <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-[15px] bg-primary flex items-center justify-center shrink-0">
+            <ScanLine className="h-6 w-6 md:h-7 md:w-7 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground leading-tight">ITC NoteScan</h1>
-            <p className="text-sm text-muted-foreground leading-tight">Conferência de ativos</p>
+            <h1 className="text-xl md:text-3xl font-bold md:font-extrabold md:font-archivo text-foreground leading-tight">
+              ITC NoteScan
+            </h1>
+            <p className="text-sm text-muted-foreground leading-tight md:mt-1">
+              <span className="md:hidden">Conferência de ativos</span>
+              <span className="hidden md:inline">Painel administrativo · Grupo ITC Brasil</span>
+            </p>
           </div>
         </div>
 
-        {/* Heading */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Acesse sua conta</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Entre com suas credenciais de técnico
-          </p>
-        </div>
+        {/* Form — card a partir de md */}
+        <div className="md:rounded-2xl md:border md:border-border md:bg-card md:shadow-1 md:p-6">
+          {/* Heading */}
+          <div className="mb-6">
+            <h2 className="text-2xl md:text-lg font-bold text-foreground">Acesse sua conta</h2>
+            <p className="text-sm text-muted-foreground mt-1 md:hidden">
+              Entre com suas credenciais de técnico
+            </p>
+          </div>
 
-        <Form {...form}>
+          <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
@@ -86,7 +96,7 @@ export default function LoginPage() {
                         type="email"
                         placeholder="seu@email.com"
                         autoComplete="email"
-                        className="h-12 pl-10 bg-card text-base"
+                        className="h-12 pl-10 bg-card md:bg-background text-base"
                         {...field}
                       />
                     </div>
@@ -109,7 +119,7 @@ export default function LoginPage() {
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         autoComplete="current-password"
-                        className="h-12 pl-10 pr-11 bg-card text-base"
+                        className="h-12 pl-10 pr-11 bg-card md:bg-background text-base"
                         {...field}
                       />
                       <button
@@ -151,15 +161,17 @@ export default function LoginPage() {
               onClick={() =>
                 toast.info("Solicite a redefinição de senha ao administrador.")
               }
-              className="block w-full text-center text-sm font-semibold text-primary hover:underline"
+              className="block w-full text-center md:text-right text-sm font-semibold text-primary hover:underline"
             >
               Esqueci minha senha
             </button>
           </form>
-        </Form>
+          </Form>
+        </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-10">
-          Grupo ITC Brasil · v1.0
+        <p className="text-center text-xs text-muted-foreground mt-8">
+          <span className="md:hidden">Grupo ITC Brasil · v1.0</span>
+          <span className="hidden md:inline">Sistema de conferência de ativos · ITC Brasil</span>
         </p>
       </div>
     </div>
