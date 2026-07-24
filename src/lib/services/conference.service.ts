@@ -36,16 +36,23 @@ export async function getDashboardStats() {
     prisma.conference.findMany({
       orderBy: { dataInicio: "desc" },
       take: 10,
+      // include retorna todos os escalares (localizacao, dataInicio/Fim, *Qtd).
+      // Itens com select mínimo (status + hostname) — suficiente para a contagem
+      // lidos/total e para o modal "Ver" (ConferenceSummary), sem carregar
+      // serial/patrimônio nem relações desnecessárias.
       include: {
         user: { select: { id: true, nome: true } },
         um: {
           select: {
             id: true,
             nome: true,
+            mouses: true,
+            carregadores: true,
+            fones: true,
             project: { select: { id: true, nome: true, cor: true } },
           },
         },
-        _count: { select: { items: true } },
+        items: { select: { status: true, notebook: { select: { hostname: true } } } },
       },
     }),
     prisma.notebook.findMany({

@@ -20,13 +20,19 @@ interface DashboardStats {
     dataInicio: string;
     dataFim: string;
     localizacao: string | null;
+    mousesQtd: number | null;
+    carregadoresQtd: number | null;
+    fonesQtd: number | null;
     user: { id: string; nome: string };
     um: {
       id: string;
       nome: string;
+      mouses: boolean;
+      carregadores: boolean;
+      fones: boolean;
       project: { id: string; nome: string; cor: string };
     };
-    _count: { items: number };
+    items: { status: string; notebook: { hostname: string } }[];
   }[];
 }
 
