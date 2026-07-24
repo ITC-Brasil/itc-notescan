@@ -79,10 +79,10 @@ export function ConferenceSummary({
         </div>
         <div className="flex items-center justify-between px-4 py-2.5">
           <span className="flex items-center gap-2 text-muted-foreground">
-            <Wrench className="h-4 w-4" />
+            <Wrench className="h-4 w-4 text-itc-atencao" />
             Em Manutenção
           </span>
-          <span className="font-semibold tabular-nums">{manutencao}</span>
+          <span className={cn("font-semibold tabular-nums", manutencao > 0 ? "text-itc-atencao" : "text-foreground")}>{manutencao}</span>
         </div>
       </div>
 
@@ -120,10 +120,10 @@ export function ConferenceSummary({
       {manutencaoList && manutencaoList.length > 0 && (
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-2">Em manutenção</p>
-          <div className="rounded-xl border border-border divide-y divide-border">
+          <div className="rounded-xl border border-itc-atencao/20 bg-itc-atencao/5 divide-y divide-itc-atencao/10">
             {manutencaoList.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
-                <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Wrench className="h-3.5 w-3.5 text-itc-atencao shrink-0" />
                 <span className="text-sm tabular-nums text-foreground">{nb.hostname}</span>
               </div>
             ))}

@@ -921,7 +921,7 @@ export default function NotebooksPage() {
                                 {ug.items.length}
                               </Badge>
                               {ug.items.some((n) => n.status === "MANUTENCAO") && (
-                                <Badge className="text-xs bg-[#CC7A00] text-white border-transparent hover:bg-[#CC7A00]/90">
+                                <Badge className="text-xs bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15">
                                   {ug.items.filter((n) => n.status === "MANUTENCAO").length} manutenção
                                 </Badge>
                               )}
@@ -967,10 +967,10 @@ export default function NotebooksPage() {
                                   )}
                                   <Badge
                                     className={cn(
-                                      "text-xs shrink-0 border-transparent",
+                                      "text-xs shrink-0",
                                       nb.status === "ATIVO"
-                                        ? "bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]/90"
-                                        : "bg-[#CC7A00] text-white hover:bg-[#CC7A00]/90",
+                                        ? "bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30 hover:bg-itc-sucesso/15"
+                                        : "bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15",
                                     )}
                                   >
                                     {nb.status === "ATIVO" ? "Ativo" : "Manutenção"}
