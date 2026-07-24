@@ -13,11 +13,12 @@ import {
   Mouse,
   BatteryCharging,
   Headphones,
-  Cable,
   Laptop,
   Wrench,
   Eye,
   ArrowRight,
+  Minus,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -444,19 +445,20 @@ function PhaseTopBar({ um, onExit }: { um: UMSlim; onExit: () => void }) {
 /* ─── Quantity stepper with editable numeric input ─── */
 function Stepper({ label, icon: Icon, value, onChange }: { label: string; icon: LucideIcon; value: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-      <span className="flex items-center gap-2.5 text-sm font-medium text-foreground">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        {label}
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card shadow-1 p-4">
+      <span className="flex items-center gap-2.5 text-sm font-medium text-foreground flex-1 min-w-0">
+        <Icon className="h-5 w-5 text-primary shrink-0" />
+        <span className="truncate">{label}</span>
       </span>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 shrink-0">
         <Button
-          variant="outline"
+          variant="secondary"
           size="icon"
-          className="h-9 w-9"
+          className="h-11 w-11 rounded-lg"
           onClick={() => onChange(Math.max(0, value - 1))}
+          aria-label={`Diminuir ${label}`}
         >
-          −
+          <Minus className="h-4 w-4" />
         </Button>
         <input
           type="number"
@@ -468,16 +470,16 @@ function Stepper({ label, icon: Icon, value, onChange }: { label: string; icon: 
             onChange(Number.isFinite(n) && n > 0 ? n : 0);
           }}
           onFocus={(e) => e.target.select()}
-          className="w-14 text-center text-lg font-bold tabular-nums rounded-md border border-border bg-background py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="w-10 text-center text-2xl font-bold tabular-nums bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           aria-label={label}
         />
         <Button
-          variant="outline"
           size="icon"
-          className="h-9 w-9"
+          className="h-11 w-11 rounded-lg"
           onClick={() => onChange(value + 1)}
+          aria-label={`Aumentar ${label}`}
         >
-          +
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -505,27 +507,49 @@ function PeripheralsPhase({
 
   return (
     <div className="flex flex-col h-full">
-      <PhaseTopBar um={um} onExit={onExit} />
+      {/* Header */}
+      <div className="px-4 py-3 flex items-center gap-3 border-b border-border bg-card">
+        <button
+          type="button"
+          onClick={onExit}
+          aria-label="Voltar"
+          className="-ml-1 h-11 w-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div>
+          <h1 className="text-lg font-bold text-foreground leading-tight">Periféricos</h1>
+          <p className="text-sm text-muted-foreground leading-tight">Informe as quantidades conferidas</p>
+        </div>
+      </div>
 
-      <div className="flex flex-col gap-5 p-4">
-        <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <Cable className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Periféricos</h2>
-            <p className="text-sm text-muted-foreground">Informe as quantidades conferidas</p>
-          </div>
+      {/* Body */}
+      <div className="flex-1 flex flex-col gap-4 p-4 overflow-y-auto">
+        {/* UM context */}
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-card shadow-1 px-4 py-3">
+          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: um.project.cor }} />
+          <span className="text-sm font-bold text-foreground">{um.nome}</span>
+          <span className="text-xs text-muted-foreground truncate">· {um.project.nome}</span>
+          <span className="ml-auto text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
+            Conferência
+          </span>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {um.mouses && <Stepper label="Mouses" icon={Mouse} value={mouses} onChange={setMouses} />}
           {um.carregadores && <Stepper label="Carregadores" icon={BatteryCharging} value={carregadores} onChange={setCarregadores} />}
           {um.fones && <Stepper label="Fones de Ouvido" icon={Headphones} value={fones} onChange={setFones} />}
         </div>
+      </div>
 
-        <Button size="lg" className="w-full mt-2" onClick={handleFinalize}>
-          <Check className="h-4 w-4 mr-2" />
+      {/* Footer */}
+      <div className="p-4 border-t border-border bg-card">
+        <Button
+          size="lg"
+          className="w-full h-14 text-base font-semibold uppercase tracking-wide"
+          onClick={handleFinalize}
+        >
+          <Check className="h-5 w-5 mr-2" />
           Finalizar Conferência
         </Button>
       </div>
