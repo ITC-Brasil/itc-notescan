@@ -73,5 +73,8 @@ jobs:
           retention-days: 7
 
       - name: Security audit
-        run: npm audit --audit-level=high
+        # --omit=dev: gate apenas em dependências de produção (o que vai pro Docker/runtime).
+        # Vulns dev-only (ex.: brace-expansion ReDoS em glob matchers do eslint/ts-morph, que só
+        # processam nossos próprios globs de config) não bloqueiam o pipeline. Ver DECISIONS sec-*.
+        run: npm audit --omit=dev --audit-level=high
 

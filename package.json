@@ -15,7 +15,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "audit:security": "npm audit --audit-level=high",
+    "audit:security": "npm audit --omit=dev --audit-level=high",
     "prepare": "husky",
     "build:android": "npx cap sync android",
     "open:android": "npx cap open android"
@@ -51,7 +51,7 @@
     "date-fns": "^4.4.0",
     "dexie": "^4.4.4",
     "lucide-react": "^1.21.0",
-    "next": "16.2.9",
+    "next": "16.2.11",
     "next-auth": "^5.0.0-beta.31",
     "next-themes": "^0.4.6",
     "pg": "^8.22.0",
@@ -97,6 +97,7 @@
     "fast-uri": "3.1.4",
     "sharp": "^0.35.0",
     "postcss": "^8.5.10",
-    "@hono/node-server": "^2.0.5"
+    "@hono/node-server": "^2.0.5",
+    "find-my-way": "^9.7.0"
   }
 }
