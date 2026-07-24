@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Check, ArrowLeft, Flashlight, FlashlightOff } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, RotateCcw, ArrowRight, ArrowLeft, Flashlight, FlashlightOff, Wrench, Eye, X } from 'lucide-react'
 
 export interface NativeScanUi {
   umName: string
@@ -9,6 +9,8 @@ export interface NativeScanUi {
   /** Full list so the overlay can render hostnames */
   pending: { id: string; hostname: string }[]
   scanned: { id: string; hostname: string }[]
+  /** Notebooks em manutenção (fora da meta) — mostrados via botão "Ver" */
+  maintenance: { id: string; hostname: string }[]
   lastScanned: string | null
   scanError: string | null
   onNext: () => void
@@ -45,6 +47,8 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
   // Torch (flashlight) — only shown when the device reports it available.
   const [torchAvailable, setTorchAvailable] = useState(false)
   const [torchOn, setTorchOn] = useState(false)
+  // Maintenance list panel toggle (opened from the yellow strip's "Ver" button)
+  const [showManut, setShowManut] = useState(false)
 
   const toggleTorch = async () => {
     try {
@@ -193,7 +197,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         </button>
         <span style={{ width: 10, height: 10, borderRadius: '50%', background: ui.umColor, flexShrink: 0 }} />
         <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{ui.umName}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 13, fontFamily: 'monospace', color: WHITE_DIM }}>
+        <span style={{ marginLeft: 'auto', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: WHITE_DIM }}>
           {ui.scanned.length}/{total}
         </span>
         {torchAvailable && (
@@ -216,6 +220,36 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
               : <FlashlightOff style={{ width: 18, height: 18 }} />}
           </button>
         )}
+      </div>
+
+      {/* ── Stat pills: pendentes / lidos / manut. ─────────────────── */}
+      <div
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          gap: 8,
+          padding: '0 12px 10px',
+          background: OPAQUE_BAR,
+          pointerEvents: 'auto',
+        }}
+      >
+        {[
+          { n: ui.pending.length, label: 'pendentes', rgb: '192,57,43' },
+          { n: ui.scanned.length, label: 'lidos', rgb: '26,127,60' },
+          { n: ui.maintenance.length, label: 'manut.', rgb: '204,122,0' },
+        ].map((p) => (
+          <div
+            key={p.label}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '5px 8px', borderRadius: 999,
+              background: `rgba(${p.rgb},0.16)`, border: `1px solid rgba(${p.rgb},0.35)`,
+            }}
+          >
+            <span style={{ fontSize: 14, fontWeight: 700, color: `rgb(${p.rgb})`, fontVariantNumeric: 'tabular-nums' }}>{p.n}</span>
+            <span style={{ fontSize: 11, color: `rgba(${p.rgb},0.92)` }}>{p.label}</span>
+          </div>
+        ))}
       </div>
 
       {/* ── Camera area — TRANSPARENT — camera shows through ──────── */}
@@ -264,6 +298,37 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         <div style={{ flexShrink: 0, height: 4, background: OPAQUE_DARK }} />
       )}
 
+      {/* ── Maintenance strip (yellow) — out-of-target notebooks ───── */}
+      {ui.maintenance.length > 0 && (
+        <div
+          style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 12px 8px 16px',
+            background: 'rgba(204,122,0,0.18)', borderTop: '1px solid rgba(204,122,0,0.3)',
+            pointerEvents: 'auto',
+          }}
+        >
+          <Wrench style={{ width: 15, height: 15, color: '#eab34a', flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: '#eab34a' }}>
+            {ui.maintenance.length} em manutenção · fora da meta
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowManut((v) => !v)}
+            aria-pressed={showManut}
+            style={{
+              marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
+              height: 32, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
+              border: '1px solid rgba(204,122,0,0.5)', background: 'rgba(204,122,0,0.15)', color: '#eab34a',
+              fontSize: 13, fontWeight: 600,
+            }}
+          >
+            <Eye style={{ width: 15, height: 15 }} />
+            Ver
+          </button>
+        </div>
+      )}
+
       {/* ── Lists area — OPAQUE — blocks camera in lower half ──────── */}
       <div
         style={{
@@ -274,41 +339,68 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           pointerEvents: 'auto',
         }}
       >
-        {/* Pendentes */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 10px 8px 14px', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: WHITE_DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
-            Pendentes ({ui.pending.length})
-          </p>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {ui.pending.length === 0 ? (
-              <p style={{ fontSize: 11, color: WHITE_DIM, textAlign: 'center', paddingTop: 6 }}>Todos escaneados!</p>
-            ) : (
-              ui.pending.map((nb) => (
-                <div key={nb.id} style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(255,255,255,0.75)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.05)' }}>
+        {showManut ? (
+          /* Maintenance panel (opened from the yellow strip) */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#eab34a', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Em manutenção · {ui.maintenance.length}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowManut(false)}
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', color: WHITE_DIM, fontSize: 12, cursor: 'pointer' }}
+              >
+                <X style={{ width: 14, height: 14 }} /> Fechar
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {ui.maintenance.map((nb) => (
+                <div key={nb.id} style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: '#eab34a', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(204,122,0,0.12)' }}>
                   {nb.hostname}
                 </div>
-              ))
-            )}
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Pendentes */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 10px 8px 14px', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: WHITE_DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                Pendentes · {ui.pending.length}
+              </p>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {ui.pending.length === 0 ? (
+                  <p style={{ fontSize: 11, color: WHITE_DIM, textAlign: 'center', paddingTop: 6 }}>Todos escaneados!</p>
+                ) : (
+                  ui.pending.map((nb) => (
+                    <div key={nb.id} style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.75)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.05)' }}>
+                      {nb.hostname}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
-        {/* Escaneados */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 14px 8px 10px' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: GREEN_DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
-            Escaneados ({ui.scanned.length})
-          </p>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {ui.scanned.length === 0 ? (
-              <p style={{ fontSize: 11, color: WHITE_DIM, textAlign: 'center', paddingTop: 6 }}>Nenhum ainda</p>
-            ) : (
-              [...ui.scanned].reverse().map((nb) => (
-                <div key={nb.id} style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(74,222,128,0.9)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(26,127,60,0.14)' }}>
-                  {nb.hostname}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+            {/* Escaneados */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 14px 8px 10px' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: GREEN_DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                Escaneados · {ui.scanned.length}
+              </p>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {ui.scanned.length === 0 ? (
+                  <p style={{ fontSize: 11, color: WHITE_DIM, textAlign: 'center', paddingTop: 6 }}>Nenhum ainda</p>
+                ) : (
+                  [...ui.scanned].reverse().map((nb) => (
+                    <div key={nb.id} style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'rgba(74,222,128,0.9)', padding: '3px 5px', borderRadius: 4, marginBottom: 2, background: 'rgba(26,127,60,0.14)' }}>
+                      {nb.hostname}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Bottom bar: Reiniciar + Próximo ───────────────────────── */}
@@ -339,16 +431,13 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           onClick={ui.onNext}
           style={{
             flex: 1, height: 56, borderRadius: 12, border: 'none',
-            background: ui.pending.length > 0 ? '#c0392b' : '#008f95',
-            color: '#fff', fontSize: 14, fontWeight: 600,
+            background: '#008f95',
+            color: '#fff', fontSize: 15, fontWeight: 600,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
           }}
         >
-          {ui.pending.length > 0 ? (
-            <><AlertTriangle style={{ width: 18, height: 18 }} />Próximo — {ui.pending.length} faltante{ui.pending.length !== 1 ? 's' : ''}</>
-          ) : (
-            <><Check style={{ width: 18, height: 18 }} />Próximo — todos escaneados</>
-          )}
+          Próximo
+          <ArrowRight style={{ width: 18, height: 18 }} />
         </button>
       </div>
     </div>

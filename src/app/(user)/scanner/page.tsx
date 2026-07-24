@@ -16,6 +16,8 @@ import {
   Cable,
   Laptop,
   Wrench,
+  Eye,
+  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -181,6 +183,7 @@ function ScanningPhase({
   onExit: () => void;
 }) {
   const platform = usePlatform();
+  const [showManut, setShowManut] = useState(false);
 
   // On Android APK: hand off the entire scanning UI to the native overlay.
   // The NativeQRScanner renders top bar + viewfinder + feedback + buttons
@@ -195,6 +198,7 @@ function ScanningPhase({
           umColor: state.um?.project.cor ?? "#008f95",
           pending: state.pending,
           scanned: state.scanned,
+          maintenance: state.maintenance,
           lastScanned: state.lastScanned ?? null,
           scanError: state.error ?? null,
           onNext,
@@ -228,6 +232,22 @@ function ScanningPhase({
         <span className="ml-auto text-xs text-muted-foreground tabular-nums">
           {state.scanned.length}/{total}
         </span>
+      </div>
+
+      {/* Stat pills: pendentes / lidos / manut. */}
+      <div className="flex gap-2 px-4 pt-2">
+        <div className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-destructive/10 border border-destructive/30 py-1">
+          <span className="text-sm font-bold text-destructive tabular-nums">{state.pending.length}</span>
+          <span className="text-xs text-destructive/90">pendentes</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-itc-sucesso/10 border border-itc-sucesso/30 py-1">
+          <span className="text-sm font-bold text-itc-sucesso tabular-nums">{state.scanned.length}</span>
+          <span className="text-xs text-itc-sucesso/90">lidos</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-itc-atencao/10 border border-itc-atencao/30 py-1">
+          <span className="text-sm font-bold text-itc-atencao tabular-nums">{state.maintenance.length}</span>
+          <span className="text-xs text-itc-atencao/90">manut.</span>
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -277,8 +297,53 @@ function ScanningPhase({
         </div>
       )}
 
+      {/* Maintenance strip (yellow) */}
+      {state.maintenance.length > 0 && (
+        <div className="mx-4 mt-2 rounded-lg bg-itc-atencao/10 border border-itc-atencao/30 px-3 py-2 flex items-center gap-2">
+          <Wrench className="h-4 w-4 text-itc-atencao shrink-0" />
+          <span className="text-sm text-itc-atencao">
+            {state.maintenance.length} em manutenção · fora da meta
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowManut((v) => !v)}
+            aria-pressed={showManut}
+            className="ml-auto inline-flex items-center gap-1 h-8 px-3 rounded-md border border-itc-atencao/40 text-sm font-medium text-itc-atencao hover:bg-itc-atencao/10 transition-colors"
+          >
+            <Eye className="h-4 w-4" /> Ver
+          </button>
+        </div>
+      )}
+
       {/* Lists */}
       <div className="flex-1 overflow-hidden flex gap-3 px-4 mt-3 pb-2">
+        {showManut ? (
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-itc-atencao">
+                <Wrench className="h-3.5 w-3.5" /> Em manutenção ({state.maintenance.length})
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowManut(false)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Fechar
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-1 rounded-lg bg-itc-atencao/5 border border-itc-atencao/20 p-1.5">
+              {state.maintenance.map((nb) => (
+                <div
+                  key={nb.id}
+                  className="text-xs tabular-nums px-2 py-1 rounded bg-itc-atencao/10 border border-itc-atencao/20 text-itc-atencao"
+                >
+                  {nb.hostname}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Pending */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center gap-1.5 mb-1.5">
@@ -332,6 +397,8 @@ function ScanningPhase({
             )}
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Actions */}
@@ -344,23 +411,9 @@ function ScanningPhase({
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
-        <Button
-          variant={state.pending.length > 0 ? "destructive" : "default"}
-          size="lg"
-          className="flex-1"
-          onClick={onNext}
-        >
-          {state.pending.length > 0 ? (
-            <>
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Próximo — {state.pending.length} faltante{state.pending.length !== 1 ? "s" : ""}
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4 mr-2" />
-              Próximo — todos escaneados
-            </>
-          )}
+        <Button size="lg" className="flex-1" onClick={onNext}>
+          Próximo
+          <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
     </div>
