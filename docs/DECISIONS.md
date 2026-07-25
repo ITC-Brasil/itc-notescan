@@ -368,6 +368,52 @@ e **não** bloqueia o gate `--audit-level=high` do CI.
 
 ---
 
+## sec-03 — Gate de audit escopado para produção (`--omit=dev`)
+
+**Contexto:** durante a v3.1, o CI (`npm audit --audit-level=high`) voltou a falhar.
+Diagnóstico apontava 3 alvos de runtime + o `brace-expansion` (dev-only).
+
+**Corrigido (runtime):**
+- `@auth/core` `0.41.2 → 0.41.3` (**critical**, via `npm audit fix` sem `--force`).
+  Arrastou junto `next-auth` beta.31 → **beta.32** e `@auth/prisma-adapter` 2.11.2 → 2.11.3 (patch).
+- `next` `16.2.9 → 16.2.11` (**high** — inclui o *Middleware/Proxy bypass* com Turbopack,
+  relevante porque usamos `proxy.ts` + Turbopack).
+- `find-my-way` `9.6.0 → 9.7.0` via `overrides` (**high** — DoS HTTP2, GHSA-c96f-x56v-gq3h).
+  Transitiva na cadeia `prisma → @prisma/dev`, e `prisma` é **prod dependency** (o entrypoint
+  do Docker roda `prisma migrate deploy`), por isso não é dev-only e precisa mesmo do fix.
+
+**Decisão de escopo:** o gate passou a `npm audit --omit=dev --audit-level=high`
+(no [`ci.yml`](../.github/workflows/ci.yml) e no script `audit:security`). O único high
+remanescente era `brace-expansion <=5.0.7` (DoS/ReDoS), **100% dev-only** — vive só na
+cadeia do `eslint`/`ts-morph`, processando nossos próprios globs de config (confiáveis),
+e **não entra na imagem Docker** (`output: 'standalone'` descarta devDependencies). O
+runtime segue **100% auditado** (`next`, `next-auth`, `@auth/core`, `react`, `@prisma/client`).
+
+Além de dev-only, é **falso-positivo**: o `1.1.16` instalado já é a versão corrigida da
+linha 1.x (fix em 1.1.12), mas o range colapsado do npm (`<=5.0.7`) o sinaliza mesmo assim.
+
+**Por que não via `overrides` (como sec-01):** não é viável. A única versão que o npm
+aceita (`5.0.8`) é **ESM** e quebra o `minimatch@3` do eslint (`TypeError: expand is not a
+function` → eslint inteiro morre); a linha `2.x` também é sinalizada pelo range; e o
+`@eslint/config-array` é CJS, não consegue `require` um `minimatch@10` (ESM).
+
+**Por que não `eslint → 10`:** major breaking (revalidar flat config, regras,
+`eslint-config-next`), fora do escopo. O `brace-expansion` sai naturalmente quando o
+`eslint-config-next` puxar o eslint novo.
+
+**Mantidos como moderate conscientes (não bloqueiam o gate):**
+- `@capgo/capacitor-native-biometric` — fix exige Capacitor 8 (ver [sec-02](#sec-02--capgocapacitor-native-biometric-fix-adiado-exige-capacitor-8)).
+- `valibot` — a correção rebaixaria `prisma` para 6, violando [m1-01](#m1-01--prisma-7-com-driver-adapter-e-prismaconfigts).
+
+**Verificação (2026-07-24):** `npm audit --omit=dev --audit-level=high` sai 0;
+`prisma generate`, `tsc`, `lint`, `build` (26/26 páginas) e 127/127 testes Vitest OK.
+
+**Pendência:** smoke-test de auth ao vivo (login + proteção de rotas via `proxy.ts`)
+ainda **a fazer antes da distribuição** — não foi possível no ambiente de correção
+(exige DB + servidor). Nenhum código de auth foi tocado (só bumps de patch).
+
+---
+
 ## ds-01 — Adoção do Design System v3.1 (Rota B: valores, não vocabulário)
 
 **Contexto:** o app foi conformado ao Design System v3.1 (`.interface-design/system.md`
