@@ -117,7 +117,7 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
             {faltantes.map((item, i) => (
               <div key={i} className="flex items-center gap-2 px-3 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                <span className="text-sm font-mono text-foreground">{item.notebook.hostname}</span>
+                <span className="text-sm tabular-nums text-foreground">{item.notebook.hostname}</span>
               </div>
             ))}
           </div>
@@ -128,7 +128,6 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
 }
 
 function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; onClose: () => void }) {
-  const isOk = conference.status === "CONCLUIDO_OK";
   const escaneados = conference.items.filter((i) => i.status === "ESCANEADO").length;
   const faltantes = conference.items.filter((i) => i.status === "FALTANTE");
   const manutencao = conference.items.filter((i) => i.status === "MANUTENCAO");
@@ -137,24 +136,19 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
 
   const startDate = new Date(conference.dataInicio);
   const endDate = new Date(conference.dataFim);
+  const subtitle = `${um.nome} · ${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={cn(SHEET_CLASS, "max-h-[85vh] overflow-y-auto")}>
         <DialogHeader>
           <DialogTitle>Resumo</DialogTitle>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </DialogHeader>
 
-        <div className={cn("rounded-xl p-3 text-center text-sm", isOk ? "bg-itc-sucesso/10 border border-itc-sucesso/30" : "bg-destructive/10 border border-destructive/30")}>
-          <p className="font-bold text-foreground">{um.project.nome} / {um.nome}</p>
-          <p className="text-muted-foreground">
-            {startDate.toLocaleDateString("pt-BR")} · {startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às {endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-          </p>
-          {conference.localizacao && <p className="text-muted-foreground text-xs mt-0.5">📍 {conference.localizacao}</p>}
-        </div>
-
         <ConferenceSummary
-          totalAtivos={escaneados + faltantes.length}
+          tecnico={conference.user.nome}
+          localizacao={conference.localizacao}
           escaneados={escaneados}
           faltantes={faltantes.length}
           manutencao={manutencao.length}
@@ -184,16 +178,16 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
 
   return (
     <>
-      <div className="rounded-xl border border-border bg-card px-3 py-3 space-y-2">
-        {/* Row 1: date + UM + status */}
-        <div className="flex items-center gap-2">
+      <div className="rounded-xl border border-border bg-card shadow-1 px-3 py-3 space-y-2.5">
+        {/* Row 1: UM + status */}
+        <div className="flex items-start gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: um.project.cor }} />
-              <span className="text-sm font-medium text-foreground truncate">{um.nome}</span>
+              <span className="text-sm font-bold text-foreground truncate">{um.nome}</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {d.toLocaleDateString("pt-BR")} · {d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
+              {d.toLocaleDateString("pt-BR")} · {d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · {escaneados}/{totalAtivos} escaneados
             </p>
           </div>
           <Badge
@@ -205,12 +199,8 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
           </Badge>
         </div>
 
-        {/* Row 2: contagem + badges */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {escaneados}/{totalAtivos} escaneados
-          </span>
-          <div className="flex items-center gap-1.5 ml-auto flex-wrap justify-end">
+        {/* Row 2: ações */}
+        <div className="flex items-center gap-1.5 flex-wrap">
             {hasPeripherals && (
               <button
                 className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border border-border bg-muted/50 text-muted-foreground hover:bg-muted transition-colors"
@@ -235,7 +225,6 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
               <FileText className="h-3 w-3" />
               Ver Resumo
             </button>
-          </div>
         </div>
       </div>
 
@@ -290,7 +279,7 @@ export default function InicioPage() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">Olá,</p>
-          <p className="font-semibold text-foreground">{session?.user.nome}</p>
+          <p className="text-lg font-bold text-foreground leading-tight">{session?.user.nome}</p>
         </div>
         <div className="flex items-center gap-2">
           {outboxCount > 0 && (
@@ -302,7 +291,7 @@ export default function InicioPage() {
           <Badge
             variant="outline"
             className={cn(
-              "gap-1 font-medium",
+              "gap-1.5 px-2.5 py-1 font-semibold uppercase tracking-wide",
               online
                 ? "bg-itc-sucesso/10 border-itc-sucesso/40 text-itc-sucesso shadow-[0_0_8px_-1px_var(--itc-sucesso)]"
                 : "bg-destructive/10 border-destructive/40 text-destructive shadow-[0_0_8px_-1px_var(--destructive)]",
@@ -325,24 +314,19 @@ export default function InicioPage() {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-border bg-card p-3 text-center">
-            <p className="text-2xl font-bold text-foreground tabular-nums">{todayTotal}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">de {meta} hoje</p>
+          <div className="rounded-xl border border-border bg-card shadow-1 p-3 text-center">
+            <p className="text-3xl font-extrabold text-foreground tabular-nums">{todayTotal}</p>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground mt-1">de {meta} hoje</p>
           </div>
-          <div className="rounded-xl border border-itc-sucesso/30 bg-itc-sucesso/5 p-3 text-center">
-            <p className="text-2xl font-bold text-itc-sucesso tabular-nums">{todayOk}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">OK</p>
+          <div className="rounded-xl border border-border bg-card shadow-1 p-3 text-center">
+            <p className="text-3xl font-extrabold text-itc-sucesso tabular-nums">{todayOk}</p>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground mt-1">OK</p>
           </div>
-          <div className={cn(
-            "rounded-xl border p-3 text-center",
-            todayFaltantes > 0
-              ? "border-destructive/30 bg-destructive/5"
-              : "border-border bg-card",
-          )}>
-            <p className={cn("text-2xl font-bold tabular-nums", todayFaltantes > 0 ? "text-destructive" : "text-foreground")}>
+          <div className="rounded-xl border border-border bg-card shadow-1 p-3 text-center">
+            <p className={cn("text-3xl font-extrabold tabular-nums", todayFaltantes > 0 ? "text-destructive" : "text-foreground")}>
               {todayFaltantes}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Incompletos</p>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground mt-1">Incompletos</p>
           </div>
         </div>
       )}
@@ -361,21 +345,16 @@ export default function InicioPage() {
         </div>
       ) : (
         <Link href="/scanner" className="sm:hidden block">
-          <div className="w-full rounded-2xl bg-primary p-5 flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-transform">
-            <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
-              <ScanLine className="h-7 w-7 text-primary-foreground" />
-            </div>
-            <div className="text-left">
-              <p className="text-lg font-bold text-primary-foreground leading-tight">Iniciar Conferência</p>
-              <p className="text-sm text-primary-foreground/70 leading-tight">Escanear notebooks da UM</p>
-            </div>
+          <div className="w-full min-h-14 rounded-2xl bg-primary px-5 py-4 flex items-center justify-center gap-3 shadow-1 active:scale-[0.98] transition-transform">
+            <ScanLine className="h-6 w-6 text-primary-foreground shrink-0" />
+            <span className="text-base font-bold uppercase tracking-wide text-primary-foreground">Iniciar Conferência</span>
           </div>
         </Link>
       )}
 
       {/* Histórico */}
       <div className="mt-2">
-        <p className="text-sm font-semibold text-foreground mb-3">Histórico recente</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Histórico recente</p>
         {loadingHistory ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (

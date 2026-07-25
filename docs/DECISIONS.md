@@ -365,3 +365,39 @@ Um bypass do lock local **não** concede acesso a dados sem sessão válida. É 
 e **não** bloqueia o gate `--audit-level=high` do CI.
 
 **Quando corrigir:** junto de uma futura migração planejada para Capacitor 8.
+
+---
+
+## ds-01 — Adoção do Design System v3.1 (Rota B: valores, não vocabulário)
+
+**Contexto:** o app foi conformado ao Design System v3.1 (`.interface-design/system.md`
++ `design-reference/`), tela por tela, sem reescrever tudo de uma vez.
+
+**Decisão (Rota B):** o **vocabulário de tokens não muda** — o código segue usando as
+escalas ITC (`--itc-ciano-*`, `--itc-bordo-*`, neutros), as funcionais
+(`--itc-sucesso/atencao/erro/info`) e os aliases shadcn. A v3.1 **atualiza apenas
+valores de superfície** (off-white: `--background #F5F0E8`, `--card/--popover/--sidebar
+#FDFBF7`, `--secondary/--muted #EBE4D8`, `--border/--input #D8DEDE`) e **consolida
+regras visuais**. Nenhum token foi renomeado/removido.
+
+**O que entrou:**
+- Sombras sutis `--shadow-1` (cards) / `--shadow-2` (modais), registradas no `@theme`.
+- Tipografia: **Inter** em toda a UI (pesos 400–800 carregados); **Archivo 800** só no
+  wordmark da marca (`--font-archivo` / utilitário `font-archivo`); JetBrains Mono
+  descontinuado — dados técnicos usam `tabular-nums`.
+- **Manutenção sempre amarela** (`--itc-atencao`) em todas as telas/badges/faixas.
+- Scanner: pills (pendentes/lidos/manut.) + faixa de manutenção com "Ver"; cores do
+  overlay nativo via constantes espelhando os tokens (ver m-scanner note no código).
+- Resumo componentizado (`ConferenceSummary`) reutilizado por técnico, modal do
+  histórico e admin ("Ver").
+- Dashboard/Relatórios: tabela com Data(+horário), Contagem, Status em pills
+  COMPLETO/INCOMPLETO, Localidade (Abrir mapa → Google Maps) e Resumo (Ver).
+- Login responsivo único: mobile (técnico) + desktop card (admin).
+
+**Consequências:**
+- Regra inviolável: nunca hex direto (usar tokens); nunca `text-[--itc-x]` (v4);
+  manutenção sempre amarela; Archivo só na marca.
+- **Pendência nativa:** as mudanças do overlay nativo do scanner (`NativeQRScanner`)
+  só aparecem no aparelho após **rebuild do APK** (Capacitor 7, JDK 21). O restante é web.
+- Exceção documentada: `bg-black` no container de vídeo do `QRScanner` (viewport da
+  câmera) — intencional; `bg-foreground` ficaria branco no dark.

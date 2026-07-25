@@ -106,7 +106,7 @@ function ProjectFormDialog({
                         value={field.value}
                         onChange={(e) => field.onChange(e.target.value)}
                         placeholder="#008F95"
-                        className="font-mono"
+                        className="tabular-nums"
                         maxLength={7}
                       />
                     </div>

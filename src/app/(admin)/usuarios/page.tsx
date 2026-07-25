@@ -67,10 +67,12 @@ const roleIcons: Record<User["role"], typeof Shield> = {
   MASTER: ShieldAlert,
 };
 
-const roleVariants: Record<User["role"], "secondary" | "default" | "destructive"> = {
-  USER: "secondary",
-  ADMIN: "default",
-  MASTER: "destructive",
+// Role badges as tinted token pills (Design System v3.1): técnico ciano,
+// admin azul-info, master vermelho.
+const roleBadgeClass: Record<User["role"], string> = {
+  USER: "bg-itc-ciano-7/10 text-itc-ciano-7 border-itc-ciano-7/30 hover:bg-itc-ciano-7/10",
+  ADMIN: "bg-itc-info/10 text-itc-info border-itc-info/30 hover:bg-itc-info/10",
+  MASTER: "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/10",
 };
 
 function CreateUserDialog({
@@ -448,7 +450,7 @@ export default function UsuariosPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant={roleVariants[user.role]} className="text-xs gap-1">
+                    <Badge className={`text-xs gap-1 ${roleBadgeClass[user.role]}`}>
                       <RoleIcon className="h-3 w-3" />
                       {roleLabels[user.role]}
                     </Badge>

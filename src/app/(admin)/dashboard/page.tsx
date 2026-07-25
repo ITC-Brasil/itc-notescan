@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ClipboardCheck,
   AlertTriangle,
@@ -9,13 +9,17 @@ import {
   CheckCircle2,
   XCircle,
   Laptop,
+  MapPin,
+  Eye,
 } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SkeletonCard, SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/DataTable";
+import { ConferenceSummary } from "@/components/ConferenceSummary";
 import {
   Dialog,
   DialogContent,
@@ -25,74 +29,144 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 
+interface ConferenceItem {
+  status: string;
+  notebook: { hostname: string };
+}
+
 interface ConferenceRow {
   id: string;
   status: "CONCLUIDO_OK" | "CONCLUIDO_FALTANTES";
   dataInicio: string;
+  dataFim: string;
+  localizacao: string | null;
+  mousesQtd: number | null;
+  carregadoresQtd: number | null;
+  fonesQtd: number | null;
   user: { nome: string };
-  um: { nome: string; project: { nome: string; cor: string } };
-  _count: { items: number };
+  um: {
+    nome: string;
+    mouses: boolean;
+    carregadores: boolean;
+    fones: boolean;
+    project: { nome: string; cor: string };
+  };
+  items: ConferenceItem[];
 }
 
-const columns: ColumnDef<ConferenceRow>[] = [
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) =>
-      row.original.status === "CONCLUIDO_OK" ? (
-        <div className="flex items-center gap-1.5 text-itc-sucesso">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span className="text-xs font-medium">OK</span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 text-itc-erro">
-          <XCircle className="h-4 w-4 shrink-0" />
-          <span className="text-xs font-medium">Faltantes</span>
+function countByStatus(items: ConferenceItem[]) {
+  let lidos = 0;
+  let faltantes = 0;
+  let manutencao = 0;
+  for (const it of items) {
+    if (it.status === "ESCANEADO") lidos++;
+    else if (it.status === "FALTANTE") faltantes++;
+    else if (it.status === "MANUTENCAO") manutencao++;
+  }
+  return { lidos, faltantes, manutencao, ativos: lidos + faltantes };
+}
+
+const timeFmt = { hour: "2-digit", minute: "2-digit" } as const;
+
+function conferenceColumns(onVer: (c: ConferenceRow) => void): ColumnDef<ConferenceRow>[] {
+  return [
+    {
+      id: "data",
+      header: "Data",
+      cell: ({ row }) => {
+        const ini = new Date(row.original.dataInicio);
+        const fim = new Date(row.original.dataFim);
+        return (
+          <div>
+            <p className="text-sm font-semibold text-foreground tabular-nums">
+              {ini.toLocaleDateString("pt-BR")}
+            </p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              {ini.toLocaleTimeString("pt-BR", timeFmt)} às {fim.toLocaleTimeString("pt-BR", timeFmt)}
+            </p>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "user.nome",
+      header: "Técnico",
+      cell: ({ row }) => <span className="text-sm">{row.original.user.nome}</span>,
+    },
+    {
+      id: "projeto",
+      header: "Projeto / UM",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2 w-2 rounded-full shrink-0"
+            style={{ backgroundColor: row.original.um.project.cor }}
+          />
+          <span className="text-sm text-muted-foreground">{row.original.um.project.nome}</span>
+          <span className="text-sm">/ {row.original.um.nome}</span>
         </div>
       ),
-  },
-  {
-    accessorKey: "user.nome",
-    header: "Técnico",
-    cell: ({ row }) => (
-      <span className="text-sm">{row.original.user.nome}</span>
-    ),
-  },
-  {
-    id: "projeto",
-    header: "Projeto / UM",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <span
-          className="h-2 w-2 rounded-full shrink-0"
-          style={{ backgroundColor: row.original.um.project.cor }}
-        />
-        <span className="text-sm text-muted-foreground">
-          {row.original.um.project.nome}
-        </span>
-        <span className="text-sm">/ {row.original.um.nome}</span>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "_count.items",
-    header: "Itens",
-    cell: ({ row }) => (
-      <Badge variant="secondary">{row.original._count.items}</Badge>
-    ),
-  },
-  {
-    accessorKey: "dataInicio",
-    header: "Data",
-    cell: ({ row }) =>
-      new Date(row.original.dataInicio).toLocaleString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-  },
-];
+    },
+    {
+      id: "contagem",
+      header: "Contagem",
+      cell: ({ row }) => {
+        const { lidos, ativos } = countByStatus(row.original.items);
+        return (
+          <span className="text-sm tabular-nums">
+            <span className="font-semibold text-foreground">{lidos}</span>
+            <span className="text-muted-foreground">/{ativos}</span>
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) =>
+        row.original.status === "CONCLUIDO_OK" ? (
+          <Badge className="bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30 hover:bg-itc-sucesso/15">
+            <CheckCircle2 className="h-3 w-3" />
+            COMPLETO
+          </Badge>
+        ) : (
+          <Badge className="bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/10">
+            <XCircle className="h-3 w-3" />
+            INCOMPLETO
+          </Badge>
+        ),
+    },
+    {
+      id: "localidade",
+      header: "Localidade",
+      cell: ({ row }) =>
+        row.original.localizacao ? (
+          <Button asChild variant="outline" size="sm">
+            <a
+              href={`https://www.google.com/maps?q=${encodeURIComponent(row.original.localizacao)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              Abrir mapa
+            </a>
+          </Button>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: "resumo",
+      header: "Resumo",
+      cell: ({ row }) => (
+        <Button variant="outline" size="sm" onClick={() => onVer(row.original)}>
+          <Eye className="h-3.5 w-3.5" />
+          Ver
+        </Button>
+      ),
+    },
+  ];
+}
 
 interface StatCardProps {
   title: string;
@@ -134,7 +208,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", onClick }: St
       <button
         type="button"
         onClick={onClick}
-        className="w-full h-full rounded-lg border border-border bg-card p-4 space-y-3 text-left cursor-pointer hover:bg-muted/30 transition-colors"
+        className="w-full h-full rounded-lg border border-border bg-card shadow-1 p-4 space-y-3 text-left cursor-pointer hover:bg-muted/30 transition-colors"
       >
         {content}
       </button>
@@ -142,7 +216,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", onClick }: St
   }
 
   return (
-    <div className="h-full rounded-lg border border-border bg-card p-4 space-y-3">
+    <div className="h-full rounded-lg border border-border bg-card shadow-1 p-4 space-y-3">
       {content}
     </div>
   );
@@ -151,6 +225,9 @@ function StatCard({ title, value, icon: Icon, variant = "default", onClick }: St
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [selected, setSelected] = useState<ConferenceRow | null>(null);
+  const columns = useMemo(() => conferenceColumns(setSelected), []);
+  const selectedCounts = selected ? countByStatus(selected.items) : null;
 
   return (
     <div className="space-y-6 page-transition">
@@ -223,7 +300,7 @@ export default function DashboardPage() {
             ) : (
               <DataTable
                 columns={columns}
-                data={data!.latestConferences as ConferenceRow[]}
+                data={data!.latestConferences as unknown as ConferenceRow[]}
                 pageSize={10}
               />
             )}
@@ -255,7 +332,7 @@ export default function DashboardPage() {
                     style={{ backgroundColor: nb.um.project.cor }}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-mono font-medium text-foreground">{nb.hostname}</p>
+                    <p className="text-sm tabular-nums font-medium text-foreground">{nb.hostname}</p>
                     <p className="text-xs text-muted-foreground">
                       {nb.um.project.nome} / {nb.um.nome}
                       {nb.serial && ` · ${nb.serial}`}
@@ -267,6 +344,46 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Resumo — botão "Ver" da tabela */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Resumo</DialogTitle>
+            {selected && (
+              <p className="text-xs text-muted-foreground">
+                {selected.um.nome} · {new Date(selected.dataInicio).toLocaleDateString("pt-BR")} ·{" "}
+                {new Date(selected.dataInicio).toLocaleTimeString("pt-BR", timeFmt)} às{" "}
+                {new Date(selected.dataFim).toLocaleTimeString("pt-BR", timeFmt)}
+              </p>
+            )}
+          </DialogHeader>
+          {selected && selectedCounts && (
+            <ConferenceSummary
+              tecnico={selected.user.nome}
+              localizacao={selected.localizacao}
+              escaneados={selectedCounts.lidos}
+              faltantes={selectedCounts.faltantes}
+              manutencao={selectedCounts.manutencao}
+              peripherals={
+                selected.um.mouses || selected.um.carregadores || selected.um.fones
+                  ? {
+                      ...(selected.um.mouses && { mouses: selected.mousesQtd }),
+                      ...(selected.um.carregadores && { carregadores: selected.carregadoresQtd }),
+                      ...(selected.um.fones && { fones: selected.fonesQtd }),
+                    }
+                  : undefined
+              }
+              faltantesList={selected.items
+                .filter((i) => i.status === "FALTANTE")
+                .map((it, idx) => ({ id: String(idx), hostname: it.notebook.hostname }))}
+              manutencaoList={selected.items
+                .filter((i) => i.status === "MANUTENCAO")
+                .map((it, idx) => ({ id: String(idx), hostname: it.notebook.hostname }))}
+            />
           )}
         </DialogContent>
       </Dialog>

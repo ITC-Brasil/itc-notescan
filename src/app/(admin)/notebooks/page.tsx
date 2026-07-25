@@ -429,7 +429,7 @@ function BatchDialog({
               />
             </div>
             {preview && (
-              <p className="text-xs text-muted-foreground font-mono bg-muted rounded px-2 py-1.5">
+              <p className="text-xs text-muted-foreground tabular-nums bg-muted rounded px-2 py-1.5">
                 Prévia: {preview} ({end - start + 1} notebooks)
               </p>
             )}
@@ -578,7 +578,7 @@ function ImportDialog({
                     i < Math.min(4, preview.length - 1) && "border-b border-border",
                   )}
                 >
-                  <span className="font-mono font-medium">{row.hostname}</span>
+                  <span className="tabular-nums font-medium">{row.hostname}</span>
                   {row.serial && <span className="text-muted-foreground text-xs">{row.serial}</span>}
                   {row.patrimonio && (
                     <span className="text-muted-foreground text-xs">{row.patrimonio}</span>
@@ -921,7 +921,7 @@ export default function NotebooksPage() {
                                 {ug.items.length}
                               </Badge>
                               {ug.items.some((n) => n.status === "MANUTENCAO") && (
-                                <Badge className="text-xs bg-[#CC7A00] text-white border-transparent hover:bg-[#CC7A00]/90">
+                                <Badge className="text-xs bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15">
                                   {ug.items.filter((n) => n.status === "MANUTENCAO").length} manutenção
                                 </Badge>
                               )}
@@ -952,7 +952,7 @@ export default function NotebooksPage() {
                                 )}
                               >
                                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                                  <span className="text-sm font-mono font-medium text-foreground truncate max-w-[160px]">
+                                  <span className="text-sm tabular-nums font-medium text-foreground truncate max-w-[160px]">
                                     {nb.hostname}
                                   </span>
                                   {nb.serial && (
@@ -967,10 +967,10 @@ export default function NotebooksPage() {
                                   )}
                                   <Badge
                                     className={cn(
-                                      "text-xs shrink-0 border-transparent",
+                                      "text-xs shrink-0",
                                       nb.status === "ATIVO"
-                                        ? "bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]/90"
-                                        : "bg-[#CC7A00] text-white hover:bg-[#CC7A00]/90",
+                                        ? "bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30 hover:bg-itc-sucesso/15"
+                                        : "bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15",
                                     )}
                                   >
                                     {nb.status === "ATIVO" ? "Ativo" : "Manutenção"}

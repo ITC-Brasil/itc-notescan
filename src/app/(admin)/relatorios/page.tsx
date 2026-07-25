@@ -9,6 +9,9 @@ import {
   ChevronsUpDown,
   Check,
   CalendarIcon,
+  CheckCircle2,
+  XCircle,
+  MapPin,
 } from "lucide-react";
 import { useConferences, type ConferencesFilters } from "@/hooks/useConferences";
 import { useUsers } from "@/hooks/useUsers";
@@ -79,23 +82,37 @@ const columns: ColumnDef<ConferenceRecord>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => (
-      <Badge
-        variant={row.original.status === "CONCLUIDO_OK" ? "secondary" : "destructive"}
-        className="text-xs"
-      >
-        {row.original.status === "CONCLUIDO_OK" ? "Concluído" : "Faltantes"}
-      </Badge>
-    ),
+    cell: ({ row }) =>
+      row.original.status === "CONCLUIDO_OK" ? (
+        <Badge className="bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30 hover:bg-itc-sucesso/15">
+          <CheckCircle2 className="h-3 w-3" />
+          COMPLETO
+        </Badge>
+      ) : (
+        <Badge className="bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/10">
+          <XCircle className="h-3 w-3" />
+          INCOMPLETO
+        </Badge>
+      ),
   },
   {
-    accessorKey: "localizacao",
-    header: "Localização",
-    cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">
-        {row.original.localizacao ?? "—"}
-      </span>
-    ),
+    id: "localidade",
+    header: "Localidade",
+    cell: ({ row }) =>
+      row.original.localizacao ? (
+        <Button asChild variant="outline" size="sm">
+          <a
+            href={`https://www.google.com/maps?q=${encodeURIComponent(row.original.localizacao)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            Abrir mapa
+          </a>
+        </Button>
+      ) : (
+        <span className="text-sm text-muted-foreground">—</span>
+      ),
   },
 ];
 
