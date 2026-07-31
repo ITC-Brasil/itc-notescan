@@ -157,7 +157,7 @@ inválido ignorado silenciosamente.
 ## 3. Tipografia
 
 - **Inter** — toda a interface (400/500/600/700/800). Google Fonts.
-- **Archivo** — reservada exclusivamente à marca/logo. Não usar na UI.
+- **Archivo** — reservada exclusivamente à marca/logo (600 "ITC" · 700 header/sidebar · 800 "NoteScan"). Não usar na UI comum.
 - **Sem fonte monoespaçada.** Dados técnicos (hostnames, seriais, IDs, timestamps) usam
   **Inter com `tabular-nums`** (classe `tabular-nums`).
 
@@ -179,6 +179,49 @@ inválido ignorado silenciosamente.
 | Contagem / número grande | Inter | 800 | 32–48px |
 
 **Regras:** números dinâmicos e hostnames sempre `tabular-nums`; headings grandes `tracking-tight`; rótulos uppercase pequenos `tracking-wider`.
+
+---
+
+## Marca — identidade "Mira"
+
+Fonte da verdade: **`brand/`** (read-only, nunca editada). Os usos na aplicação são
+cópias ou reconstruções — nunca editar as origens.
+
+**Símbolo.** 4 cantos de mira de QR Code + miolo arredondado, em caixa `64×64` (módulo 8u).
+Cantos em ciano; miolo em ciano profundo (claro) / creme (escuro). Duas variantes:
+
+| Variante | Miolo | Uso |
+|---|---|---|
+| `symbol` | 18u, `rx 3` | tamanho normal (>24px) |
+| `symbol-small` | 16u, `rx 2`, haste 10u | **sempre que renderizar a ≤24px** |
+
+**Componente.** `NoteScanLogo` (`src/components/brand/NoteScanLogo.tsx`) — puro, sem
+`"use client"`, sem deps. Props: `variant` (`"symbol"`\|`"symbol-small"`, default `symbol`),
+`size` (px, default 32), `className`, `title` (quando presente → `role="img"` + `<title>`;
+senão `aria-hidden`). Cores via classe Tailwind nos grupos
+(`fill-itc-ciano-7 dark:fill-itc-ciano-6` nos cantos; miolo `fill-itc-ciano-12 dark:fill-[#F5F0E8]`),
+nunca via atributo `fill`, para o dark mode funcionar sem duplicar componente.
+
+**Lockup.** O nome "NoteScan" **nunca** é `<text>` dentro de SVG (o `next/font` gera família
+com hash e o SVG cairia no fallback Arial). O lockup é **reconstruído em HTML**: símbolo
+(componente) + texto real em Archivo. Medidas em `em`, com o `font-size` do container como
+base (`64px`; `56px` abaixo de 400px de viewport):
+
+| Elemento | Valor |
+|---|---|
+| símbolo | `1em` |
+| gap símbolo ↔ texto | `0.25em` |
+| "ITC" | Archivo 600, uppercase, `0.1875em`, `tracking 0.42em`, `text-itc-ciano-7` |
+| "NoteScan" | Archivo 800, `0.625em`, `tracking -0.025em`, `text-foreground` |
+| gap entre linhas | `0.125em` |
+
+**Exceção de hex literal** (o DS proíbe hex direto — §13). Autorizada **apenas** em: o
+componente de marca (`NoteScanLogo`), o `capacitor-shell/offline.html` (HTML estático fora
+do Tailwind) e os recursos XML do Android (`colors.xml`, `ic_launcher_background`).
+
+**Splash / ícones nativos.** Splash adaptativo ao tema do sistema por qualificador `-night`,
+com paridade de tom **`#F5F0E8` (claro) / `#1B1B1B` (escuro)** — igual ao `themeColor` do
+`viewport` web. Launcher adaptativo com fundo `#003C3F`.
 
 ---
 
@@ -413,6 +456,8 @@ charts, sidebar-*, radius, todo o `@theme inline` existente, scanner nativo, key
 ❌ <button> sem type explícito    → type="button" ou type="submit"
 ❌ text-[--itc-sucesso]           → quebra no v4; usar text-itc-sucesso
 ❌ colar bloco CSS novo por cima do globals.css → editar valores pontuais (seção 11)
+❌ <text> com Archivo dentro de SVG → nome do app sempre como texto HTML
+❌ converter o wordmark em curvas → texto real em Archivo, sempre
 ```
 
 ---
@@ -435,3 +480,9 @@ charts, sidebar-*, radius, todo o `@theme inline` existente, scanner nativo, key
 - Sombras sutis (`shadow-1`/`shadow-2`) adotadas; bordas mantidas.
 - Regra reforçada: manutenção sempre amarela.
 - Vocabulário de tokens mantido — escalas ITC e `@theme inline` preservados.
+
+### Marca "Mira" (2026-07-30)
+- Símbolo Mira (4 cantos de mira + miolo) como componente `NoteScanLogo`; lockup em HTML (Archivo real, nunca `<text>` em SVG).
+- Login unificado (uma estrutura só web/mobile) com lockup centralizado + card.
+- Favicons/app icons/PWA manifest, launcher adaptativo (`#003C3F`) e splash adaptativo por `-night` (`#F5F0E8`/`#1B1B1B`).
+- Exceção de hex literal formalizada para marca, `offline.html` e XML do Android.

@@ -215,7 +215,7 @@ completa 5→7 (`cap migrate` nos dois saltos).
 
 **Consequências:**
 - Build do APK exige **JDK 21** (JBR do Android Studio); Gradle 8.11.1, AGP 8.7.2.
-- `android/build.gradle`, `variables.gradle` e o wrapper são gitignored — mudanças de Gradle valem só localmente.
+- ~~`android/build.gradle`, `variables.gradle` e o wrapper são gitignored — mudanças de Gradle valem só localmente.~~ **Corrigido (2026-07-30):** não vale mais — o projeto nativo `android/` inteiro passou a ser versionado (ver [m7-09](#m7-09--splash-adaptativa-via-capacitorsplash-screen-e-projeto-android-versionado)).
 - O override `bridge_layout_main.xml` deixou de ser necessário (o plugin cria sua própria `PreviewView`); mantido como cópia do layout stock do Capacitor 7.
 - Torch (flash) disponível via `isTorchAvailable()`/`toggleTorch()`.
 - Supera [m7-01](#m7-01) e a parte de mecanismo de [m7-04](#m7-04).
@@ -411,6 +411,42 @@ function` → eslint inteiro morre); a linha `2.x` também é sinalizada pelo ra
 **Pendência:** smoke-test de auth ao vivo (login + proteção de rotas via `proxy.ts`)
 ainda **a fazer antes da distribuição** — não foi possível no ambiente de correção
 (exige DB + servidor). Nenhum código de auth foi tocado (só bumps de patch).
+
+---
+
+## m7-09 — Splash adaptativa via @capacitor/splash-screen e projeto android/ versionado
+
+**Contexto:** a identidade "Mira" precisava de splash nativa com a marca, adaptativa ao
+tema do sistema (claro/escuro), sem regredir a persistência de sessão do WebView
+([m7-08](#m7-08--persistência-de-sessão-no-webview-cookie-flush-e-sem-revalidação-no-foco)).
+
+**Decisão:** usar o plugin oficial `@capacitor/splash-screen@7` (alinhado ao Capacitor 7),
+com o visual vindo **do tema**, não do config:
+- `capacitor.config.ts` declara só `SplashScreen: { launchShowDuration: 500, launchAutoHide: true }`
+  — **sem** `androidSplashResourceName`/`backgroundColor` (caminho legado).
+- `AppTheme.NoActionBarLaunch` (parent `Theme.SplashScreen`) usa `windowSplashScreenBackground`
+  + `windowSplashScreenAnimatedIcon` + `postSplashScreenTheme`, e cores adaptativas por
+  qualificador **`-night`** (`notescan_splash_bg` = `#F5F0E8` claro / `#1B1B1B` escuro), em
+  paridade com o `themeColor` do `viewport` web.
+- Ícone `splash_icon` (288·432·576·864·1152) em `drawable-*dpi` (claro) e `drawable-night-*dpi`
+  (branco). Sem `windowSplashScreenIconBackgroundColor` nem branding image.
+
+**MainActivity não é tocado:** desde o Capacitor 4 o plugin chama `installSplashScreen()`
+internamente. A `MainActivity` contém a lógica de `CookieManager` da m7-08 — mexer nela
+arriscaria a sessão. O plugin coexiste sem alteração de código nativo.
+
+**Correção de premissa (revoga parte da [m7-05](#m7-05--migração-para-capacitor-7--capacitor-mlkitbarcode-scanning-leitura-em-lote)):**
+o projeto nativo `android/` inteiro passou a ser **versionado**. A observação da m7-05 de
+que Gradle/wrapper eram gitignored (mudanças só locais) **não vale mais** — daí o `cap sync`
+alterar `capacitor.build.gradle`/`capacitor.settings.gradle` aparecer no diff.
+
+**Nota:** o `cap sync` também propôs bumpar Java 17→21 no `capacitor.build.gradle` (gerado);
+mantido em 17 neste commit (fora do escopo da marca). O bump combina com o requisito de
+**JDK 21** da m7-05 e deve ser tratado deliberadamente num commit próprio.
+
+**Verificação:** `npx cap sync android` OK (5 plugins). Splash real exige **rebuild do APK**
+no Android Studio (JDK 21). Nota de teste: em Android 12/12L a splash não aparece por
+launchers de terceiros / app info / Android Studio — testar em Android 13+ ou launcher padrão.
 
 ---
 
