@@ -31,6 +31,9 @@ const eslintConfig = defineConfig([
     "src/generated/**",
     "node_modules/**",
     "__tests__/e2e/setup/**",
+    // Runtime de terceiro (Claude Design) versionado só para os .dc.html
+    // renderizarem — não é código do projeto, não deve ser analisado.
+    "design-reference/**",
   ]),
   {
     rules: {
