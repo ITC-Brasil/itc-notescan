@@ -215,7 +215,7 @@ completa 5→7 (`cap migrate` nos dois saltos).
 
 **Consequências:**
 - Build do APK exige **JDK 21** (JBR do Android Studio); Gradle 8.11.1, AGP 8.7.2.
-- `android/build.gradle`, `variables.gradle` e o wrapper são gitignored — mudanças de Gradle valem só localmente.
+- ~~`android/build.gradle`, `variables.gradle` e o wrapper são gitignored — mudanças de Gradle valem só localmente.~~ **Corrigido (2026-07-30):** não vale mais — o projeto nativo `android/` inteiro passou a ser versionado (ver [m7-09](#m7-09--splash-adaptativa-via-capacitorsplash-screen-e-projeto-android-versionado)).
 - O override `bridge_layout_main.xml` deixou de ser necessário (o plugin cria sua própria `PreviewView`); mantido como cópia do layout stock do Capacitor 7.
 - Torch (flash) disponível via `isTorchAvailable()`/`toggleTorch()`.
 - Supera [m7-01](#m7-01) e a parte de mecanismo de [m7-04](#m7-04).
@@ -335,6 +335,7 @@ incontrolada, e o `--force` propunha absurdos (baixar o Next para 9.3.3).
 transitivas, sem tocar nos pais:
 - `fast-uri` → `3.1.4` (high — host confusion; via `@sentry/*` → webpack → ajv). Compatível com ajv `^3`.
 - `sharp` → `^0.35.0` (high — CVEs libvips; dep opcional do Next para otimização de imagem). 0.35.3, minor sobre o `^0.34.5` do Next.
+  - **Atualização (2026-07-30):** o `sharp` virou **`devDependency`** direta (`^0.35.0`) — a rodada da marca precisa dele para `scripts/generate-icons.mjs`, e ele não era resolvível (nada o instalava). Com o `sharp` como dep direta, o override não pode ser uma versão literal (npm `EOVERRIDE`); passou a **`"sharp": "$sharp"`**, que resolve todo `sharp` do tree para a dep direta — mesma versão segura, uma só no tree. O gate `--omit=dev --audit-level=high` (sec-03) segue **0**.
 - `postcss` → `^8.5.10` (moderate — XSS no stringify; bundled do Next). 8.5.21, patch seguro.
 - `@hono/node-server` → `^2.0.5` (moderate — path traversal; via `@prisma/dev` e `shadcn`→mcp-sdk, ferramentas dev, sem exposição em runtime).
 
@@ -411,6 +412,73 @@ function` → eslint inteiro morre); a linha `2.x` também é sinalizada pelo ra
 **Pendência:** smoke-test de auth ao vivo (login + proteção de rotas via `proxy.ts`)
 ainda **a fazer antes da distribuição** — não foi possível no ambiente de correção
 (exige DB + servidor). Nenhum código de auth foi tocado (só bumps de patch).
+
+---
+
+## m7-09 — Splash adaptativa via @capacitor/splash-screen e projeto android/ versionado
+
+**Contexto:** a identidade "Mira" precisava de splash nativa com a marca, adaptativa ao
+tema do sistema (claro/escuro), sem regredir a persistência de sessão do WebView
+([m7-08](#m7-08--persistência-de-sessão-no-webview-cookie-flush-e-sem-revalidação-no-foco)).
+
+**Decisão:** usar o plugin oficial `@capacitor/splash-screen@7` (alinhado ao Capacitor 7),
+com o visual vindo **do tema**, não do config:
+- `capacitor.config.ts` declara só `SplashScreen: { launchShowDuration: 500, launchAutoHide: true }`
+  — **sem** `androidSplashResourceName`/`backgroundColor` (caminho legado).
+- `AppTheme.NoActionBarLaunch` (parent `Theme.SplashScreen`) usa `windowSplashScreenBackground`
+  + `windowSplashScreenAnimatedIcon` + `postSplashScreenTheme`, e cores adaptativas por
+  qualificador **`-night`** (`notescan_splash_bg` = `#F5F0E8` claro / `#1B1B1B` escuro), em
+  paridade com o `themeColor` do `viewport` web.
+- Ícone `splash_icon` (288·432·576·864·1152) em `drawable-*dpi` (claro) e `drawable-night-*dpi`
+  (branco). Sem `windowSplashScreenIconBackgroundColor` nem branding image.
+
+**MainActivity não é tocado:** desde o Capacitor 4 o plugin chama `installSplashScreen()`
+internamente. A `MainActivity` contém a lógica de `CookieManager` da m7-08 — mexer nela
+arriscaria a sessão. O plugin coexiste sem alteração de código nativo.
+
+**Correção de premissa (revoga parte da [m7-05](#m7-05--migração-para-capacitor-7--capacitor-mlkitbarcode-scanning-leitura-em-lote)):**
+o projeto nativo `android/` inteiro passou a ser **versionado**. A observação da m7-05 de
+que Gradle/wrapper eram gitignored (mudanças só locais) **não vale mais** — daí o `cap sync`
+alterar `capacitor.build.gradle`/`capacitor.settings.gradle` aparecer no diff.
+
+**Nota:** o `cap sync` também propôs bumpar Java 17→21 no `capacitor.build.gradle` (gerado);
+mantido em 17 neste commit (fora do escopo da marca). O bump combina com o requisito de
+**JDK 21** da m7-05 e deve ser tratado deliberadamente num commit próprio.
+
+**Verificação:** `npx cap sync android` OK (5 plugins). Splash real exige **rebuild do APK**
+no Android Studio (JDK 21). Nota de teste: em Android 12/12L a splash não aparece por
+launchers de terceiros / app info / Android Studio — testar em Android 13+ ou launcher padrão.
+
+> **Correção da "Nota" acima (2026-07-30):** aquela nota dizia manter Java em 17. Isso foi
+> revertido — o valor efetivo é **21**. Motivo detalhado em [m7-10](#m7-10--versão-de-java-do-android-é-ditada-pelo-arquivo-gerado-21).
+
+---
+
+## m7-10 — Versão de Java do Android é ditada pelo arquivo gerado (21)
+
+**Contexto:** o `source/targetCompatibility` do módulo Android oscilou entre 17 e 21 durante a
+rodada da marca, sujando o working tree. Investigação fechou a causa.
+
+**Fatos:**
+- O `android/app/capacitor.build.gradle` é **gerado** por `@capacitor/cli/dist/android/update.js`,
+  que embute `JavaVersion.VERSION_21` **hardcoded** — **não** há variável em `variables.gradle`
+  controlando isso (o arquivo até avisa: *"DO NOT EDIT — GENERATED EACH TIME capacitor update IS RUN"*).
+- Logo, o **valor committed precisa ser 21**. Se for 17, **todo `npx cap sync android` regenera
+  para 21** e o `git status` acusa o arquivo modificado — briga permanente com arquivo gerado.
+- Pinar `compileOptions` em `android/app/build.gradle` é **inócuo**: o `apply from:
+  'capacitor.build.gradle'` vem **depois** do bloco `android {}` (linha ~51 vs ~27), e como as
+  propriedades são *last-wins*, o gerado sempre vence. Por isso o bloco foi **removido** de lá
+  (dava falsa impressão de controlar a versão).
+- O `17` que apareceu committed em `02f7f1c` era **artefato de um CLI antigo**, adicionado ao
+  versionar o `android/` **sem rodar `cap sync`**; o primeiro sync sob o CLI 7.6.8 o corrigiu para 21.
+
+**Decisão:** manter **21** committed (o que o gerador produz) e **não** pinar Java em `app/build.gradle`.
+Nota funcional: o **JDK 21** exigido pela [m7-05](#m7-05--migração-para-capacitor-7--capacitor-mlkitbarcode-scanning-leitura-em-lote)
+é o que **roda o Gradle** — independente do `sourceCompatibility`. Não há necessidade funcional de
+21 sobre 17; a escolha por 21 é só para **casar com o gerado** e manter o working tree estável.
+
+**Verificação (2026-07-30):** com 21 committed, `npx cap sync android` deixa o `git status` **limpo**
+(zero diff nos `.gradle`).
 
 ---
 

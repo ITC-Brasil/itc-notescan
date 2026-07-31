@@ -19,11 +19,12 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
-// Archivo — reservada à marca/logo (Design System v3.1). Usada só no wordmark.
+// Archivo — reservada à marca/logo (Design System v3.1). 600 "ITC", 700 sidebar/
+// header, 800 "NoteScan" do lockup.
 const archivo = Archivo({
   variable: "--font-archivo",
   subsets: ["latin"],
-  weight: ["800"],
+  weight: ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -34,8 +35,14 @@ export const metadata: Metadata = {
 
 // viewport-fit=cover exposes the Android 15 edge-to-edge status/nav bar heights
 // as env(safe-area-inset-*), which the layouts pad against.
+// themeColor adaptativo: par claro/escuro (o manifest só aceita um valor; é este
+// aqui que o navegador usa em runtime). Casa com o splash nativo (#F5F0E8 / #1B1B1B).
 export const viewport: Viewport = {
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F0E8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1B1B1B" },
+  ],
 };
 
 export default function RootLayout({

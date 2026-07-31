@@ -24,11 +24,9 @@
       .card { max-width: 20rem; }
       .icon {
         width: 64px; height: 64px; margin: 0 auto 20px;
-        border-radius: 16px;
-        background: rgba(192, 57, 43, 0.12);
         display: flex; align-items: center; justify-content: center;
       }
-      .icon svg { width: 32px; height: 32px; stroke: #c0392b; }
+      .icon svg { width: 64px; height: 64px; }
       h1 { font-size: 1.15rem; font-weight: 600; color: #fff; margin-bottom: 8px; }
       p { font-size: 0.9rem; line-height: 1.5; color: #a4a4a4; margin-bottom: 24px; }
       button {
@@ -48,15 +46,21 @@
   </head>
   <body>
     <div class="card">
+      <!-- Símbolo Mira (variante dark-bg — hex literais, exceção autorizada do DS
+           para HTML estático fora do Tailwind). -->
       <div class="icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1 1l22 22" />
-          <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
-          <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
-          <path d="M10.71 5.05A16 16 0 0 1 22.58 9" />
-          <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
-          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-          <line x1="12" y1="20" x2="12.01" y2="20" />
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <g fill="#30A5AB">
+            <rect x="4" y="4" width="22" height="8"></rect>
+            <rect x="4" y="4" width="8" height="22"></rect>
+            <rect x="38" y="4" width="22" height="8"></rect>
+            <rect x="52" y="4" width="8" height="22"></rect>
+            <rect x="4" y="52" width="22" height="8"></rect>
+            <rect x="4" y="38" width="8" height="22"></rect>
+            <rect x="38" y="52" width="22" height="8"></rect>
+            <rect x="52" y="38" width="8" height="22"></rect>
+          </g>
+          <rect x="23" y="23" width="18" height="18" rx="3" fill="#F5F0E8"></rect>
         </svg>
       </div>
       <h1>Sem conexão</h1>

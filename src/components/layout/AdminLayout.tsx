@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { NoteScanLogo } from "@/components/brand/NoteScanLogo";
 import { KeyRound } from "lucide-react";
 import { ChangePasswordModal } from "@/components/ui/ChangePasswordModal";
 
@@ -89,10 +90,8 @@ function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-3 py-2">
-          <div className="h-7 w-7 rounded-md bg-itc-ciano-7 flex items-center justify-center shrink-0">
-            <Laptop className="h-4 w-4 text-white" />
-          </div>
-          <span className="font-semibold text-foreground text-sm group-data-[collapsible=icon]:hidden">
+          <NoteScanLogo size={28} className="shrink-0" />
+          <span className="font-archivo font-bold text-foreground text-sm group-data-[collapsible=icon]:hidden">
             NoteScan
           </span>
         </div>

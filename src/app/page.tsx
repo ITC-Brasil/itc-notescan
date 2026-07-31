@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, ScanLine, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { NoteScanLogo } from "@/components/brand/NoteScanLogo";
 import { loginSchema, type LoginInput } from "@/lib/validations";
+import { APP_VERSION } from "@/lib/constants";
 
 const LABEL_CLASS = "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 const FIELD_ICON_CLASS = "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none";
@@ -50,35 +52,33 @@ export default function LoginPage() {
   };
 
   return (
-    // Single responsive login: mobile keeps the Fase 2 layout (brand row, fields
-    // on the background, no card); from `md` up it becomes a centered column with
-    // a card — same component, no duplication.
-    <div className="min-h-screen flex flex-col justify-center bg-background px-6 py-10 md:items-center">
-      <div className="w-full max-w-sm mx-auto md:max-w-101">
-        {/* Marca */}
-        <div className="flex items-center gap-3 mb-8 md:flex-col md:items-center md:text-center md:gap-3 md:mb-6">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-[15px] bg-primary flex items-center justify-center shrink-0">
-            <ScanLine className="h-6 w-6 md:h-7 md:w-7 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-xl md:text-3xl font-bold md:font-extrabold md:font-archivo text-foreground leading-tight">
-              ITC NoteScan
-            </h1>
-            <p className="text-sm text-muted-foreground leading-tight md:mt-1">
-              <span className="md:hidden">Conferência de ativos</span>
-              <span className="hidden md:inline">Painel administrativo · Grupo ITC Brasil</span>
-            </p>
-          </div>
+    // Login unificado: uma estrutura só em todas as larguras — lockup Mira
+    // centralizado acima de um card com o formulário. Única diferença responsiva:
+    // largura máxima / padding do card e o font-size do lockup.
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 py-10">
+      <div className="w-full max-w-sm md:max-w-md flex flex-col items-center">
+        {/* Marca — lockup horizontal reconstruído em HTML (símbolo + texto real).
+            font-size do container define a escala; medidas em em travam a proporção. */}
+        <div className="flex items-center gap-[0.25em] text-[56px] min-[400px]:text-[64px]">
+          <NoteScanLogo size={64} className="w-[1em] h-[1em] shrink-0" />
+          <span className="flex flex-col items-start leading-none gap-[0.125em]">
+            <span className="font-archivo font-semibold uppercase text-[0.1875em] tracking-[0.42em] text-itc-ciano-7">
+              ITC
+            </span>
+            <span className="font-archivo font-extrabold text-[0.625em] tracking-[-0.025em] text-foreground">
+              NoteScan
+            </span>
+          </span>
         </div>
+        <p className="text-sm text-muted-foreground mt-3 mb-8 text-center">
+          Sistema de conferência de ativos
+        </p>
 
-        {/* Form — card a partir de md */}
-        <div className="md:rounded-2xl md:border md:border-border md:bg-card md:shadow-1 md:p-6">
+        {/* Card — envolve o formulário em todas as larguras */}
+        <div className="w-full rounded-2xl border border-border bg-card shadow-1 p-6 md:p-8">
           {/* Heading */}
           <div className="mb-6">
             <h2 className="text-2xl md:text-lg font-bold text-foreground">Acesse sua conta</h2>
-            <p className="text-sm text-muted-foreground mt-1 md:hidden">
-              Entre com suas credenciais de técnico
-            </p>
           </div>
 
           <Form {...form}>
@@ -96,7 +96,7 @@ export default function LoginPage() {
                         type="email"
                         placeholder="seu@email.com"
                         autoComplete="email"
-                        className="h-12 pl-10 bg-card md:bg-background text-base"
+                        className="h-12 pl-10 bg-background text-base"
                         {...field}
                       />
                     </div>
@@ -119,7 +119,7 @@ export default function LoginPage() {
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         autoComplete="current-password"
-                        className="h-12 pl-10 pr-11 bg-card md:bg-background text-base"
+                        className="h-12 pl-10 pr-11 bg-background text-base"
                         {...field}
                       />
                       <button
@@ -161,7 +161,7 @@ export default function LoginPage() {
               onClick={() =>
                 toast.info("Solicite a redefinição de senha ao administrador.")
               }
-              className="block w-full text-center md:text-right text-sm font-semibold text-primary hover:underline"
+              className="block w-full text-center text-sm font-semibold text-primary hover:underline"
             >
               Esqueci minha senha
             </button>
@@ -170,8 +170,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          <span className="md:hidden">Grupo ITC Brasil · v1.0</span>
-          <span className="hidden md:inline">Sistema de conferência de ativos · ITC Brasil</span>
+          Grupo ITC Brasil · v{APP_VERSION}
         </p>
       </div>
     </div>

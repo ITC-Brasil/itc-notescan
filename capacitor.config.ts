@@ -32,6 +32,13 @@ const config = {
     CapacitorHttp: {
       enabled: false,
     },
+    // Splash adaptativa via tema (Android 12 SplashScreen API). O visual vem do
+    // tema (@style/AppTheme.NoActionBarLaunch + qualificador -night), não daqui —
+    // por isso nada de androidSplashResourceName/backgroundColor (caminho legado).
+    SplashScreen: {
+      launchShowDuration: 500,
+      launchAutoHide: true,
+    },
   },
 }
 
