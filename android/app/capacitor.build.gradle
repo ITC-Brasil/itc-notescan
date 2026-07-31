@@ -12,6 +12,7 @@ dependencies {
     implementation project(':capacitor-mlkit-barcode-scanning')
     implementation project(':capacitor-geolocation')
     implementation project(':capacitor-local-notifications')
+    implementation project(':capacitor-splash-screen')
     implementation project(':capgo-capacitor-native-biometric')
 
 }
