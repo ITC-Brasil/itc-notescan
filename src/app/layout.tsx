@@ -19,11 +19,12 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
-// Archivo — reservada à marca/logo (Design System v3.1). Usada só no wordmark.
+// Archivo — reservada à marca/logo (Design System v3.1). 600 "ITC", 700 sidebar/
+// header, 800 "NoteScan" do lockup.
 const archivo = Archivo({
   variable: "--font-archivo",
   subsets: ["latin"],
-  weight: ["800"],
+  weight: ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {

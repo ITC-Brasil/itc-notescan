@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Home, ScanLine, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
+import { NoteScanLogo } from "@/components/brand/NoteScanLogo";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -28,9 +29,7 @@ export function UserLayout({ children }: UserLayoutProps) {
       {/* Top header mobile — pt keeps clear of the Android status bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] border-b border-border bg-card">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center">
-            <ScanLine className="h-3.5 w-3.5 text-primary-foreground" />
-          </div>
+          <NoteScanLogo variant="symbol-small" size={24} className="shrink-0" />
           <span className="font-semibold text-sm text-foreground">ITC NoteScan</span>
         </div>
         <div className="flex items-center gap-3">
