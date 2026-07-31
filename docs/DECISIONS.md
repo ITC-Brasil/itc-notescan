@@ -449,6 +449,37 @@ mantido em 17 neste commit (fora do escopo da marca). O bump combina com o requi
 no Android Studio (JDK 21). Nota de teste: em Android 12/12L a splash não aparece por
 launchers de terceiros / app info / Android Studio — testar em Android 13+ ou launcher padrão.
 
+> **Correção da "Nota" acima (2026-07-30):** aquela nota dizia manter Java em 17. Isso foi
+> revertido — o valor efetivo é **21**. Motivo detalhado em [m7-10](#m7-10--versão-de-java-do-android-é-ditada-pelo-arquivo-gerado-21).
+
+---
+
+## m7-10 — Versão de Java do Android é ditada pelo arquivo gerado (21)
+
+**Contexto:** o `source/targetCompatibility` do módulo Android oscilou entre 17 e 21 durante a
+rodada da marca, sujando o working tree. Investigação fechou a causa.
+
+**Fatos:**
+- O `android/app/capacitor.build.gradle` é **gerado** por `@capacitor/cli/dist/android/update.js`,
+  que embute `JavaVersion.VERSION_21` **hardcoded** — **não** há variável em `variables.gradle`
+  controlando isso (o arquivo até avisa: *"DO NOT EDIT — GENERATED EACH TIME capacitor update IS RUN"*).
+- Logo, o **valor committed precisa ser 21**. Se for 17, **todo `npx cap sync android` regenera
+  para 21** e o `git status` acusa o arquivo modificado — briga permanente com arquivo gerado.
+- Pinar `compileOptions` em `android/app/build.gradle` é **inócuo**: o `apply from:
+  'capacitor.build.gradle'` vem **depois** do bloco `android {}` (linha ~51 vs ~27), e como as
+  propriedades são *last-wins*, o gerado sempre vence. Por isso o bloco foi **removido** de lá
+  (dava falsa impressão de controlar a versão).
+- O `17` que apareceu committed em `02f7f1c` era **artefato de um CLI antigo**, adicionado ao
+  versionar o `android/` **sem rodar `cap sync`**; o primeiro sync sob o CLI 7.6.8 o corrigiu para 21.
+
+**Decisão:** manter **21** committed (o que o gerador produz) e **não** pinar Java em `app/build.gradle`.
+Nota funcional: o **JDK 21** exigido pela [m7-05](#m7-05--migração-para-capacitor-7--capacitor-mlkitbarcode-scanning-leitura-em-lote)
+é o que **roda o Gradle** — independente do `sourceCompatibility`. Não há necessidade funcional de
+21 sobre 17; a escolha por 21 é só para **casar com o gerado** e manter o working tree estável.
+
+**Verificação (2026-07-30):** com 21 committed, `npx cap sync android` deixa o `git status` **limpo**
+(zero diff nos `.gradle`).
+
 ---
 
 ## ds-01 — Adoção do Design System v3.1 (Rota B: valores, não vocabulário)
