@@ -335,6 +335,7 @@ incontrolada, e o `--force` propunha absurdos (baixar o Next para 9.3.3).
 transitivas, sem tocar nos pais:
 - `fast-uri` → `3.1.4` (high — host confusion; via `@sentry/*` → webpack → ajv). Compatível com ajv `^3`.
 - `sharp` → `^0.35.0` (high — CVEs libvips; dep opcional do Next para otimização de imagem). 0.35.3, minor sobre o `^0.34.5` do Next.
+  - **Atualização (2026-07-30):** o `sharp` virou **`devDependency`** direta (`^0.35.0`) — a rodada da marca precisa dele para `scripts/generate-icons.mjs`, e ele não era resolvível (nada o instalava). Com o `sharp` como dep direta, o override não pode ser uma versão literal (npm `EOVERRIDE`); passou a **`"sharp": "$sharp"`**, que resolve todo `sharp` do tree para a dep direta — mesma versão segura, uma só no tree. O gate `--omit=dev --audit-level=high` (sec-03) segue **0**.
 - `postcss` → `^8.5.10` (moderate — XSS no stringify; bundled do Next). 8.5.21, patch seguro.
 - `@hono/node-server` → `^2.0.5` (moderate — path traversal; via `@prisma/dev` e `shadcn`→mcp-sdk, ferramentas dev, sem exposição em runtime).
 
