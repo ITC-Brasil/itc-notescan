@@ -22,6 +22,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    // Alinhado ao baseline do Capacitor 7 (mesmo valor que capacitor.build.gradle,
+    // arquivo gerado que o cap sync repõe a cada execução).
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
 }
 
 repositories {
