@@ -100,6 +100,11 @@ model ConferenceItem {
   notebookId   String
   notebook     Notebook   @relation(fields: [notebookId], references: [id])
   status       ItemStatus
+
+  // Rede de segurança contra a leitura dupla: um notebook aparece no máximo uma
+  // vez por conferência. A dedupe na rota (/api/conferences) é a primeira linha;
+  // esta constraint garante no banco mesmo para requests legadas.
+  @@unique([conferenceId, notebookId])
 }
 
 enum ItemStatus {
