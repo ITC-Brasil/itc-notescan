@@ -7,7 +7,8 @@ import { usePlatform } from "@/hooks/usePlatform";
 import { NativeQRScanner, type NativeScanUi } from "./NativeQRScanner";
 
 interface QRScannerProps {
-  onScan: (value: string) => void;
+  /** Todos os rawValue de um frame — um único callback por frame */
+  onScan: (rawValues: string[]) => void;
   active?: boolean;
   className?: string;
   nativeUi?: NativeScanUi;
@@ -44,8 +45,13 @@ export function QRScanner({ onScan, active = true, className, nativeUi }: QRScan
         root.render(
           React.createElement(Scanner, {
             onScan: (results: { rawValue: string }[]) => {
-              if (results[0]?.rawValue) {
-                onScan(results[0].rawValue);
+              // v2 do @yudiel/react-qr-scanner entrega um array por detecção —
+              // repassa o frame inteiro; a dedupe é do reducer (SCAN_BATCH).
+              const rawValues = results
+                .map((r) => r.rawValue)
+                .filter((v): v is string => !!v);
+              if (rawValues.length > 0) {
+                onScan(rawValues);
               }
             },
             onError: (err: unknown) => {

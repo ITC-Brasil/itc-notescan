@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ScanLine,
   CheckCircle2,
@@ -179,7 +179,7 @@ function ScanningPhase({
   onExit,
 }: {
   state: ReturnType<typeof useConference>["state"];
-  onScan: (value: string) => void;
+  onScan: (rawValues: string[]) => void;
   onNext: () => void;
   onReiniciar: () => void;
   onExit: () => void;
@@ -201,6 +201,7 @@ function ScanningPhase({
           pending: state.pending,
           scanned: state.scanned,
           maintenance: state.maintenance,
+          activeTotal: state.activeTotal,
           lastScanned: state.lastScanned ?? null,
           scanError: state.error ?? null,
           onNext,
@@ -211,8 +212,10 @@ function ScanningPhase({
     );
   }
 
-  const total = state.pending.length + state.scanned.length;
-  const progress = total > 0 ? (state.scanned.length / total) * 100 : 0;
+  // Denominador FIXO = ativos capturados no início. Overflow (lidos > total)
+  // fica visível de propósito.
+  const total = state.activeTotal;
+  const progress = total > 0 ? Math.min((state.scanned.length / total) * 100, 100) : 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -275,7 +278,7 @@ function ScanningPhase({
               if (e.key === "Enter") {
                 const input = e.currentTarget;
                 if (input.value) {
-                  onScan(input.value);
+                  onScan([input.value]);
                   input.value = "";
                 }
               }
@@ -648,7 +651,7 @@ function DonePhase({
 
 /* ─── Main Page ─── */
 export default function ScannerPage() {
-  const { state, startConference, processScan, setPeripherals, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset } =
+  const { state, startConference, processScanBatch, setPeripherals, proceedToSummary, proceedFromPeripherals, backToScanning, finalize, reset } =
     useConference();
   const { data: session } = useSession();
   const [savedOnline, setSavedOnline] = useState(true);
@@ -665,12 +668,18 @@ export default function ScannerPage() {
 
   const [activeUM, setActiveUM] = useState<{ id: string; notebooks: NotebookSlim[] } | null>(null);
   const { data: rawNotebooks } = useNotebooks(activeUM?.id);
-  const allNotebooks: NotebookSlim[] = (rawNotebooks ?? []).map((n) => ({
-    id: n.id,
-    hostname: n.hostname,
-    serial: n.serial,
-    status: n.status,
-  }));
+  // Memoizado: identidade estável enquanto rawNotebooks não muda, para o
+  // handleScan (e o efeito do scanner web que depende dele) não remontar por render.
+  const allNotebooks = useMemo<NotebookSlim[]>(
+    () =>
+      (rawNotebooks ?? []).map((n) => ({
+        id: n.id,
+        hostname: n.hostname,
+        serial: n.serial,
+        status: n.status,
+      })),
+    [rawNotebooks],
+  );
 
   const handleSelectUM = useCallback(
     (um: UMSlim, notebooks: NotebookSlim[]) => {
@@ -681,10 +690,11 @@ export default function ScannerPage() {
   );
 
   const handleScan = useCallback(
-    (value: string) => {
-      processScan(value, allNotebooks);
+    (rawValues: string[]) => {
+      // timestamp vem daqui (reducer é puro, não chama Date.now()).
+      processScanBatch(rawValues, allNotebooks, Date.now());
     },
-    [processScan, allNotebooks],
+    [processScanBatch, allNotebooks],
   );
 
   const handleReiniciar = useCallback(() => {

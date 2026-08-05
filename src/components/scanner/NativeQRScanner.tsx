@@ -11,6 +11,8 @@ export interface NativeScanUi {
   scanned: { id: string; hostname: string }[]
   /** Notebooks em manutenção (fora da meta) — mostrados via botão "Ver" */
   maintenance: { id: string; hostname: string }[]
+  /** Total FIXO de ativos da UM (denominador do contador) — capturado no início */
+  activeTotal: number
   lastScanned: string | null
   scanError: string | null
   onNext: () => void
@@ -20,7 +22,8 @@ export interface NativeScanUi {
 }
 
 interface NativeQRScannerProps {
-  onScan: (hostname: string) => void
+  /** Todos os rawValue de UM frame — um único callback por frame, nunca por código */
+  onScan: (rawValues: string[]) => void
   onError: (error: string) => void
   isActive: boolean
   ui?: NativeScanUi
@@ -106,8 +109,9 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         // 'barcodesScanned' delivers ALL codes ML Kit detected in a frame at
         // once (plugin >= 6.2), and 1080p analysis resolution makes several
         // small QR codes in the same frame resolvable — both required for
-        // batch reading. Dedup of repeated reads is handled upstream
-        // (useConference ignores already-scanned hostnames).
+        // batch reading. O frame inteiro vira UM único onScan(rawValues): a
+        // dedupe é feita no reducer (SCAN_BATCH), que enxerga o estado acumulado
+        // — nunca um dispatch por código (isso causava a race de leitura dupla).
         const { BarcodeScanner, BarcodeFormat, Resolution } = await import('@capacitor-mlkit/barcode-scanning')
 
         const { camera } = await BarcodeScanner.requestPermissions()
@@ -117,9 +121,10 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
         }
 
         await BarcodeScanner.addListener('barcodesScanned', ({ barcodes }) => {
-          for (const barcode of barcodes) {
-            if (barcode.rawValue) { onScanRef.current(barcode.rawValue) }
-          }
+          const rawValues = barcodes
+            .map((b) => b.rawValue)
+            .filter((v): v is string => !!v)
+          if (rawValues.length > 0) { onScanRef.current(rawValues) }
         })
 
         await BarcodeScanner.startScan({
@@ -178,7 +183,10 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
   // The lists section has an opaque background that blocks the camera
   // in the lower half, letting both be visible simultaneously.
 
-  const total = ui.pending.length + ui.scanned.length
+  // Denominador FIXO = total de ativos capturado no início. Se lidos > total,
+  // aparece assim mesmo — o overflow tem de ser visível (era o mascaramento
+  // desse número que escondia a leitura dupla).
+  const total = ui.activeTotal
 
   return (
     <div
