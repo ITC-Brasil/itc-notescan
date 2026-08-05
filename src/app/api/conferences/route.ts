@@ -76,6 +76,25 @@ export async function POST(request: Request) {
 
   const { umId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
 
+  // Dedupe defensiva por notebookId (mantém a 1ª ocorrência). A @@unique
+  // ([conferenceId, notebookId]) é a rede final no banco; esta dedupe impede
+  // que uma request legada (cliente anterior à correção da race de leitura
+  // dupla) quebre com 500 no índice único. Contagens de Telegram/resumo
+  // derivam de conference.items (pós-insert), logo já refletem o deduplicado.
+  const seenNotebookIds = new Set<string>();
+  const dedupedItems = items.filter((i) => {
+    if (seenNotebookIds.has(i.notebookId)) return false;
+    seenNotebookIds.add(i.notebookId);
+    return true;
+  });
+  if (dedupedItems.length < items.length) {
+    logger.warn("Conferência recebida com itens duplicados (deduplicados na rota)", {
+      umId,
+      recebidos: items.length,
+      apos: dedupedItems.length,
+    });
+  }
+
   // Daily limit — hard block for interactive submissions only. Offline
   // conferences replayed from the syncQueue carry X-Sync-Replay and are always
   // recorded (they already happened; never drop data). Counts both statuses.
@@ -119,7 +138,7 @@ export async function POST(request: Request) {
         carregadoresQtd,
         fonesQtd,
         items: {
-          create: items.map((item) => ({
+          create: dedupedItems.map((item) => ({
             notebookId: item.notebookId,
             status: item.status,
           })),
@@ -141,7 +160,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const faltantes = items.filter((i) => i.status === "FALTANTE");
+    const faltantes = dedupedItems.filter((i) => i.status === "FALTANTE");
     if (faltantes.length > 0) {
       await prisma.lifecycleEvent.createMany({
         data: faltantes.map((item) => ({
