@@ -415,6 +415,44 @@ ainda **a fazer antes da distribuição** — não foi possível no ambiente de 
 
 ---
 
+## sec-04 — Advisory drift: fast-uri, brace-expansion e reclassificação do shadcn
+
+**Contexto:** o gate `npm audit --omit=dev --audit-level=high` ficou vermelho na `develop`
+por **advisory drift** — a base de advisories do npm ganhou novos ranges desde a
+[sec-03](#sec-03--gate-de-audit-escopado-para-produção---omitdev) (2026-07-24), **sem
+qualquer mudança de código** (confirmado com `git stash`: o HEAD limpo também falhava).
+
+**Corrigido (2026-08-05):**
+- `fast-uri` `3.1.4 → 3.1.5` (override). Advisory GHSA-7p8r-x3mc-p8w7 (host confusion via
+  backslash), range `>=3.0.0 <3.1.5` — o pin `3.1.4` da sec-01 caiu **dentro** do range.
+  3.1.5 satisfaz `ajv ^3.0.1` (a compat registrada na sec-01); via ajv em prisma/next/mcp.
+- `brace-expansion` `→ 5.0.9`, override **escopado a `@serwist/next`**. Advisory
+  GHSA-rgw5-rvv9-x895 (DoS), range `>=4.0.0 <5.0.9`. **A premissa da sec-03 mudou:** o pacote
+  deixou de ser dev-only — `@serwist/next` (prod, PWA) o puxa via `minimatch@10` (ESM), que
+  aceita `^5.0.5`. O override é **escopado** ao subtree do `@serwist/next` justamente para
+  **não** tocar no `minimatch@3`/`brace-expansion@1.1.16` do eslint (CJS) — a tensão da sec-03
+  fica evitada: o eslint segue em 1.1.16 e o `lint` passa.
+
+**Reclassificação — `shadcn` para `devDependencies` (correção de raiz):**
+Os dois highs restantes (`ip-address` SSRF, fix 10.4.0; `undici`, fix 7.29.0) chegavam
+**exclusivamente** via `shadcn` → `@modelcontextprotocol/sdk`/`@dotenvx/dotenvx`/
+`express-rate-limit`. O `shadcn` é uma **CLI de scaffolding** (nunca importada em runtime —
+`grep` em `src/` não acha nenhum import; o app usa os componentes já gerados em
+`@/components/ui`), mas estava listada em `dependencies`. Movida para `devDependencies`: sai
+inteira do `--omit=dev`, derrubando `ip-address`, `undici` **e** o path de brace-expansion do
+shadcn **de uma vez** — sem overrides por pacote. Removido o override redundante de
+brace-expansion que apontava para o subtree do shadcn. `npx shadcn add` segue funcionando em
+dev; a CLI deixa de entrar na imagem Docker de produção (onde nunca foi usada), o que é o
+comportamento correto.
+
+**Não corrigir com `--force`:** mantida a regra da sec-01 — `npm audit fix --force` propõe
+downgrades absurdos (Next → 9.3.3). Ignorado.
+
+**Verificação (2026-08-05):** `npm audit --omit=dev --audit-level=high` sai **0**;
+`prisma generate`, `tsc`, `lint` (0 erros) e `build` (28/28 páginas) OK; 139 testes Vitest.
+
+---
+
 ## m7-09 — Splash adaptativa via @capacitor/splash-screen e projeto android/ versionado
 
 **Contexto:** a identidade "Mira" precisava de splash nativa com a marca, adaptativa ao
