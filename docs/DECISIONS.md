@@ -338,9 +338,10 @@ transitivas, sem tocar nos pais:
   - **Atualização (2026-07-30):** o `sharp` virou **`devDependency`** direta (`^0.35.0`) — a rodada da marca precisa dele para `scripts/generate-icons.mjs`, e ele não era resolvível (nada o instalava). Com o `sharp` como dep direta, o override não pode ser uma versão literal (npm `EOVERRIDE`); passou a **`"sharp": "$sharp"`**, que resolve todo `sharp` do tree para a dep direta — mesma versão segura, uma só no tree. O gate `--omit=dev --audit-level=high` (sec-03) segue **0**.
 - `postcss` → `^8.5.10` (moderate — XSS no stringify; bundled do Next). 8.5.21, patch seguro.
 - `@hono/node-server` → `^2.0.5` (moderate — path traversal; via `@prisma/dev` e `shadcn`→mcp-sdk, ferramentas dev, sem exposição em runtime).
+- `nanoid` → `^3.3.18` (high — GHSA-2v37-7h3g-55p8, custom generators loop infinitely when size is zero; via `@tailwindcss/postcss` → `postcss` → `nanoid`). Compatível com postcss `^3.3.7`.
 
 **Verificação:** `npm audit --audit-level=high` sai 0; `npx prisma generate`, `tsc`
-e `next build` continuam OK (2026-07-21).
+e `next build` continuam OK (2026-07-21, atualizado 2026-08-13).
 
 **Consequências:** As `overrides` fixam versões — revisar ao atualizar Next/Sentry.
 Os avisos npm sobre `--force` (downgrade do Next) devem ser **ignorados**.

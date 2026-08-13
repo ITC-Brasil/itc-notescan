@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth/config";
 
 const { auth } = NextAuth(authConfig);
@@ -7,11 +8,16 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
-  const publicRoutes = ["/"];
-  if (publicRoutes.includes(pathname)) return;
+  if (pathname === "/") {
+    if (session) {
+      const dest = session.user.role === "USER" ? "/inicio" : "/dashboard";
+      return NextResponse.redirect(new URL(dest, req.url));
+    }
+    return;
+  }
 
   if (!session) {
-    return Response.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   const adminRoutes = [
@@ -28,14 +34,14 @@ export default auth((req) => {
     masterRoutes.some((r) => pathname.startsWith(r)) &&
     session.user.role !== "MASTER"
   ) {
-    return Response.redirect(new URL("/inicio", req.url));
+    return NextResponse.redirect(new URL("/inicio", req.url));
   }
 
   if (
     adminRoutes.some((r) => pathname.startsWith(r)) &&
     !["ADMIN", "MASTER"].includes(session.user.role as string)
   ) {
-    return Response.redirect(new URL("/inicio", req.url));
+    return NextResponse.redirect(new URL("/inicio", req.url));
   }
 });
 
@@ -47,6 +53,7 @@ export default auth((req) => {
 // passa pelo proxy — cada API Route já faz seu próprio auth().
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/relatorios/:path*",
     "/projetos/:path*",
