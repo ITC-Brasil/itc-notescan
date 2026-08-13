@@ -9,6 +9,15 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        String cookieCheck = CookieManager.getInstance()
+            .getCookie("https://notescan.itcbr.xyz");
+        android.util.Log.d("NoteScan-Cookie",
+            "Cookie no cold start: " + (cookieCheck != null ? "PRESENTE" : "NULO"));
+        if (cookieCheck != null) {
+            boolean hasAuthCookie = cookieCheck.contains("__Secure-authjs.session-token");
+            android.util.Log.d("NoteScan-Cookie",
+                "session-token presente: " + hasAuthCookie);
+        }
         // Make sure the WebView accepts and persists cookies for the remote
         // server.url origin. Default is true, but we assert it so the NextAuth
         // session cookie is always stored.
