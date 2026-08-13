@@ -48,7 +48,9 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    const session = await fetch("/api/auth/session").then((r) => r.json());
+    const dest = session?.user?.role === "USER" ? "/inicio" : "/dashboard";
+    router.push(dest);
   };
 
   return (
