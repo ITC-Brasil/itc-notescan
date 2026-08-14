@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { NoteScanLogo } from "@/components/brand/NoteScanLogo";
 import { cn } from "@/lib/utils";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 const navItems = [
   { href: "/inicio", label: "Início", icon: Home },
@@ -20,6 +21,7 @@ interface UserLayoutProps {
 }
 
 export function UserLayout({ children }: UserLayoutProps) {
+  useWakeLock();
   const { data: session } = useSession();
   const pathname = usePathname();
   const [logoutOpen, setLogoutOpen] = useState(false);
