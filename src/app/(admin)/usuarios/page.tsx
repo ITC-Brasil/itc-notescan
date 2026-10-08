@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Plus, Pencil, Trash2, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Shield, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +14,7 @@ import {
   useDeleteUser,
   type User,
 } from "@/hooks/useUsers";
+import { isHumanRole, type HumanRole } from "@/lib/auth/roles";
 import { createUserSchema, type CreateUserInput } from "@/lib/validations";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -55,13 +56,13 @@ const updateUserSchema = z.object({
 
 type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
 
-const roleLabels: Record<User["role"], string> = {
+const roleLabels: Record<HumanRole, string> = {
   USER: "Técnico",
   ADMIN: "Gestor",
   MASTER: "Master",
 };
 
-const roleIcons: Record<User["role"], typeof Shield> = {
+const roleIcons: Record<HumanRole, typeof Shield> = {
   USER: Shield,
   ADMIN: ShieldCheck,
   MASTER: ShieldAlert,
@@ -69,11 +70,22 @@ const roleIcons: Record<User["role"], typeof Shield> = {
 
 // Role badges as tinted token pills (Design System v3.1): técnico ciano,
 // admin azul-info, master vermelho.
-const roleBadgeClass: Record<User["role"], string> = {
+const roleBadgeClass: Record<HumanRole, string> = {
   USER: "bg-itc-ciano-7/10 text-itc-ciano-7 border-itc-ciano-7/30 hover:bg-itc-ciano-7/10",
   ADMIN: "bg-itc-info/10 text-itc-info border-itc-info/30 hover:bg-itc-info/10",
   MASTER: "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/10",
 };
+
+// Fallback para role fora da allowlist humana: a página nunca quebra no render.
+function roleDisplay(role: string) {
+  if (isHumanRole(role))
+    return { label: roleLabels[role], Icon: roleIcons[role], badge: roleBadgeClass[role] };
+  return {
+    label: role,
+    Icon: ShieldQuestion,
+    badge: "bg-muted text-muted-foreground border-border hover:bg-muted",
+  };
+}
 
 function CreateUserDialog({
   open,
@@ -231,7 +243,8 @@ function EditUserDialog({
     defaultValues: {
       nome: user.nome,
       email: user.email,
-      role: user.role,
+      // Só abre para roles humanas (botão oculto nas demais).
+      role: isHumanRole(user.role) ? user.role : "USER",
       metaDiaria: user.metaDiaria,
       password: "",
     },
@@ -419,7 +432,7 @@ export default function UsuariosPage() {
       ) : (
         <div className="rounded-lg border border-border overflow-hidden">
           {users.map((user, i) => {
-            const RoleIcon = roleIcons[user.role];
+            const { label: roleLabel, Icon: RoleIcon, badge: roleBadge } = roleDisplay(user.role);
             const isSelf = user.id === session?.user.id;
             return (
               <div
@@ -450,9 +463,9 @@ export default function UsuariosPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge className={`text-xs gap-1 ${roleBadgeClass[user.role]}`}>
+                    <Badge className={`text-xs gap-1 ${roleBadge}`}>
                       <RoleIcon className="h-3 w-3" />
-                      {roleLabels[user.role]}
+                      {roleLabel}
                     </Badge>
                     {user.role === "USER" && (
                       <span className="text-xs text-muted-foreground hidden sm:inline">
@@ -462,14 +475,16 @@ export default function UsuariosPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setEditingUser(user)}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                  {isHumanRole(user.role) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setEditingUser(user)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
