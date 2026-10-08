@@ -1,4 +1,5 @@
 ﻿import { auth } from "@/lib/auth";
+import { isHumanRole } from "@/lib/auth/roles";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -34,6 +35,19 @@ export async function POST(request: Request) {
     );
 
   const { title, body, userIds } = parsed.data;
+
+  // Destinatários só podem ser usuários humanos existentes.
+  const recipients = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, role: true },
+  });
+  const humanIds = new Set(recipients.filter((u) => isHumanRole(u.role)).map((u) => u.id));
+  const invalidUserIds = userIds.filter((id) => !humanIds.has(id));
+  if (invalidUserIds.length)
+    return Response.json(
+      { message: "Destinatários inválidos", invalidUserIds },
+      { status: 400 },
+    );
 
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { userId: { in: userIds } },
