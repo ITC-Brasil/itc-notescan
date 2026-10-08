@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import type { HumanRole } from "./roles";
 
 // Edge-safe config — no Prisma, no bcrypt.
 // Used by proxy.ts (middleware/Edge Runtime).
@@ -28,7 +29,7 @@ export const authConfig: NextAuthConfig = {
     },
     session({ session, token }) {
       session.user.id = token.id as string;
-      session.user.role = token.role as string;
+      session.user.role = token.role as HumanRole;
       session.user.nome = token.nome as string;
       session.user.metaDiaria = token.metaDiaria as number;
       return session;
