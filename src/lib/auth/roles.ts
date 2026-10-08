@@ -8,3 +8,10 @@ export type HumanRole = (typeof HUMAN_ROLES)[number];
 export function isHumanRole(role: unknown): role is HumanRole {
   return typeof role === "string" && (HUMAN_ROLES as readonly string[]).includes(role);
 }
+
+// Destino pós-login por role. Importado pelo proxy (Edge): sem imports aqui.
+export const HOME_BY_ROLE: Record<HumanRole, string> = {
+  USER: "/inicio",
+  ADMIN: "/dashboard",
+  MASTER: "/dashboard",
+};

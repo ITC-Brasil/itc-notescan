@@ -20,6 +20,7 @@ import {
 import { NoteScanLogo } from "@/components/brand/NoteScanLogo";
 import { loginSchema, type LoginInput } from "@/lib/validations";
 import { APP_VERSION } from "@/lib/constants";
+import { HOME_BY_ROLE, isHumanRole } from "@/lib/auth/roles";
 
 const LABEL_CLASS = "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 const FIELD_ICON_CLASS = "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none";
@@ -49,8 +50,12 @@ export default function LoginPage() {
     }
 
     const session = await fetch("/api/auth/session").then((r) => r.json());
-    const dest = session?.user?.role === "USER" ? "/inicio" : "/dashboard";
-    router.push(dest);
+    const role: unknown = session?.user?.role;
+    if (!isHumanRole(role)) {
+      setError("Acesso não permitido.");
+      return;
+    }
+    router.push(HOME_BY_ROLE[role]);
   };
 
   return (

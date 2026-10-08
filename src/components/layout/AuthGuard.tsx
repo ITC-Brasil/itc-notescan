@@ -36,7 +36,8 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     if (status !== "authenticated" || !session) return;
 
     if (!hasAccess(session.user.role, requiredRole)) {
-      router.replace("/inicio");
+      // Role desconhecida vai para "/", onde o proxy derruba a sessão.
+      router.replace(roleHierarchy[session.user.role] ? "/inicio" : "/");
     }
   }, [session, status, router, requiredRole]);
 
