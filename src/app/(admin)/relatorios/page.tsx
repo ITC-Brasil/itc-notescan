@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useConferences, type ConferencesFilters } from "@/hooks/useConferences";
 import { useUsers } from "@/hooks/useUsers";
+import { isHumanRole } from "@/lib/auth/roles";
 import { useUMs } from "@/hooks/useUMs";
 import { useProjects } from "@/hooks/useProjects";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -306,7 +307,9 @@ export default function RelatoriosPage() {
   const hasActiveFilters =
     filters.userId || filters.umId || filters.status || filters.from || filters.to || projectId;
 
-  const userOptions = (users ?? []).map((u) => ({ value: u.id, label: u.nome }));
+  const userOptions = (users ?? [])
+    .filter((u) => isHumanRole(u.role))
+    .map((u) => ({ value: u.id, label: u.nome }));
   const projectOptions = (projects ?? []).map((p) => ({
     value: p.id,
     label: p.nome,
