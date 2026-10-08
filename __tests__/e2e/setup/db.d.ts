@@ -1,3 +1,4 @@
+export declare const TEST_DB_URL: string;
 export declare function runMigrations(): Promise<void>;
 export declare function seedDatabase(): Promise<void>;
 export declare function truncateDatabase(): Promise<void>;

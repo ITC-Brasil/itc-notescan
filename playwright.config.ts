@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { TEST_DB_URL } from "./__tests__/e2e/setup/db";
 
 export default defineConfig({
   testDir: "./__tests__/e2e",
@@ -32,8 +33,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      DATABASE_URL:
-        "postgresql://notescan:notescan_dev@localhost:5432/notescan_test",
+      DATABASE_URL: TEST_DB_URL,
       NEXTAUTH_SECRET: "test-secret-notescan-playwright",
       NEXTAUTH_URL: "http://localhost:3001",
       NEXT_PUBLIC_E2E_TESTING: "true",

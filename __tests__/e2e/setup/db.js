@@ -6,8 +6,12 @@ const bcrypt = require("bcryptjs");
 const { execSync } = require("node:child_process");
 const path = require("node:path");
 
+// Fonte única da URL do banco de e2e (também usada pelo playwright.config.ts).
+// Default: container local notescan-dev-db na 5434. Sobrescreva com
+// E2E_DATABASE_URL (ex.: Postgres de CI na 5432).
 const TEST_DB_URL =
-  "postgresql://notescan:notescan_dev@localhost:5432/notescan_test";
+  process.env.E2E_DATABASE_URL ||
+  "postgresql://notescan:notescan_dev@localhost:5434/notescan_test";
 
 async function ensureDatabaseExists() {
   const adminUrl = TEST_DB_URL.replace("/notescan_test", "/postgres");
@@ -126,6 +130,7 @@ async function resetUserPassword(email, password) {
 }
 
 module.exports = {
+  TEST_DB_URL,
   runMigrations,
   seedDatabase,
   truncateDatabase,
