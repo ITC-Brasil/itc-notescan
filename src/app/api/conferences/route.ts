@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { isHumanRole } from "@/lib/auth/roles";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -8,6 +9,9 @@ export async function GET(request: Request) {
   const session = await auth();
   if (!session)
     return Response.json({ message: "Não autorizado" }, { status: 401 });
+
+  if (!isHumanRole(session.user.role))
+    return Response.json({ message: "Proibido" }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const limit = Math.min(Number(searchParams.get("limit") ?? "10"), 100);
@@ -30,6 +34,7 @@ export async function GET(request: Request) {
           },
         }
       : {}),
+    // Só roles humanas chegam aqui: ADMIN/MASTER veem tudo, USER só as próprias.
     ...(session.user.role === "USER" && { userId: session.user.id }),
   };
 
@@ -66,6 +71,9 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session)
     return Response.json({ message: "Não autorizado" }, { status: 401 });
+
+  if (!isHumanRole(session.user.role))
+    return Response.json({ message: "Proibido" }, { status: 403 });
 
   const parsed = createConferenceSchema.safeParse(await request.json());
   if (!parsed.success)
