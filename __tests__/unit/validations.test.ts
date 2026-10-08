@@ -155,6 +155,11 @@ describe("createUserSchema", () => {
     expect(createUserSchema.safeParse({ ...validUser, role: "ADMIN" }).success).toBe(true);
   });
 
+  // Trava o comportamento atual: AGENTE não é criável via schema (rever na Fase 2).
+  it("rejects role AGENTE", () => {
+    expect(createUserSchema.safeParse({ ...validUser, role: "AGENTE" }).success).toBe(false);
+  });
+
   it("rejects invalid role", () => {
     expect(createUserSchema.safeParse({ ...validUser, role: "SUPERUSER" }).success).toBe(false);
   });
