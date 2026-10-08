@@ -12,7 +12,7 @@ export async function loginAs(page: Page, role: Role) {
   const { email, password } = credentials[role];
 
   await page.goto("/");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("E-mail").fill(email);
   await page.locator('input[autocomplete="current-password"]').fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
 

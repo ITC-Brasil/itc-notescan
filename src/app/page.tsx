@@ -96,9 +96,10 @@ export default function LoginPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={LABEL_CLASS}>E-mail</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className={FIELD_ICON_CLASS} />
+                  <div className="relative">
+                    <Mail className={FIELD_ICON_CLASS} />
+                    {/* FormControl no Input (não na div) para o label associar ao campo. */}
+                    <FormControl>
                       <Input
                         type="email"
                         placeholder="seu@email.com"
@@ -106,8 +107,8 @@ export default function LoginPage() {
                         className="h-12 pl-10 bg-background text-base"
                         {...field}
                       />
-                    </div>
-                  </FormControl>
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -119,9 +120,9 @@ export default function LoginPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={LABEL_CLASS}>Senha</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className={FIELD_ICON_CLASS} />
+                  <div className="relative">
+                    <Lock className={FIELD_ICON_CLASS} />
+                    <FormControl>
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
@@ -129,21 +130,21 @@ export default function LoginPage() {
                         className="h-12 pl-10 pr-11 bg-background text-base"
                         {...field}
                       />
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-                        onClick={() => setShowPassword((v) => !v)}
-                        tabIndex={-1}
-                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </FormControl>
+                    </FormControl>
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setShowPassword((v) => !v)}
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
