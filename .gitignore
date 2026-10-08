@@ -58,3 +58,5 @@ next-env.d.ts
 
 # Claude Code
 .claude/settings.local.json
+# Relatórios de auditoria de segurança (locais, não versionar)
+docs/security-audit/
