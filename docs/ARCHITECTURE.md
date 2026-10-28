@@ -13,7 +13,7 @@ acessível via Cloudflare Tunnel sem exposição direta de porta.
 
 | Camada | Tecnologia | Versão |
 |---|---|---|
-| Framework | Next.js (App Router, Turbopack) | 16.2.9 |
+| Framework | Next.js (App Router, Turbopack) | 16.4.1 |
 | Linguagem | TypeScript (strict: true) | 5.x |
 | Estilização | Tailwind CSS | 4.x |
 | Componentes | shadcn/ui | 4.x |

@@ -41,7 +41,7 @@ Esta é a **v2.0** — reescrita completa do sistema ScanPRO. O repositório ori
 
 | Camada | Tecnologia | Versão |
 |---|---|---|
-| Framework | Next.js (App Router, Turbopack) | 16.2.9 |
+| Framework | Next.js (App Router, Turbopack) | 16.4.1 |
 | Linguagem | TypeScript | 5.x (strict: true) |
 | Runtime | Node.js | 20.x |
 | Estilização | Tailwind CSS | 4.x |

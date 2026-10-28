@@ -54,7 +54,7 @@ confiabilidade. Nunca perder dados. Nunca duplicar registros.
 
 | Camada               | Tecnologia                                       |
 | -------------------- | ------------------------------------------------ |
-| Framework            | Next.js 16.2.9 (App Router, Turbopack, proxy.ts) |
+| Framework            | Next.js 16.4.1 (App Router, Turbopack, proxy.ts) |
 | Linguagem            | TypeScript 5.x — strict: true sem exceções       |
 | Estilização          | Tailwind CSS 4.x (tokens via @theme; usar `text-itc-*`, nunca `[--itc-*]`) |
 | Componentes          | shadcn/ui — único sistema de componentes         |
