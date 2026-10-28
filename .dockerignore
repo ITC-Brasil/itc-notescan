@@ -8,6 +8,7 @@ node_modules
 npm-debug.log
 README.md
 __tests__
+playwright.config.ts
 playwright-report
 coverage
 *.md
