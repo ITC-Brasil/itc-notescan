@@ -89,7 +89,8 @@ export default function LoginPage() {
           </div>
 
           <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          {/* method="post": submit antes da hidratação não pode vazar a senha na URL */}
+          <form method="post" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="email"
