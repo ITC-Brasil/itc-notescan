@@ -20,6 +20,7 @@ import {
 import { NoteScanLogo } from "@/components/brand/NoteScanLogo";
 import { loginSchema, type LoginInput } from "@/lib/validations";
 import { APP_VERSION } from "@/lib/constants";
+import { HOME_BY_ROLE, isHumanRole } from "@/lib/auth/roles";
 
 const LABEL_CLASS = "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 const FIELD_ICON_CLASS = "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none";
@@ -49,8 +50,12 @@ export default function LoginPage() {
     }
 
     const session = await fetch("/api/auth/session").then((r) => r.json());
-    const dest = session?.user?.role === "USER" ? "/inicio" : "/dashboard";
-    router.push(dest);
+    const role: unknown = session?.user?.role;
+    if (!isHumanRole(role)) {
+      setError("Acesso não permitido.");
+      return;
+    }
+    router.push(HOME_BY_ROLE[role]);
   };
 
   return (
@@ -84,16 +89,18 @@ export default function LoginPage() {
           </div>
 
           <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          {/* method="post": submit antes da hidratação não pode vazar a senha na URL */}
+          <form method="post" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={LABEL_CLASS}>E-mail</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className={FIELD_ICON_CLASS} />
+                  <div className="relative">
+                    <Mail className={FIELD_ICON_CLASS} />
+                    {/* FormControl no Input (não na div) para o label associar ao campo. */}
+                    <FormControl>
                       <Input
                         type="email"
                         placeholder="seu@email.com"
@@ -101,8 +108,8 @@ export default function LoginPage() {
                         className="h-12 pl-10 bg-background text-base"
                         {...field}
                       />
-                    </div>
-                  </FormControl>
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -114,9 +121,9 @@ export default function LoginPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={LABEL_CLASS}>Senha</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className={FIELD_ICON_CLASS} />
+                  <div className="relative">
+                    <Lock className={FIELD_ICON_CLASS} />
+                    <FormControl>
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
@@ -124,21 +131,21 @@ export default function LoginPage() {
                         className="h-12 pl-10 pr-11 bg-background text-base"
                         {...field}
                       />
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-                        onClick={() => setShowPassword((v) => !v)}
-                        tabIndex={-1}
-                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </FormControl>
+                    </FormControl>
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setShowPassword((v) => !v)}
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

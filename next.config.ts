@@ -10,9 +10,6 @@ const withPWA = withSerwist({
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  experimental: {
-    viewTransition: true,
-  },
   async headers() {
     return [
       {
@@ -37,7 +34,8 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob:",
-              "connect-src 'self' https://o*.ingest.sentry.io https://*.sentry.io",
+              "connect-src 'self' https://*.sentry.io",
+              "media-src 'self' data:",
               "worker-src 'self' blob:",
               "frame-ancestors 'none'",
             ].join("; "),

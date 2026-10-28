@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth/config";
+import { HOME_BY_ROLE, isHumanRole } from "@/lib/auth/roles";
 
 const { auth } = NextAuth(authConfig);
 
@@ -8,10 +9,30 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
+  // Sessão com role fora da allowlist humana: derruba a sessão apagando os
+  // cookies (inclusive pedaços .0/.1) e cai no login. "/" nunca redireciona
+  // sessão não humana, então não há loop.
+  if (session && !isHumanRole(session.user.role)) {
+    const res =
+      pathname === "/"
+        ? NextResponse.next()
+        : NextResponse.redirect(new URL("/", req.url));
+    for (const { name } of req.cookies.getAll()) {
+      if (!name.includes("authjs.session-token")) continue;
+      // __Secure- exige path e secure no Set-Cookie de remoção, senão o
+      // navegador ignora (só quebra em HTTPS).
+      res.cookies.set(name, "", {
+        maxAge: 0,
+        path: "/",
+        secure: name.startsWith("__Secure-"),
+      });
+    }
+    return res;
+  }
+
   if (pathname === "/") {
     if (session) {
-      const dest = session.user.role === "USER" ? "/inicio" : "/dashboard";
-      return NextResponse.redirect(new URL(dest, req.url));
+      return NextResponse.redirect(new URL(HOME_BY_ROLE[session.user.role], req.url));
     }
     return;
   }
@@ -39,7 +60,7 @@ export default auth((req) => {
 
   if (
     adminRoutes.some((r) => pathname.startsWith(r)) &&
-    !["ADMIN", "MASTER"].includes(session.user.role as string)
+    !["ADMIN", "MASTER"].includes(session.user.role)
   ) {
     return NextResponse.redirect(new URL("/inicio", req.url));
   }

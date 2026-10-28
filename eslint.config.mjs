@@ -34,6 +34,8 @@ const eslintConfig = defineConfig([
     // Runtime de terceiro (Claude Design) versionado só para os .dc.html
     // renderizarem — não é código do projeto, não deve ser analisado.
     "design-reference/**",
+    // Auditoria de segurança local (não versionada; inclui .venv Python).
+    "docs/security-audit/**",
   ]),
   {
     rules: {

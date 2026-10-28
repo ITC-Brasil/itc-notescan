@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { HumanRole } from "@/lib/auth/roles";
 import type { CreateUserInput } from "@/lib/validations";
 
 export interface User {
   id: string;
   nome: string;
   email: string;
-  role: "USER" | "ADMIN" | "MASTER";
+  // A API devolve qualquer valor do enum do banco — não só roles humanas.
+  role: HumanRole | (string & {});
   metaDiaria: number;
   createdAt: string;
 }
@@ -13,7 +15,7 @@ export interface User {
 type UpdateUserInput = {
   nome: string;
   email: string;
-  role: "USER" | "ADMIN" | "MASTER";
+  role: HumanRole;
   metaDiaria: number;
   password?: string;
 };

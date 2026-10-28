@@ -6,7 +6,7 @@ test.describe("Autenticação", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByLabel("Email").fill("admin@test.com");
+    await page.getByLabel("E-mail").fill("admin@test.com");
     await page.locator('input[autocomplete="current-password"]').fill("Test@1234");
     await page.getByRole("button", { name: "Entrar" }).click();
 
@@ -18,7 +18,7 @@ test.describe("Autenticação", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByLabel("Email").fill("tecnico@test.com");
+    await page.getByLabel("E-mail").fill("tecnico@test.com");
     await page.locator('input[autocomplete="current-password"]').fill("Test@1234");
     await page.getByRole("button", { name: "Entrar" }).click();
 
@@ -28,7 +28,7 @@ test.describe("Autenticação", () => {
 
   test("login com senha incorreta exibe mensagem de erro", async ({ page }) => {
     await page.goto("/");
-    await page.getByLabel("Email").fill("admin@test.com");
+    await page.getByLabel("E-mail").fill("admin@test.com");
     await page.locator('input[autocomplete="current-password"]').fill("senha-errada");
     await page.getByRole("button", { name: "Entrar" }).click();
 
@@ -41,7 +41,7 @@ test.describe("Autenticação", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByLabel("Email").fill("naoexiste@test.com");
+    await page.getByLabel("E-mail").fill("naoexiste@test.com");
     await page.locator('input[autocomplete="current-password"]').fill("Test@1234");
     await page.getByRole("button", { name: "Entrar" }).click();
 

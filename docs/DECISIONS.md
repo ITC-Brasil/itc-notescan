@@ -554,3 +554,67 @@ regras visuais**. Nenhum token foi renomeado/removido.
   só aparecem no aparelho após **rebuild do APK** (Capacitor 7, JDK 21). O restante é web.
 - Exceção documentada: `bg-black` no container de vídeo do `QRScanner` (viewport da
   câmera) — intencional; `bg-foreground` ficaria branco no dark.
+
+---
+
+## sec-05 — Ciclo de outubro: sharp, next e source-map-js com regra dos 14 dias
+
+**Contexto:** entre 08/09 e 22/10/2026 o npm publicou uma leva de advisories contra o
+runtime, e o gate `npm audit --omit=dev --audit-level=high` ficou vermelho.
+
+**Vulnerabilidades encontradas (runtime):**
+- `sharp` `0.35.3` — GHSA-rgj7-g3m4-5g8c (libheif, high, fix 0.35.4) e GHSA-wq5f-xc86-pv6w
+  (librsvg, high, fix 0.35.5). Corrigido: `→ 0.35.5`.
+- `next` `16.2.11`, com dois lotes:
+  - **Corrigidos na 16.3.x:** GHSA-2xp9-vwfh-vxw4 (RCE sem autenticação no Image Optimization via
+    AVIF, critical), GHSA-p293-qw3h-jr36 (RCE em servidor Windows, critical), GHSA-vcvr-r3jv-pc5j
+    (RCE em `next/og`, critical), GHSA-cjq9-62q9-8jv4 (SSRF no Image Optimization, high), além
+    de cache poisoning e vazamento de informação (medium/low).
+  - **Publicados em 22/10, corrigidos só na 16.4.1:** GHSA-2464-fhr4-w9xw (RCE no Image
+    Optimization via SVG, critical), GHSA-673q-mjm6-r5xr (RCE em `use cache`, critical) e
+    GHSA-p3m5-59mp-jv5r (DoS em Server Actions, high).
+  - Corrigido: `16.2.11 → 16.3.8 → 16.4.1`.
+- `source-map-js` `1.2.1` — GHSA-68fv-2mgg-jv7q (DoS, high). Corrigido: override `^1.2.2`.
+
+O `next.config.ts` perdeu `experimental.viewTransition`: a opção foi removida na 16.3 (o
+type-check passou a falhar), e as view transitions funcionam sem configuração no App Router.
+
+**Regra dos 14 dias:** nenhuma versão entra no lockfile se tiver sido publicada há menos de
+14 dias (proteção contra pacote comprometido publicado e retirado logo depois). Como aplicar:
+- conferir a data com `npm view <pkg> time`;
+- instalar com `npm install --before=<hoje − 14d>`;
+- listar o diff de versões do lockfile, pacote a pacote, e abortar se mudar algo fora da árvore
+  do pacote alvo.
+
+**O que a regra barrou neste ciclo:**
+- `next` `16.4.1` (publicado em 14/10): entrou com um dia de espera (27/10 → 28/10).
+- `@sentry/nextjs` `10.77.1` (publicado em 27/10, no próprio dia): o range `^10.76.2` o puxaria.
+  O lock foi travado em 10.76.2.
+- `import-in-the-middle` `3.5.3` (26/10) e `es-module-lexer` `3.0.4` (15/10), transitivas do
+  Sentry: reresolvidas para 3.5.2 e 3.0.3.
+- `fast-uri` `3.1.9` (19/10): segue **moderate aberto** até 02/11.
+
+**Mitigação enquanto o fix não estava liberado:** regra de WAF no Cloudflare (zona do
+`itcbr-tunnel`) bloqueando `/_next/image`. Ela cobre os vetores de RCE e SSRF do Image
+Optimization. O app não usa `next/image` em `src/`, então o bloqueio não quebra nada. Não
+encontramos `use cache` nem Server Actions em `src/`, o que reduz a exposição aos outros dois
+advisories de 22/10.
+
+**Destino da regra de WAF:** **remover após o deploy da 16.4.1 em produção.** Ela é mitigação
+temporária, não defesa permanente. Atenção: o deploy no GLPI-SRV precisa estar funcional para
+isso acontecer; até lá a regra permanece.
+
+**Lições:**
+- **`^` em override precisa ser conferido na versão resolvida.** O range garante só o piso.
+  O npm resolve para a versão mais nova dentro dele, que pode ser posterior ao corte de 14 dias
+  ou estar dentro de um advisory novo. Sempre conferir no `package-lock.json`, não no
+  `package.json`.
+- **Proibido pin exato em override.** O pin `fast-uri 3.1.4` da sec-01 caiu dentro do advisory
+  seguinte (ver sec-04), e um pin congela a versão até alguém lembrar de mexer. Overrides usam
+  `^x.y.z` (piso corrigido) ou `$dep` (seguir a dependência direta); a trava de versão fica no
+  lockfile.
+
+**Verificação (2026-10-28):** `npm audit --omit=dev --audit-level=high` sai **0**;
+`tsc`, `lint` (0 erros), 161/161 testes Vitest e `npm run build` (standalone) OK.
+Remanescentes moderate: `fast-uri` (corte libera em 02/11) e `@capgo/capacitor-native-biometric`
+(exige Capacitor 8, ver sec-02).

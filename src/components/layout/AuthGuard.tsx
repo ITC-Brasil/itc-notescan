@@ -4,10 +4,20 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import type { HumanRole } from "@/lib/auth/roles";
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requiredRole?: "USER" | "ADMIN" | "MASTER";
+  requiredRole?: HumanRole;
+}
+
+const roleHierarchy: Record<string, number> = { USER: 1, ADMIN: 2, MASTER: 3 };
+
+// Role desconhecida = nível 0 = negada para qualquer requiredRole.
+function hasAccess(role: string, requiredRole?: HumanRole): boolean {
+  const userLevel = roleHierarchy[role] ?? 0;
+  if (userLevel === 0) return false;
+  return !requiredRole || userLevel >= roleHierarchy[requiredRole];
 }
 
 export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
@@ -23,15 +33,11 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
       return;
     }
 
-    if (status !== "authenticated" || !session || !requiredRole) return;
+    if (status !== "authenticated" || !session) return;
 
-    const role = session.user.role;
-    const roleHierarchy: Record<string, number> = { USER: 1, ADMIN: 2, MASTER: 3 };
-    const userLevel = roleHierarchy[role] ?? 0;
-    const requiredLevel = roleHierarchy[requiredRole] ?? 0;
-
-    if (userLevel < requiredLevel) {
-      router.replace("/inicio");
+    if (!hasAccess(session.user.role, requiredRole)) {
+      // Role desconhecida vai para "/", onde o proxy derruba a sessão.
+      router.replace(roleHierarchy[session.user.role] ? "/inicio" : "/");
     }
   }, [session, status, router, requiredRole]);
 
@@ -45,7 +51,7 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     );
   }
 
-  if (status !== "authenticated") return null;
+  if (status !== "authenticated" || !hasAccess(session.user.role, requiredRole)) return null;
 
   return <>{children}</>;
 }

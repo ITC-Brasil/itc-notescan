@@ -1,4 +1,5 @@
 ﻿import { auth } from "@/lib/auth";
+import { isHumanRole } from "@/lib/auth/roles";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -13,6 +14,9 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session)
     return Response.json({ message: "Não autorizado" }, { status: 401 });
+
+  if (!isHumanRole(session.user.role))
+    return Response.json({ message: "Proibido" }, { status: 403 });
 
   const parsed = subscribeSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -47,6 +51,9 @@ export async function DELETE(_: Request) {
   const session = await auth();
   if (!session)
     return Response.json({ message: "Não autorizado" }, { status: 401 });
+
+  if (!isHumanRole(session.user.role))
+    return Response.json({ message: "Proibido" }, { status: 403 });
 
   try {
     await prisma.pushSubscription.deleteMany({

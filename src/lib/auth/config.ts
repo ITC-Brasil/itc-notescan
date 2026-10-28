@@ -19,18 +19,19 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as { role: string }).role;
-        token.nome = (user as { nome: string }).nome;
-        token.metaDiaria = (user as { metaDiaria: number }).metaDiaria;
+        // authorizeCredentials sempre devolve id; o tipo do core o deixa opcional.
+        token.id = user.id as string;
+        token.role = user.role;
+        token.nome = user.nome;
+        token.metaDiaria = user.metaDiaria;
       }
       return token;
     },
     session({ session, token }) {
-      session.user.id = token.id as string;
-      session.user.role = token.role as string;
-      session.user.nome = token.nome as string;
-      session.user.metaDiaria = token.metaDiaria as number;
+      session.user.id = token.id;
+      session.user.role = token.role;
+      session.user.nome = token.nome;
+      session.user.metaDiaria = token.metaDiaria;
       return session;
     },
   },

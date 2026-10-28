@@ -99,7 +99,7 @@ test.describe("Alteração de senha", () => {
     await page.waitForURL("/");
 
     // Login com a nova senha
-    await page.getByLabel("Email").fill("admin@test.com");
+    await page.getByLabel("E-mail").fill("admin@test.com");
     await page.locator('input[autocomplete="current-password"]').fill("SenhaNova@E2E");
     await page.getByRole("button", { name: "Entrar" }).click();
     await page.waitForURL("**/dashboard");

@@ -30,7 +30,12 @@ export function QRScanner({ onScan, active = true, className, nativeUi }: QRScan
 
     async function startScanner() {
       try {
-        const { Scanner } = await import("@yudiel/react-qr-scanner");
+        const { Scanner, setZXingModuleOverrides } = await import("@yudiel/react-qr-scanner");
+        // Padrão da lib é baixar do jsdelivr (bloqueado pela CSP). Cópia local via predev/prebuild.
+        setZXingModuleOverrides({
+          locateFile: (path: string, prefix: string) =>
+            path.endsWith(".wasm") ? `/${path}` : prefix + path,
+        });
         if (stopped || !containerRef.current) return;
 
         // Mount by dynamically importing and rendering

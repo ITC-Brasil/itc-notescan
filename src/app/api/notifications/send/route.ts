@@ -1,4 +1,5 @@
 ﻿import { auth } from "@/lib/auth";
+import { HUMAN_ROLES } from "@/lib/auth/roles";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -36,7 +37,10 @@ export async function POST(request: Request) {
   const { title, body, userId } = parsed.data;
 
   const subscriptions = await prisma.pushSubscription.findMany({
-    where: userId ? { userId } : undefined,
+    where: {
+      user: { role: { in: [...HUMAN_ROLES] } },
+      ...(userId && { userId }),
+    },
   });
 
   if (!subscriptions.length)
