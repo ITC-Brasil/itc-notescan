@@ -5,6 +5,9 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    target-branch: "develop"
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "*"
