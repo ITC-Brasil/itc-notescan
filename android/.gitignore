@@ -103,3 +103,7 @@ app/src/main/res/xml/config.xml
 
 # Android Studio
 .idea/
+# Assinatura de release: senhas e keystore nunca vão para o git
+keystore.properties
+*.jks
+*.keystore
