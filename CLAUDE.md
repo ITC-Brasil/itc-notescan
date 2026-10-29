@@ -66,8 +66,8 @@ confiabilidade. Nunca perder dados. Nunca duplicar registros.
 | Cache e Fetching     | React Query 5.x (TanStack Query)                 |
 | Validação            | Zod 4.x — obrigatório em todas as API Routes     |
 | Scanner web          | @yudiel/react-qr-scanner + zxing-wasm            |
-| Scanner nativo (APK) | @capacitor-mlkit/barcode-scanning 7.5 (ML Kit)   |
-| Mobile nativo        | Capacitor 7.x (APK carrega server.url remoto)    |
+| Scanner nativo (APK) | @capacitor-mlkit/barcode-scanning 8.2 (ML Kit)   |
+| Mobile nativo        | Capacitor 8.x (APK carrega server.url remoto)    |
 | Biometria (APK)      | @capgo/capacitor-native-biometric                |
 | PWA / Service Worker | @serwist/next                                   |
 | Banco Offline        | Dexie.js 4.x (IndexedDB)                         |

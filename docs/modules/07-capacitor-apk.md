@@ -115,18 +115,30 @@ Aplicado quando o scan nativo inicia, removido ao finalizar.
 
 ### Como gerar o APK
 
-Requer **JDK 21** (use o JBR do Android Studio) — Gradle 8.11.1, AGP 8.7.2.
+Requer **JDK 21** — Capacitor 8, Gradle 8.14.5, AGP 8.13.0, SDK mín/alvo 24/36.
+Use o Eclipse Adoptium (`C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot`):
+o JBR do Android Studio muda de pasta a cada reinstalação.
 
 ```bash
 # 1. Sincronizar o site remoto + plugins com o projeto Android
 npx cap sync android
 
-# 2. Build via CLI (JAVA_HOME apontando para o JBR do Android Studio)
-cd android && ./gradlew assembleDebug      # ou assembleRelease (assinado)
-
-# Alternativa: abrir no Android Studio e Build → Generate Signed Bundle/APK
-npx cap open android
+# 2. Build de release assinado (o que vai para os técnicos)
+export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.12.101-hotspot"
+cd android && ./gradlew assembleRelease
+# → android/app/build/outputs/apk/release/app-release.apk
 ```
+
+**Assinatura:** o `signingConfig` de release lê `android/keystore.properties`
+(fora do git) com `storeFile`, `storePassword`, `keyAlias` e `keyPassword`. O keystore
+fica fora do repositório (`C:/Users/mathe/keystores/notescan-release.jks`, alias
+`notescan`). Sem o `keystore.properties`, o build gera `app-release-unsigned.apk`.
+Certificado (SHA-256): `9671e48467328b6314ead3d709f2fcae5063f0c579d227a1330f5abf6b24adf9`.
+Ver [m7-11](../DECISIONS.md).
+
+⚠️ **Keystore e senha precisam de backup** (cofre de senhas + cópia offline). Sem eles,
+nenhum APK futuro instala por cima do atual: cada técnico teria que desinstalar e
+perder os dados locais.
 
 ---
 
@@ -144,6 +156,7 @@ npx cap open android
 ## Decisões
 
 - Capacitor 7 + `@capacitor-mlkit/barcode-scanning` (leitura em lote) → [m7-05](../DECISIONS.md)
+- Capacitor 8 + assinatura de release → [m7-11](../DECISIONS.md)
 - Página offline via `server.errorPath` → [m7-06](../DECISIONS.md)
 - Retomada da câmera no foreground → [m7-07](../DECISIONS.md)
 - Persistência de sessão (cookie flush + sem revalidação no foco) → [m7-08](../DECISIONS.md)
@@ -156,7 +169,7 @@ npx cap open android
 
 ## Pontos de atenção
 
-- **Build exige JDK 21** (JBR do Android Studio); arquivos Gradle em `android/` são gitignored.
+- **Build exige JDK 21** (Eclipse Adoptium); o projeto `android/` é versionado, exceto `keystore.properties`.
 - **Elementos na zona da câmera não podem ter background opaco** — bloqueariam a visão da câmera.
 - **`CapacitorHttp: false` é obrigatório** — habilitá-lo quebra a autenticação NextAuth no APK.
 - **`server.url` aponta para produção** — o APK carrega o site remoto; sem rede exibe `offline.html`.
