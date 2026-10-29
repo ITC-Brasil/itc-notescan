@@ -10,12 +10,12 @@ async function setupConferenceAndGoToSummary(
 
   await page.getByRole("combobox").click();
   await page.getByRole("option", { name: /UM-TESTE/ }).click();
-  await page.getByRole("button", { name: "Iniciar" }).click();
+  await page.getByRole("button", { name: "Iniciar Conferência" }).click();
   await expect(page.getByText(/Pendentes/)).toBeVisible();
 
   // Proceed to summary without scanning
-  await page.getByRole("button", { name: /Finalizar/ }).click();
-  await expect(page.getByRole("button", { name: "Confirmar" })).toBeVisible();
+  await page.getByRole("button", { name: "Próximo" }).click();
+  await expect(page.getByRole("button", { name: "Concluir e Enviar" })).toBeVisible();
 }
 
 test.describe("Fluxo offline", () => {
@@ -27,7 +27,7 @@ test.describe("Fluxo offline", () => {
     // Block the conferences API to simulate offline
     await page.route("**/api/conferences", (route) => route.abort());
 
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByRole("button", { name: "Concluir e Enviar" }).click();
 
     // Done phase should show offline message
     await expect(page.getByText("Conferência salva!")).toBeVisible({
@@ -44,7 +44,7 @@ test.describe("Fluxo offline", () => {
     await setupConferenceAndGoToSummary(page);
 
     await page.route("**/api/conferences", (route) => route.abort());
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByRole("button", { name: "Concluir e Enviar" }).click();
 
     await expect(
       page.getByText(/será sincronizada automaticamente/i),
@@ -58,7 +58,7 @@ test.describe("Fluxo offline", () => {
 
     // Go offline
     await page.route("**/api/conferences", (route) => route.abort());
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByRole("button", { name: "Concluir e Enviar" }).click();
     await expect(page.getByText("Conferência salva!")).toBeVisible({
       timeout: 10000,
     });
@@ -83,7 +83,7 @@ test.describe("Fluxo offline", () => {
 
     // Go offline, finalize
     await page.route("**/api/conferences", (route) => route.abort());
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByRole("button", { name: "Concluir e Enviar" }).click();
     await expect(page.getByText("Conferência salva!")).toBeVisible({
       timeout: 10000,
     });

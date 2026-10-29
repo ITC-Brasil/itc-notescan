@@ -6,7 +6,8 @@ export default defineConfig({
   tsconfig: "./tsconfig.playwright.json",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // 1 retry local: queda intermitente de conexão com o Postgres do Docker Desktop no Windows. Retry aprovado aparece como "flaky".
+  retries: process.env.CI ? 2 : 1,
   workers: 1,
   reporter: [["html", { outputFolder: "playwright-report" }], ["line"]],
   use: {
@@ -37,6 +38,8 @@ export default defineConfig({
       NEXTAUTH_SECRET: "test-secret-notescan-playwright",
       NEXTAUTH_URL: "http://localhost:3001",
       NEXT_PUBLIC_E2E_TESTING: "true",
+      // Vazio desliga o envio: sem isso, o .env.local manda as conferências de teste ao grupo real
+      TELEGRAM_BOT_TOKEN: "",
     },
   },
 });
