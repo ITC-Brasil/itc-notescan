@@ -368,6 +368,8 @@ e **não** bloqueia o gate `--audit-level=high` do CI.
 
 **Quando corrigir:** junto de uma futura migração planejada para Capacitor 8.
 
+**Resolvido (2026-10-29):** migrado para Capacitor 8 com `@capgo/capacitor-native-biometric` 8.8.3. Ver [m7-11](#m7-11--migração-para-capacitor-8-e-assinatura-de-release).
+
 ---
 
 ## sec-03 — Gate de audit escopado para produção (`--omit=dev`)
@@ -618,3 +620,54 @@ isso acontecer; até lá a regra permanece.
 `tsc`, `lint` (0 erros), 161/161 testes Vitest e `npm run build` (standalone) OK.
 Remanescentes moderate: `fast-uri` (corte libera em 02/11) e `@capgo/capacitor-native-biometric`
 (exige Capacitor 8, ver sec-02).
+
+---
+
+## m7-11 — Migração para Capacitor 8 e assinatura de release
+
+**Contexto:** o alerta da biometria (GHSA-vx5f-vmr6-32wf, ver [sec-02](#sec-02--capgocapacitor-native-biometric-fix-adiado-exige-capacitor-8)) só tinha
+correção na linha 8.x, que exige Capacitor 8. Os APKs eram assinados com a chave de debug
+do PC de desenvolvimento: se ela se perdesse, nenhum APK novo instalaria por cima, e a
+chave de debug é igual em toda instalação do Android Studio.
+
+**Decisão:** migrar para o Capacitor 8 e passar a distribuir APK de release assinado
+**numa única troca**, porque as duas mudanças obrigam os técnicos a reinstalar.
+
+**Pacotes** (todos publicados até o corte de 14 dias da [sec-05](#sec-05--ciclo-de-outubro-sharp-next-e-source-map-js-com-regra-dos-14-dias)):
+`@capacitor/*` 8.5.3, `@capacitor-mlkit/barcode-scanning` 8.2.1, `@capacitor/geolocation`
+8.2.3, `@capacitor/local-notifications` 8.3.1, `@capacitor/splash-screen` 8.0.2,
+`@capgo/capacitor-native-biometric` 8.8.3.
+
+**Migração manual, sem `npx cap migrate`:** o comando reescreve o `package.json` para `^8`
+e roda `npm install` por conta própria, puxando versões posteriores ao corte. Aplicamos
+o guia oficial (capacitorjs.com/docs/updating/8-0) à mão:
+- AGP 8.7.2 → 8.13.0 e google-services 4.4.2 → 4.4.4. O wrapper do Gradle já estava
+  na 8.14.5 (o mínimo é 8.14.3).
+- `variables.gradle`: SDK mínimo/compilação/alvo 24/36/36, versões do androidx do guia e
+  `kotlinxCoroutinesVersion` 1.10.2 (exigido pelo geolocation).
+- `app/build.gradle` na sintaxe com `=` (a antiga está depreciada).
+- Manifest: `density` no `configChanges`, para o WebView não recarregar ao redimensionar.
+- Removido o override `bridge_layout_main.xml`: o Capacitor 8 renomeou o layout para
+  `capacitor_bridge_layout_main.xml`, e o nosso era uma cópia do padrão sem nenhuma
+  referência no código.
+- `versionCode` 3 / `versionName` 2.0.
+
+**Assinatura:** o `signingConfig` de release lê `android/keystore.properties`, que fica
+fora do git. O keystore fica **fora do repositório** (`~/keystores/notescan-release.jks`,
+alias `notescan`, RSA 4096, validade de 10.000 dias). Sem o arquivo de propriedades, o
+release sai sem assinatura em vez de quebrar o build. Certificado (SHA-256):
+`9671e48467328b6314ead3d709f2fcae5063f0c579d227a1330f5abf6b24adf9`.
+
+**JDK:** o build passa a usar o Eclipse Adoptium 21. O JBR do Android Studio quebrou numa
+reinstalação, que o moveu de pasta, e um JDK próprio não depende disso.
+
+**Consequências:**
+- O APK novo **não instala por cima** do antigo, porque a assinatura é outra. Cada técnico
+  precisa desinstalar o app, o que apaga o Dexie local. **A fila de sincronização precisa
+  estar zerada antes da troca.**
+- Keystore e senha precisam de backup em dois lugares (cofre de senhas e cópia offline).
+
+**Verificação (2026-10-29):** `assembleRelease` assinado (verificado com `apksigner`),
+instalado num Galaxy S23 (Android 16, alvo 36). Biometria, login, sessão após segundo
+plano, scanner nativo em lote e geolocalização testados no aparelho. Nenhum crash no
+logcat.
