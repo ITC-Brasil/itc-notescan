@@ -6,8 +6,8 @@
 
 | # | Item | Diagnóstico / observações |
 |---|---|---|
-| 1 | ~~Telegram não envia notificações~~ | ✅ **Resolvido em 25/11.** Causa: o grupo foi convertido em supergrupo e o chat_id mudou (Telegram respondia 400 "group chat was upgraded to a supergroup chat"). Corrigido `TELEGRAM_CHAT_ID` no `.env` do servidor (backup em `.env.bak-20261125`; o arquivo pertence a `github-deploy`, editar com sudo sem mudar o dono). Envio de teste ok. Melhoria de código feita em 25/11: `logger.warn("Telegram não configurado")` com presença de token/chat_id (sem valores) |
-| 2 | ~~Não é possível excluir notebook~~ | ✅ **Resolvido em 25/11 (em `develop`).** Exclusão real só sem histórico; com histórico, arquiva (`ARQUIVADO` + sufixo `~arq-YYYYMMDD`); recadastro oferece Reativar / Cadastrar como novo. Ver `nb-01` em DECISIONS.md. Requer a migration no deploy. Histórico: **Causa confirmada:** `ConferenceItem.notebook` e `LifecycleEvent.notebook` sem `onDelete` (Restrict) → erro de FK vira 500 "Erro interno". O `bulk-delete` por UM tem o mesmo problema. **Decidido:** status `ARQUIVADO`; exclusão real só sem histórico; ao arquivar, hostname recebe sufixo `~arq-YYYYMMDD`; ao recadastrar um hostname arquivado, escolher entre "Reativar" (mesma máquina) e "Cadastrar como novo" |
+| 1 | ~~Telegram não envia notificações~~ | ✅ **Resolvido em 25/11.** Causa: o grupo foi convertido em supergrupo e o chat_id mudou (Telegram respondia 400 "group chat was upgraded to a supergroup chat"). Corrigido `TELEGRAM_CHAT_ID` no `.env` do servidor (backup em `.env.bak-20261125`; o arquivo pertence a `github-deploy`, editar com sudo sem mudar o dono). Envio de teste ok. Melhoria de código pendente na rodada do item 2: logar quando token/chat_id estão ausentes |
+| 2 | Não é possível excluir notebook | **Causa confirmada:** `ConferenceItem.notebook` e `LifecycleEvent.notebook` sem `onDelete` (Restrict) → erro de FK vira 500 "Erro interno". O `bulk-delete` por UM tem o mesmo problema. **Decidido:** status `ARQUIVADO`; exclusão real só sem histórico; ao arquivar, hostname recebe sufixo `~arq-YYYYMMDD`; ao recadastrar um hostname arquivado, escolher entre "Reativar" (mesma máquina) e "Cadastrar como novo" |
 | 3 | Rebuild do APK e entrega a todos os técnicos | Sobre **Capacitor 8 com release signing** (PR #43 em `develop`, ainda não na `main`) |
 
 ## P1 — O mais rápido possível
@@ -25,7 +25,7 @@
 | # | Item | Observações |
 |---|---|---|
 | 9 | Tabela do dashboard admin | Badges COMPLETO/INCOMPLETO, Contagem (Ativos/Lidos), data com início/fim, colunas Localidade e Resumo |
-| 10 | ~~Texto do Telegram~~ | ✅ Feito em 25/11 (em `develop`): "Dispositivos Ativos: N" |
+| 10 | Texto do Telegram | Remover "(Esperados)" de "Dispositivos Ativos" em `src/app/api/conferences/route.ts` |
 | 11 | Datas em UTC | Nome do CSV usa `toISOString()`; `timeZone` explícito na formatação server-side |
 
 ## Próxima funcionalidade — foco principal
@@ -51,7 +51,7 @@
 ## Sequência sugerida
 
 1. ~~Item 1~~ ✅
-2. ~~Item 2 + 10 + log do Telegram~~ ✅
+2. Item 2 + 10 + log do Telegram (diagnóstico → aprovação → implementação)
 3. PR `develop → main` (Capacitor 8 + correções) → deploy
 4. Item 3: build release do APK e distribuição
 5. Itens 5, 6, 8 (rápidos)
