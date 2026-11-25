@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { archiveDateStamp, nextArchivedHostname } from "@/lib/notebook-hostname";
+import {
+  archiveDateStamp,
+  nextArchivedHostname,
+  originalHostname,
+} from "@/lib/notebook-hostname";
 
 // Conferências e LifecycleEvents são imutáveis e referenciam o notebook por FK
 // (Restrict). Por isso "excluir" um notebook com histórico = arquivar.
@@ -34,6 +38,8 @@ export function conflictResponse(error: unknown): Response | null {
   }
   return null;
 }
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 // ponytail: ~106 updates individuais (hostname único por item) numa transação
 // interativa; timeout explícito no lugar dos 5s padrão. Rever se uma UM passar de ~1000.
@@ -102,5 +108,153 @@ export async function removeNotebooks(
     }
 
     return { deleted: toDelete.length, archived: toArchive.length };
+  }, TX_OPTS);
+}
+
+type ArchivedMatch = { id: string; hostname: string; original: string; umNome: string };
+
+/** Arquivado mais recente para cada hostname original informado. */
+export async function findArchivedByOriginal(
+  hostnames: string[],
+): Promise<Map<string, ArchivedMatch>> {
+  const map = new Map<string, ArchivedMatch>();
+  if (hostnames.length === 0) return map;
+  const rows = await prisma.notebook.findMany({
+    where: {
+      status: "ARQUIVADO",
+      OR: hostnames.map((h) => ({ hostname: { startsWith: `${h}~arq-` } })),
+    },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, hostname: true, um: { select: { nome: true } } },
+  });
+  for (const r of rows) {
+    const original = originalHostname(r.hostname);
+    if (!map.has(original))
+      map.set(original, { id: r.id, hostname: r.hostname, original, umNome: r.um.nome });
+  }
+  return map;
+}
+
+export type OnArchived = "reactivate" | "new";
+
+interface NotebookData {
+  hostname: string;
+  serial?: string | null;
+  patrimonio?: string | null;
+  umId: string;
+}
+
+async function reactivateIn(
+  tx: Tx,
+  archived: ArchivedMatch,
+  data: NotebookData,
+  userId: string,
+) {
+  const active = await tx.notebook.findUnique({ where: { hostname: data.hostname }, select: { id: true } });
+  if (active)
+    throw new NotebookConflictError("Já existe notebook ativo com este hostname", "ACTIVE_EXISTS");
+
+  const notebook = await tx.notebook.update({
+    where: { id: archived.id },
+    data: {
+      hostname: data.hostname,
+      status: "ATIVO",
+      umId: data.umId,
+      ...(data.serial ? { serial: data.serial } : {}),
+      ...(data.patrimonio ? { patrimonio: data.patrimonio } : {}),
+    },
+    include: umSelect,
+  });
+  await tx.lifecycleEvent.create({
+    data: {
+      notebookId: archived.id,
+      userId,
+      tipo: "REATIVADO",
+      descricao: `Notebook reativado (estava arquivado como ${archived.hostname})`,
+    },
+  });
+  return notebook;
+}
+
+/**
+ * Cadastro individual. Hostname igual ao original de um arquivado exige decisão:
+ * sem `onArchived` → conflito ARCHIVED_MATCH para a UI perguntar.
+ */
+export async function createNotebook(
+  data: NotebookData & { status: "ATIVO" | "MANUTENCAO" },
+  userId: string,
+  onArchived?: OnArchived,
+) {
+  const active = await prisma.notebook.findUnique({ where: { hostname: data.hostname }, select: { id: true } });
+  if (active) throw new NotebookConflictError("Já existe notebook com este hostname", "ACTIVE_EXISTS");
+
+  const archived = (await findArchivedByOriginal([data.hostname])).get(data.hostname);
+  if (archived && !onArchived)
+    throw new NotebookConflictError(
+      "Este hostname pertence a um notebook arquivado",
+      "ARCHIVED_MATCH",
+      { archived: { id: archived.id, hostname: archived.original, umNome: archived.umNome } },
+    );
+
+  if (archived && onArchived === "reactivate")
+    return prisma.$transaction((tx) => reactivateIn(tx, archived, data, userId));
+
+  return prisma.notebook.create({ data, include: umSelect });
+}
+
+export interface BulkCreateResult {
+  total: number;
+  created: number;
+  reactivated: number;
+  /** Hostnames de arquivados não tratados (onArchived = "skip"). */
+  archivedConflicts: string[];
+  /** Reativação impossível: já há notebook ativo com o hostname. */
+  blocked: string[];
+}
+
+/** Lote/import: conflitos com arquivados são tratados em massa, sem diálogo por item. */
+export async function createNotebooksBulk(
+  rows: { hostname: string; serial?: string | null; patrimonio?: string | null }[],
+  umId: string,
+  status: "ATIVO" | "MANUTENCAO",
+  userId: string,
+  onArchived: OnArchived | "skip" = "skip",
+): Promise<BulkCreateResult> {
+  const archivedMap = await findArchivedByOriginal(rows.map((r) => r.hostname));
+  const conflicts = rows.filter((r) => archivedMap.has(r.hostname));
+  const toCreate = onArchived === "new" ? rows : rows.filter((r) => !archivedMap.has(r.hostname));
+
+  return prisma.$transaction(async (tx) => {
+    const { count: created } = await tx.notebook.createMany({
+      data: toCreate.map((r) => ({
+        hostname: r.hostname,
+        serial: r.serial ?? null,
+        patrimonio: r.patrimonio ?? null,
+        umId,
+        status,
+      })),
+      skipDuplicates: true,
+    });
+
+    const result: BulkCreateResult = {
+      total: rows.length,
+      created,
+      reactivated: 0,
+      archivedConflicts: onArchived === "skip" ? conflicts.map((r) => r.hostname) : [],
+      blocked: [],
+    };
+
+    if (onArchived === "reactivate") {
+      for (const r of conflicts) {
+        try {
+          await reactivateIn(tx, archivedMap.get(r.hostname)!, { ...r, umId }, userId);
+          result.reactivated++;
+        } catch (e) {
+          if (!(e instanceof NotebookConflictError)) throw e;
+          result.blocked.push(r.hostname);
+        }
+      }
+    }
+    return result;
   }, TX_OPTS);
 }

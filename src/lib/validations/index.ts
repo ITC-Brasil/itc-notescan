@@ -8,6 +8,9 @@ const hostnameSchema = z
   .max(100)
   .refine((h) => !isReservedHostname(h), "Hostname usa o sufixo reservado ~arq-");
 
+const onArchivedSchema = z.enum(["reactivate", "new"]).optional();
+const onArchivedBulkSchema = z.enum(["skip", "reactivate", "new"]).default("skip");
+
 export const conferenceItemSchema = z.object({
   notebookId: z.string().min(1),
   status: z.enum(["ESCANEADO", "FALTANTE", "MANUTENCAO"]),
@@ -31,6 +34,7 @@ export const createNotebookSchema = z.object({
   patrimonio: z.string().optional(),
   status: z.enum(["ATIVO", "MANUTENCAO"]).default("ATIVO"),
   umId: z.string().min(1),
+  onArchived: onArchivedSchema,
 });
 
 export const createNotebooksBatchSchema = z.object({
@@ -43,6 +47,7 @@ export const createNotebooksBatchSchema = z.object({
   end: z.number().int().min(1),
   umId: z.string().min(1),
   status: z.enum(["ATIVO", "MANUTENCAO"]).default("ATIVO"),
+  onArchived: onArchivedBulkSchema,
 });
 
 export const updateNotebookSchema = z.object({
@@ -62,6 +67,7 @@ export const importNotebooksSchema = z.object({
       patrimonio: z.string().optional(),
     }),
   ).min(1),
+  onArchived: onArchivedBulkSchema,
 });
 
 export const createProjectSchema = z.object({

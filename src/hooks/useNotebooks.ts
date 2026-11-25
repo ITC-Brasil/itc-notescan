@@ -21,6 +21,24 @@ export interface Notebook {
   };
 }
 
+/** Hostname igual ao original de um notebook arquivado: a UI pergunta reativar × novo. */
+export class ArchivedMatchError extends Error {
+  constructor(
+    message: string,
+    readonly archived: { id: string; hostname: string; umNome: string },
+  ) {
+    super(message);
+  }
+}
+
+export interface BulkCreateResult {
+  total: number;
+  created: number;
+  reactivated: number;
+  archivedConflicts: string[];
+  blocked: string[];
+}
+
 async function fetchNotebooks(umId?: string, includeArchived = false): Promise<Notebook[]> {
   const params = new URLSearchParams();
   if (umId) params.set("umId", umId);
@@ -48,7 +66,13 @@ export function useCreateNotebook() {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const err = (await res.json()) as { message: string };
+        const err = (await res.json()) as {
+          message: string;
+          code?: string;
+          archived?: ArchivedMatchError["archived"];
+        };
+        if (err.code === "ARCHIVED_MATCH" && err.archived)
+          throw new ArchivedMatchError(err.message, err.archived);
         throw new Error(err.message);
       }
       return res.json() as Promise<Notebook>;
@@ -104,7 +128,7 @@ export function useCreateNotebooksBatch() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
-      return res.json() as Promise<{ created: number; total: number }>;
+      return res.json() as Promise<BulkCreateResult>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });
@@ -123,7 +147,7 @@ export function useImportNotebooks() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
-      return res.json() as Promise<{ created: number; total: number }>;
+      return res.json() as Promise<BulkCreateResult>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });

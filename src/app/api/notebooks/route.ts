@@ -2,7 +2,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createNotebookSchema } from "@/lib/validations";
-import { conflictResponse, umSelect } from "@/lib/services/notebook.service";
+import { conflictResponse, createNotebook } from "@/lib/services/notebook.service";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -55,7 +55,8 @@ export async function POST(request: Request) {
     );
 
   try {
-    const notebook = await prisma.notebook.create({ data: parsed.data, include: umSelect });
+    const { onArchived, ...data } = parsed.data;
+    const notebook = await createNotebook(data, session.user.id, onArchived);
     return Response.json(notebook, { status: 201 });
   } catch (error) {
     const conflict = conflictResponse(error);
