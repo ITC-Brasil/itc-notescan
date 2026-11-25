@@ -4,12 +4,14 @@ import { useCallback, useReducer } from "react";
 import { saveToOutbox } from "@/lib/offline/sync";
 import { logger } from "@/lib/logger";
 import type { CreateConferenceInput } from "@/lib/validations";
+import { originalHostname } from "@/lib/notebook-hostname";
 
 export interface NotebookSlim {
   id: string;
   hostname: string;
   serial: string | null;
-  status: "ATIVO" | "MANUTENCAO";
+  /** ARQUIVADO só chega na lista de lookup do scan (nunca em pending/maintenance). */
+  status: "ATIVO" | "MANUTENCAO" | "ARQUIVADO";
 }
 
 export interface UMSlim {
@@ -105,6 +107,7 @@ function reducer(state: ConferenceState, action: Action): ConferenceState {
       // outra UM (não pertence) > manutenção > duplicata não suprimida.
       // (não há "desconhecido" separado: a página só carrega os notebooks DESTA
       //  UM, então um código de fora simplesmente não resolve.)
+      let errArquivado: string | null = null;
       let errForaDaUM: string | null = null;
       let errManutencao: string | null = null;
       let errDuplicata: string | null = null;
@@ -116,11 +119,17 @@ function reducer(state: ConferenceState, action: Action): ConferenceState {
         const hostname = raw.trim();
         if (!hostname) continue;
 
+        const key = hostname.toLowerCase();
         const notebook = notebooks.find(
-          (n) => n.hostname.toLowerCase() === hostname.toLowerCase(),
+          (n) => n.status !== "ARQUIVADO" && n.hostname.toLowerCase() === key,
         );
 
         if (!notebook) {
+          // Etiqueta de um notebook arquivado (hostname original sem o sufixo).
+          if (notebooks.some((n) => n.status === "ARQUIVADO" && originalHostname(n.hostname).toLowerCase() === key)) {
+            errArquivado = errArquivado ?? `"${hostname}": notebook arquivado — procure o administrador`;
+            continue;
+          }
           errForaDaUM = errForaDaUM ?? `"${hostname}" não pertence a esta UM`;
           continue;
         }
@@ -161,7 +170,7 @@ function reducer(state: ConferenceState, action: Action): ConferenceState {
       }
       for (const id of resolvedIds) recentlySeen[id] = timestamp;
 
-      const selectedError = errForaDaUM ?? errManutencao ?? errDuplicata ?? null;
+      const selectedError = errArquivado ?? errForaDaUM ?? errManutencao ?? errDuplicata ?? null;
 
       return {
         ...state,

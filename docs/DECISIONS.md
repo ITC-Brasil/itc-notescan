@@ -368,6 +368,8 @@ e **não** bloqueia o gate `--audit-level=high` do CI.
 
 **Quando corrigir:** junto de uma futura migração planejada para Capacitor 8.
 
+**Resolvido (2026-10-29):** migrado para Capacitor 8 com `@capgo/capacitor-native-biometric` 8.8.3. Ver [m7-11](#m7-11--migração-para-capacitor-8-e-assinatura-de-release).
+
 ---
 
 ## sec-03 — Gate de audit escopado para produção (`--omit=dev`)
@@ -618,3 +620,154 @@ isso acontecer; até lá a regra permanece.
 `tsc`, `lint` (0 erros), 161/161 testes Vitest e `npm run build` (standalone) OK.
 Remanescentes moderate: `fast-uri` (corte libera em 02/11) e `@capgo/capacitor-native-biometric`
 (exige Capacitor 8, ver sec-02).
+
+---
+
+## m7-11 — Migração para Capacitor 8 e assinatura de release
+
+**Contexto:** o alerta da biometria (GHSA-vx5f-vmr6-32wf, ver [sec-02](#sec-02--capgocapacitor-native-biometric-fix-adiado-exige-capacitor-8)) só tinha
+correção na linha 8.x, que exige Capacitor 8. Os APKs eram assinados com a chave de debug
+do PC de desenvolvimento: se ela se perdesse, nenhum APK novo instalaria por cima, e a
+chave de debug é igual em toda instalação do Android Studio.
+
+**Decisão:** migrar para o Capacitor 8 e passar a distribuir APK de release assinado
+**numa única troca**, porque as duas mudanças obrigam os técnicos a reinstalar.
+
+**Pacotes** (todos publicados até o corte de 14 dias da [sec-05](#sec-05--ciclo-de-outubro-sharp-next-e-source-map-js-com-regra-dos-14-dias)):
+`@capacitor/*` 8.5.3, `@capacitor-mlkit/barcode-scanning` 8.2.1, `@capacitor/geolocation`
+8.2.3, `@capacitor/local-notifications` 8.3.1, `@capacitor/splash-screen` 8.0.2,
+`@capgo/capacitor-native-biometric` 8.8.3.
+
+**Migração manual, sem `npx cap migrate`:** o comando reescreve o `package.json` para `^8`
+e roda `npm install` por conta própria, puxando versões posteriores ao corte. Aplicamos
+o guia oficial (capacitorjs.com/docs/updating/8-0) à mão:
+- AGP 8.7.2 → 8.13.0 e google-services 4.4.2 → 4.4.4. O wrapper do Gradle já estava
+  na 8.14.5 (o mínimo é 8.14.3).
+- `variables.gradle`: SDK mínimo/compilação/alvo 24/36/36, versões do androidx do guia e
+  `kotlinxCoroutinesVersion` 1.10.2 (exigido pelo geolocation).
+- `app/build.gradle` na sintaxe com `=` (a antiga está depreciada).
+- Manifest: `density` no `configChanges`, para o WebView não recarregar ao redimensionar.
+- Removido o override `bridge_layout_main.xml`: o Capacitor 8 renomeou o layout para
+  `capacitor_bridge_layout_main.xml`, e o nosso era uma cópia do padrão sem nenhuma
+  referência no código.
+- `versionCode` 3 / `versionName` 2.0.
+
+**Assinatura:** o `signingConfig` de release lê `android/keystore.properties`, que fica
+fora do git. O keystore fica **fora do repositório** (`~/keystores/notescan-release.jks`,
+alias `notescan`, RSA 4096, validade de 10.000 dias). Sem o arquivo de propriedades, o
+release sai sem assinatura em vez de quebrar o build. Certificado (SHA-256):
+`9671e48467328b6314ead3d709f2fcae5063f0c579d227a1330f5abf6b24adf9`.
+
+**JDK:** o build passa a usar o Eclipse Adoptium 21. O JBR do Android Studio quebrou numa
+reinstalação, que o moveu de pasta, e um JDK próprio não depende disso.
+
+**Consequências:**
+- O APK novo **não instala por cima** do antigo, porque a assinatura é outra. Cada técnico
+  precisa desinstalar o app, o que apaga o Dexie local. **A fila de sincronização precisa
+  estar zerada antes da troca.**
+- Keystore e senha precisam de backup em dois lugares (cofre de senhas e cópia offline).
+
+**Verificação (2026-10-29):** `assembleRelease` assinado (verificado com `apksigner`),
+instalado num Galaxy S23 (Android 16, alvo 36). Biometria, login, sessão após segundo
+plano, scanner nativo em lote e geolocalização testados no aparelho. Nenhum crash no
+logcat.
+
+---
+
+## nb-01 — Excluir notebook com histórico = arquivar (status ARQUIVADO + sufixo)
+
+**Contexto:** `DELETE /api/notebooks/[id]` e `bulk-delete` falhavam com 500 para todo
+notebook com histórico. `ConferenceItem.notebook` e `LifecycleEvent.notebook` não têm
+`onDelete` (Restrict), e conferências e LifecycleEvents são imutáveis: não se apaga nem se
+usa cascade.
+
+**Alternativas consideradas:**
+- Cascade ou apagar o histórico (rejeitado: quebra a imutabilidade e os relatórios)
+- Soft delete com `deletedAt` (rejeitado: obrigaria a filtrar em toda consulta e não
+  resolve o `@unique` do hostname)
+- Guardar o hostname original numa coluna nova (rejeitado: o original sai do próprio
+  sufixo, removendo `~arq-…`)
+
+**Decisão:**
+- Novo valor `ARQUIVADO` em `NotebookStatus` (migration `20261125120000`).
+- Sem nenhum ConferenceItem nem LifecycleEvent → exclusão real. Com histórico → status
+  `ARQUIVADO`, hostname `ORIGINAL~arq-YYYYMMDD` (data em America/Sao_Paulo; em colisão no
+  mesmo dia, `-2`, `-3`...) e LifecycleEvent `ARQUIVADO` com o hostname original, tudo numa
+  transação. O sufixo libera o `@unique` para recadastrar o hostname.
+- O padrão `~arq-\d{8}(-\d+)?$` é reservado: POST, PUT, lote e import respondem 400.
+- Erros esperados respondem 409 com mensagem, nunca 500.
+- Arquivado fica fora do uso operacional: `GET /api/notebooks` o exclui por padrão (lista
+  esperada da conferência e lookup do scanner), assim como o total do dashboard e as
+  contagens de UM. `?includeArchived=1` serve à tela de notebooks ("Mostrar arquivados") e
+  ao scanner, que mostra "notebook arquivado — procure o administrador". O reducer da
+  conferência nunca põe ARQUIVADO em pendentes ou manutenção.
+- Histórico, relatórios, resumo e Telegram exibem `originalHostname()`.
+- **Bulk-delete:** transação interativa com `timeout: 30s` explícito, em vez dos 5s
+  padrão. Cada arquivado precisa de um `update` próprio (hostname único), mas a busca de
+  colisões e os eventos saem em uma consulta cada. São cerca de 110 statements para uma UM
+  de 106. Rever se uma UM passar de cerca de 1000 notebooks.
+- UM com notebooks arquivados continua sem poder ser excluída (o FK do histórico exige),
+  com mensagem 409 própria.
+
+**Recadastro de hostname arquivado:** no cadastro individual, a API responde 409
+`ARCHIVED_MATCH` e a UI pergunta:
+- **Reativar** (mesma máquina): restaura o hostname, status ATIVO e a UM escolhida, grava o
+  LifecycleEvent `REATIVADO` e preserva o histórico.
+- **Cadastrar como novo** (outra máquina): cria um registro novo, e o arquivado mantém o
+  sufixo.
+
+No lote e no import, os conflitos aparecem no resultado com uma ação em massa (Reativar
+todos / Cadastrar todos como novos / Pular). Se já existir notebook ativo com o hostname, a
+reativação é recusada: 409 no individual, `blocked` no lote.
+
+**Replay offline:** uma conferência no outbox com um notebook arquivado depois é gravada
+normalmente. O id não muda, o FK continua válido e o POST não valida status. Não precisou
+de ajuste.
+
+**Consequências:** nada muda no APK, que carrega `server.url`. O deploy precisa aplicar a
+migration.
+
+## sec-06 — Next 16.4.5 (complemento da sec-05)
+
+**Contexto:** em 03/11/2026 o npm publicou 7 advisories contra `next` `>=16.x <=16.4.4`, todos
+moderate. O gate (`--audit-level=high`) não ficou vermelho por eles, mas o `next dev` passou a
+interromper a primeira subida com um aviso de upgrade (código 1), o que quebrava o webServer
+do Playwright.
+
+**Advisories (corrigidos na 16.4.5):**
+- GHSA-vc7v-qv4w-wrv8 — vazamento de cache entre root params em `use cache` aninhado.
+- GHSA-rhh4-g77r-r9qj — vazamento/envenenamento de cache entre usuários em `use cache` com
+  argumentos binários.
+- GHSA-mfr8-8qww-v76h — `use cache` via `unstable_cache()` expõe dados entre root params.
+- GHSA-7qx7-33qx-rqx2 — bypass da rejeição de SVG no Image Optimization.
+- GHSA-f3mh-rxg3-f5g2 — cookie HttpOnly exposto por header interno no Edge runtime.
+- GHSA-pc58-hwjq-p385 — injeção/vazamento de resposta entre clientes em self-hosted que
+  repassa respostas de fetch.
+- GHSA-vvgp-ww4w-46vf — envenenamento de fallback shells em Cache Components.
+
+**Decisão:** `next` e `eslint-config-next` `16.4.1 → 16.4.5`, versão exata. Ambos publicados em
+03/11/2026 (22 dias antes da instalação, dentro da regra dos 14 dias da sec-05). Não usamos
+`next upgrade`: o comando é sugerido pelo próprio CLI e reescreveria dependências fora do
+nosso controle. O lockfile só mudou em `next`, `@next/*` e `eslint-config-next`.
+
+**Audit após o bump (`--omit=dev`):** 12 (9 moderate, 3 high), antes 13. `next` saiu da lista.
+Os 3 high restantes são a cadeia `prisma` → `@prisma/config` → `effect`, anterior a este bump;
+o gate continua vermelho por ela.
+
+### sec-06a — Override de `effect` 3.22.5 (exceção à regra dos 14 dias)
+
+**Contexto:** os 3 high restantes do audit vinham de `prisma` 7.9.0 → `@prisma/config` →
+`effect` 3.20.0 (GHSA-7589-6fvf-x4pw). O Prisma ainda não publicou versão com `effect` corrigido.
+
+**Decisão:** `overrides.effect = "3.22.5"` (exato). A 3.22.4 (22/10) já corrigia o advisory e
+cumpria a regra dos 14 dias; a 3.22.5 (19/11/2026) entrou com 6 dias de publicação por decisão
+do Matheus Nobre em 25/11/2026, como exceção explícita à regra da sec-05.
+
+**Verificação antes de instalar:** mesmos mantenedores das versões anteriores
+(michael.arnaldi, effect-bot), publicação via GitHub Actions (OIDC), sem scripts de
+install/postinstall; integrity `sha512-AdIU4llI…Zkmjpw==`. O lockfile só mudou em `effect`.
+`prisma validate`/`generate`/`migrate` sem alteração; type-check, testes e E2E verdes.
+
+**Audit (`--omit=dev`):** 9 moderate, 0 high; o gate `audit:security` sai com código 0.
+
+**Remover o override** quando o Prisma publicar versão que já dependa de `effect` corrigido.

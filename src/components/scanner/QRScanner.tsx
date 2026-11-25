@@ -71,7 +71,8 @@ export function QRScanner({ onScan, active = true, className, nativeUi }: QRScan
           }),
         );
 
-        scannerRef.current = { stop: () => root.unmount() };
+        // Unmount adiado: o cleanup roda durante o render do pai, e unmount síncrono ali é race condition
+        scannerRef.current = { stop: () => setTimeout(() => root.unmount()) };
       } catch {
         setError("Câmera não disponível");
         setReady(false);

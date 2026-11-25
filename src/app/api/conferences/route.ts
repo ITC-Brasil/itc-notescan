@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { createConferenceSchema } from "@/lib/validations";
+import { originalHostname } from "@/lib/notebook-hostname";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -204,7 +205,12 @@ async function notifyTelegram(conference: {
 }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
+  if (!token || !chatId) {
+    // Só presença (booleanos), nunca os valores. Chaves sem "token"/"auth":
+    // o logger mascara essas chaves e esconderia o próprio booleano.
+    logger.warn("Telegram não configurado", { bot: !!token, chatId: !!chatId });
+    return;
+  }
 
   // MarkdownV2 requires every reserved char to be escaped. A single stray one
   // (e.g. the '-' in hostnames like BSBIA01-EST01) makes Telegram reject the
@@ -251,7 +257,7 @@ async function notifyTelegram(conference: {
   }
 
   lines.push(`\`------------------------------------\``);
-  lines.push(`💻 Dispositivos Ativos \\(Esperados\\): ${totalAtivos}`);
+  lines.push(`💻 Dispositivos Ativos: ${totalAtivos}`);
   lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
   lines.push(`❗️ Dispositivos Faltantes: ${faltanteItems.length}`);
   lines.push(`🔧 Dispositivos em Manutenção: ${manutencaoItems.length}`);
@@ -260,7 +266,7 @@ async function notifyTelegram(conference: {
     lines.push(``);
     lines.push(`*Lista de Faltantes:*`);
     for (const item of faltanteItems) {
-      lines.push(`\\- ${esc(item.notebook.hostname)}`);
+      lines.push(`\\- ${esc(originalHostname(item.notebook.hostname))}`);
     }
   }
 
@@ -268,7 +274,7 @@ async function notifyTelegram(conference: {
     lines.push(``);
     lines.push(`*Lista em Manutenção:*`);
     for (const item of manutencaoItems) {
-      lines.push(`\\- ${esc(item.notebook.hostname)}`);
+      lines.push(`\\- ${esc(originalHostname(item.notebook.hostname))}`);
     }
   }
 

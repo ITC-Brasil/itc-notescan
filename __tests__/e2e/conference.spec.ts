@@ -7,7 +7,7 @@ async function selectUMAndStart(page: import("@playwright/test").Page) {
 
   await page.getByRole("combobox").click();
   await page.getByRole("option", { name: /UM-TESTE/ }).click();
-  await page.getByRole("button", { name: "Iniciar" }).click();
+  await page.getByRole("button", { name: "Iniciar Conferência" }).click();
 
   await expect(page.getByText(/Pendentes/)).toBeVisible();
 }
@@ -54,7 +54,7 @@ test.describe("Fluxo de conferência", () => {
 
     await page.getByRole("combobox").click();
     await page.getByRole("option", { name: /UM-TESTE/ }).click();
-    await page.getByRole("button", { name: "Iniciar" }).click();
+    await page.getByRole("button", { name: "Iniciar Conferência" }).click();
 
     await expect(page.getByText(/Pendentes \(5\)/)).toBeVisible();
     await expect(page.getByText("TESTE-EST01")).toBeVisible();
@@ -81,6 +81,9 @@ test.describe("Fluxo de conferência", () => {
     await selectUMAndStart(page);
 
     await simulateScan(page, "TESTE-EST01");
+    await expect(page.getByText(/Escaneados \(1\)/)).toBeVisible();
+    // Releitura em até 400ms é o mesmo QR ainda no quadro (suprimida); acima disso, é duplicata
+    await page.waitForTimeout(500);
     await simulateScan(page, "TESTE-EST01");
 
     await expect(page.getByText(/já foi escaneado/i)).toBeVisible();
@@ -94,11 +97,12 @@ test.describe("Fluxo de conferência", () => {
     await loginAs(page, "tecnico");
     await selectUMAndStart(page);
 
-    await page.getByRole("button", { name: /Finalizar/ }).click();
+    await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Summary phase — shows faltantes (heading specifically to avoid strict mode)
-    await expect(page.getByRole("heading", { name: /Faltante/ })).toBeVisible();
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    // UM do seed sem periféricos: "Próximo" vai direto ao resumo
+    await expect(page.getByRole("heading", { name: "Resumo" })).toBeVisible();
+    await expect(page.getByText("Faltantes · 5")).toBeVisible();
+    await page.getByRole("button", { name: "Concluir e Enviar" }).click();
 
     await expect(page.getByText("Conferência salva!")).toBeVisible({
       timeout: 10000,
@@ -112,16 +116,16 @@ test.describe("Fluxo de conferência", () => {
     await loginAs(page, "tecnico");
     await selectUMAndStart(page);
 
-    await page.getByRole("button", { name: /Finalizar/ }).click();
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByRole("button", { name: "Próximo" }).click();
+    await page.getByRole("button", { name: "Concluir e Enviar" }).click();
     await expect(page.getByText("Conferência salva!")).toBeVisible({
       timeout: 10000,
     });
 
+    // Sem networkidle: /inicio faz polling e a rede nunca fica ociosa
     await page.goto("/inicio");
-    await page.waitForLoadState("networkidle");
 
-    await expect(page.getByText("UM-TESTE").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("UM-TESTE").first()).toBeVisible({ timeout: 15000 });
   });
 
   test("conferência aparece no dashboard do admin", async ({
@@ -132,8 +136,8 @@ test.describe("Fluxo de conferência", () => {
     await loginAs(page, "tecnico");
     await selectUMAndStart(page);
 
-    await page.getByRole("button", { name: /Finalizar/ }).click();
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByRole("button", { name: "Próximo" }).click();
+    await page.getByRole("button", { name: "Concluir e Enviar" }).click();
     await expect(page.getByText("Conferência salva!")).toBeVisible({
       timeout: 10000,
     });

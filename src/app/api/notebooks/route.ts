@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createNotebookSchema } from "@/lib/validations";
+import { conflictResponse, createNotebook } from "@/lib/services/notebook.service";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -10,9 +11,15 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const umId = searchParams.get("umId");
+  // Arquivados ficam fora de tudo que é operacional. Só a tela de notebooks
+  // ("Mostrar arquivados") e o scanner (mensagem "arquivado") pedem com o flag.
+  const includeArchived = searchParams.get("includeArchived") === "1";
 
   const notebooks = await prisma.notebook.findMany({
-    where: umId ? { umId } : undefined,
+    where: {
+      ...(umId && { umId }),
+      ...(!includeArchived && { status: { not: "ARQUIVADO" as const } }),
+    },
     orderBy: [
       { um: { project: { nome: "asc" } } },
       { um: { nome: "asc" } },
@@ -48,20 +55,12 @@ export async function POST(request: Request) {
     );
 
   try {
-    const notebook = await prisma.notebook.create({
-      data: parsed.data,
-      include: {
-        um: {
-          select: {
-            id: true,
-            nome: true,
-            project: { select: { id: true, nome: true, cor: true } },
-          },
-        },
-      },
-    });
+    const { onArchived, ...data } = parsed.data;
+    const notebook = await createNotebook(data, session.user.id, onArchived);
     return Response.json(notebook, { status: 201 });
   } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
     logger.captureException(error);
     return Response.json({ message: "Erro interno" }, { status: 500 });
   }

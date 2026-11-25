@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { updateNotebookSchema } from "@/lib/validations";
+import { conflictResponse, removeNotebooks } from "@/lib/services/notebook.service";
 
 export async function PUT(
   request: Request,
@@ -28,6 +29,11 @@ export async function PUT(
       where: { id },
       select: { status: true },
     });
+
+    if (!existing)
+      return Response.json({ message: "Notebook não encontrado" }, { status: 404 });
+    if (existing.status === "ARQUIVADO")
+      return Response.json({ message: "Notebook arquivado não pode ser editado" }, { status: 409 });
 
     const statusChanged =
       existing && parsed.data.status && existing.status !== parsed.data.status;
@@ -67,6 +73,8 @@ export async function PUT(
     const notebook = await prisma.notebook.update(notebookUpdateArgs);
     return Response.json(notebook);
   } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
     logger.captureException(error);
     return Response.json({ message: "Erro interno" }, { status: 500 });
   }
@@ -86,9 +94,18 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    await prisma.notebook.delete({ where: { id } });
-    return new Response(null, { status: 204 });
+    const existing = await prisma.notebook.findUnique({ where: { id }, select: { status: true } });
+    if (!existing)
+      return Response.json({ message: "Notebook não encontrado" }, { status: 404 });
+    if (existing.status === "ARQUIVADO")
+      return Response.json({ message: "Notebook já está arquivado" }, { status: 409 });
+
+    // Sem histórico → exclusão real; com histórico → arquivado.
+    const { archived } = await removeNotebooks({ id }, session.user.id);
+    return Response.json({ action: archived > 0 ? "archived" : "deleted" });
   } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
     logger.captureException(error);
     return Response.json({ message: "Erro interno" }, { status: 500 });
   }

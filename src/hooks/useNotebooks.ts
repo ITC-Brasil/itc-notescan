@@ -11,7 +11,7 @@ export interface Notebook {
   hostname: string;
   serial: string | null;
   patrimonio: string | null;
-  status: "ATIVO" | "MANUTENCAO";
+  status: "ATIVO" | "MANUTENCAO" | "ARQUIVADO";
   umId: string;
   createdAt: string;
   um: {
@@ -21,17 +21,38 @@ export interface Notebook {
   };
 }
 
-async function fetchNotebooks(umId?: string): Promise<Notebook[]> {
-  const url = umId ? `/api/notebooks?umId=${umId}` : "/api/notebooks";
-  const res = await fetch(url);
+/** Hostname igual ao original de um notebook arquivado: a UI pergunta reativar × novo. */
+export class ArchivedMatchError extends Error {
+  constructor(
+    message: string,
+    readonly archived: { id: string; hostname: string; umNome: string },
+  ) {
+    super(message);
+  }
+}
+
+export interface BulkCreateResult {
+  total: number;
+  created: number;
+  reactivated: number;
+  archivedConflicts: string[];
+  blocked: string[];
+}
+
+async function fetchNotebooks(umId?: string, includeArchived = false): Promise<Notebook[]> {
+  const params = new URLSearchParams();
+  if (umId) params.set("umId", umId);
+  if (includeArchived) params.set("includeArchived", "1");
+  const res = await fetch(`/api/notebooks?${params}`);
   if (!res.ok) throw new Error("Falha ao carregar notebooks");
   return res.json() as Promise<Notebook[]>;
 }
 
-export function useNotebooks(umId?: string) {
+/** Sem `includeArchived`, a API já exclui os ARQUIVADO (uso operacional). */
+export function useNotebooks(umId?: string, { includeArchived = false } = {}) {
   return useQuery({
-    queryKey: ["notebooks", umId],
-    queryFn: () => fetchNotebooks(umId),
+    queryKey: ["notebooks", umId, includeArchived],
+    queryFn: () => fetchNotebooks(umId, includeArchived),
   });
 }
 
@@ -45,7 +66,13 @@ export function useCreateNotebook() {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const err = (await res.json()) as { message: string };
+        const err = (await res.json()) as {
+          message: string;
+          code?: string;
+          archived?: ArchivedMatchError["archived"];
+        };
+        if (err.code === "ARCHIVED_MATCH" && err.archived)
+          throw new ArchivedMatchError(err.message, err.archived);
         throw new Error(err.message);
       }
       return res.json() as Promise<Notebook>;
@@ -82,6 +109,7 @@ export function useDeleteNotebook() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
+      return res.json() as Promise<{ action: "deleted" | "archived" }>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });
@@ -100,7 +128,7 @@ export function useCreateNotebooksBatch() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
-      return res.json() as Promise<{ created: number; total: number }>;
+      return res.json() as Promise<BulkCreateResult>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });
@@ -119,7 +147,7 @@ export function useImportNotebooks() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
-      return res.json() as Promise<{ created: number; total: number }>;
+      return res.json() as Promise<BulkCreateResult>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });
@@ -158,7 +186,7 @@ export function useBulkDeleteNotebooks() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
-      return res.json() as Promise<{ deleted: number }>;
+      return res.json() as Promise<{ deleted: number; archived: number }>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });

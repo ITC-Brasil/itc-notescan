@@ -69,6 +69,7 @@ model Notebook {
 enum NotebookStatus {
   ATIVO
   MANUTENCAO
+  ARQUIVADO
 }
 
 model Conference {

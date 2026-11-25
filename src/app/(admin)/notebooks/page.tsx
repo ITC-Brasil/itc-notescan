@@ -25,6 +25,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   useNotebooks,
+  ArchivedMatchError,
+  type BulkCreateResult,
   useCreateNotebook,
   useUpdateNotebook,
   useDeleteNotebook,
@@ -40,9 +42,12 @@ import {
   createNotebooksBatchSchema,
   updateNotebookSchema,
   type CreateNotebooksBatchInput,
+  type CreateNotebookInput,
   type UpdateNotebookInput,
 } from "@/lib/validations";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Checkbox } from "@/components/ui/checkbox";
+import { originalHostname } from "@/lib/notebook-hostname";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -165,6 +170,42 @@ function UMCombobox({
   );
 }
 
+/** Texto do resultado de lote/import (criados, reativados, bloqueados). */
+function bulkSummary(r: BulkCreateResult, verbo: string): string {
+  const parts = [`${r.created} de ${r.total} ${verbo}`];
+  if (r.reactivated) parts.push(`${r.reactivated} reativado${r.reactivated !== 1 ? "s" : ""}`);
+  if (r.blocked.length) parts.push(`${r.blocked.length} não reativado${r.blocked.length !== 1 ? "s" : ""} (já existe ativo)`);
+  return parts.join(" · ") + ".";
+}
+
+/** Conflitos com arquivados em lote/import: uma decisão em massa, sem diálogo por item. */
+function ArchivedConflictsPanel({
+  hostnames,
+  pending,
+  onChoose,
+}: {
+  hostnames: string[];
+  pending: boolean;
+  onChoose: (choice: "reactivate" | "new" | "skip") => void;
+}) {
+  return (
+    <div className="rounded-lg border border-itc-atencao/30 bg-itc-atencao/10 p-3 space-y-2">
+      <p className="text-sm font-medium text-foreground">
+        {hostnames.length} hostname{hostnames.length !== 1 ? "s pertencem" : " pertence"} a notebooks arquivados
+      </p>
+      <p className="text-xs text-muted-foreground max-h-20 overflow-y-auto tabular-nums">{hostnames.join(", ")}</p>
+      <p className="text-xs text-muted-foreground">
+        Reativar = mesma máquina (histórico preservado). Cadastrar como novos = outras máquinas.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" disabled={pending} onClick={() => onChoose("reactivate")}>Reativar todos</Button>
+        <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onChoose("new")}>Cadastrar todos como novos</Button>
+        <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => onChoose("skip")}>Pular</Button>
+      </div>
+    </div>
+  );
+}
+
 function NotebookFormDialog({
   open,
   onOpenChange,
@@ -177,6 +218,10 @@ function NotebookFormDialog({
   const createMutation = useCreateNotebook();
   const updateMutation = useUpdateNotebook();
   const isEditing = !!notebook;
+  const [archivedMatch, setArchivedMatch] = useState<{
+    data: NotebookFormValues;
+    archived: ArchivedMatchError["archived"];
+  } | null>(null);
 
   const schema = isEditing ? updateNotebookSchema : createNotebookSchema;
 
@@ -191,7 +236,7 @@ function NotebookFormDialog({
     } as NotebookFormValues,
   });
 
-  const onSubmit = async (data: NotebookFormValues) => {
+  const onSubmit = async (data: NotebookFormValues, onArchived?: "reactivate" | "new") => {
     try {
       if (isEditing) {
         await updateMutation.mutateAsync({
@@ -200,12 +245,18 @@ function NotebookFormDialog({
         });
         toast.success("Notebook atualizado.");
       } else {
-        await createMutation.mutateAsync(data);
-        toast.success("Notebook criado.");
+        await createMutation.mutateAsync({ ...(data as CreateNotebookInput), onArchived });
+        toast.success(onArchived === "reactivate" ? "Notebook reativado com o histórico preservado." : "Notebook criado.");
       }
+      setArchivedMatch(null);
       onOpenChange(false);
       form.reset();
     } catch (err) {
+      if (err instanceof ArchivedMatchError) {
+        setArchivedMatch({ data, archived: err.archived });
+        return;
+      }
+      setArchivedMatch(null);
       toast.error(err instanceof Error ? err.message : "Erro ao salvar notebook.");
     }
   };
@@ -216,8 +267,33 @@ function NotebookFormDialog({
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar Notebook" : "Novo Notebook"}</DialogTitle>
         </DialogHeader>
+        {archivedMatch ? (
+          <div className="space-y-4">
+            <p className="text-sm text-foreground">
+              <span className="font-medium tabular-nums">{archivedMatch.archived.hostname}</span> pertence a um
+              notebook arquivado (UM {archivedMatch.archived.umNome}).
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Reativar: é a mesma máquina — restaura o hostname na UM escolhida e preserva o histórico.
+              Cadastrar como novo: é outra máquina — o arquivado continua arquivado.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" onClick={() => setArchivedMatch(null)}>Cancelar</Button>
+              <Button
+                variant="outline"
+                disabled={createMutation.isPending}
+                onClick={() => onSubmit(archivedMatch.data, "new")}
+              >
+                Cadastrar como novo
+              </Button>
+              <Button disabled={createMutation.isPending} onClick={() => onSubmit(archivedMatch.data, "reactivate")}>
+                Reativar
+              </Button>
+            </div>
+          </div>
+        ) : (
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit((d) => onSubmit(d))} className="space-y-4">
             <FormField
               control={form.control}
               name="umId"
@@ -306,6 +382,7 @@ function NotebookFormDialog({
             </DialogFooter>
           </form>
         </Form>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -331,12 +408,32 @@ function BatchDialog({
     } as CreateNotebooksBatchInput,
   });
 
+  const [conflicts, setConflicts] = useState<{ data: CreateNotebooksBatchInput; hostnames: string[] } | null>(null);
+
+  const close = () => {
+    setConflicts(null);
+    onOpenChange(false);
+    form.reset();
+  };
+
   const onSubmit = async (data: CreateNotebooksBatchInput) => {
     try {
       const result = await batchMutation.mutateAsync(data);
-      toast.success(`${result.created} de ${result.total} notebooks criados.`);
-      onOpenChange(false);
-      form.reset();
+      toast.success(bulkSummary(result, "notebooks criados"));
+      // Conflitos com arquivados: mantém aberto para a decisão em massa.
+      if (result.archivedConflicts.length) setConflicts({ data, hostnames: result.archivedConflicts });
+      else close();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar notebooks em lote.");
+    }
+  };
+
+  const handleArchivedChoice = async (choice: "reactivate" | "new" | "skip") => {
+    if (choice === "skip" || !conflicts) return close();
+    // Reenvia o mesmo lote: os já criados são ignorados (skipDuplicates).
+    try {
+      toast.success(bulkSummary(await batchMutation.mutateAsync({ ...conflicts.data, onArchived: choice }), "criados"));
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao criar notebooks em lote.");
     }
@@ -433,6 +530,13 @@ function BatchDialog({
                 Prévia: {preview} ({end - start + 1} notebooks)
               </p>
             )}
+            {conflicts && (
+              <ArchivedConflictsPanel
+                hostnames={conflicts.hostnames}
+                pending={batchMutation.isPending}
+                onChoose={handleArchivedChoice}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
@@ -514,11 +618,33 @@ function ImportDialog({
     if (!preview.length) { toast.error("Nenhum notebook para importar."); return; }
     try {
       const result = await importMutation.mutateAsync({ umId: selectedUmId, rows: preview });
-      toast.success(`${result.created} de ${result.total} notebooks importados.`);
-      onOpenChange(false);
-      setPreview([]);
-      setSelectedUmId("");
-      if (fileRef.current) fileRef.current.value = "";
+      toast.success(bulkSummary(result, "notebooks importados"));
+      // Conflitos com arquivados: mantém aberto para a decisão em massa.
+      if (result.archivedConflicts.length) setConflicts(result.archivedConflicts);
+      else close();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao importar.");
+    }
+  };
+
+  const [conflicts, setConflicts] = useState<string[] | null>(null);
+
+  const close = () => {
+    setConflicts(null);
+    onOpenChange(false);
+    setPreview([]);
+    setSelectedUmId("");
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const handleArchivedChoice = async (choice: "reactivate" | "new" | "skip") => {
+    if (choice === "skip" || !conflicts) return close();
+    try {
+      const rows = preview.filter((r) => conflicts.includes(r.hostname));
+      toast.success(
+        bulkSummary(await importMutation.mutateAsync({ umId: selectedUmId, rows, onArchived: choice }), "importados"),
+      );
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao importar.");
     }
@@ -588,6 +714,13 @@ function ImportDialog({
             </div>
           )}
         </div>
+        {conflicts && (
+          <ArchivedConflictsPanel
+            hostnames={conflicts}
+            pending={importMutation.isPending}
+            onChoose={handleArchivedChoice}
+          />
+        )}
         <DialogFooter>
           <Button
             type="button"
@@ -691,7 +824,8 @@ function HistoryModal({
 }
 
 export default function NotebooksPage() {
-  const { data: notebooks, isLoading } = useNotebooks();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: notebooks, isLoading } = useNotebooks(undefined, { includeArchived: showArchived });
   const deleteMutation = useDeleteNotebook();
   const updateMutation = useUpdateNotebook();
   const bulkDeleteMutation = useBulkDeleteNotebooks();
@@ -776,8 +910,12 @@ export default function NotebooksPage() {
   const handleDelete = async () => {
     if (!deletingId) return;
     try {
-      await deleteMutation.mutateAsync(deletingId);
-      toast.success("Notebook excluído.");
+      const { action } = await deleteMutation.mutateAsync(deletingId);
+      toast.success(
+        action === "archived"
+          ? "Notebook arquivado (possui histórico)."
+          : "Notebook excluído.",
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir notebook.");
     } finally {
@@ -789,7 +927,10 @@ export default function NotebooksPage() {
     if (!bulkDeletingUmId) return;
     try {
       const result = await bulkDeleteMutation.mutateAsync(bulkDeletingUmId);
-      toast.success(`${result.deleted} notebook${result.deleted !== 1 ? "s" : ""} excluído${result.deleted !== 1 ? "s" : ""}.`);
+      const plural = (n: number, s: string) => `${n} ${s}${n !== 1 ? "s" : ""}`;
+      toast.success(
+        `${plural(result.deleted, "excluído")}, ${plural(result.archived, "arquivado")} (com histórico).`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir notebooks.");
     } finally {
@@ -821,7 +962,7 @@ export default function NotebooksPage() {
     }
   };
 
-  const totalNotebooks = notebooks?.length ?? 0;
+  const totalNotebooks = notebooks?.filter((n) => n.status !== "ARQUIVADO").length ?? 0;
 
   return (
     <div className="space-y-6 page-transition">
@@ -831,6 +972,13 @@ export default function NotebooksPage() {
         icon={Laptop}
         action={
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2 cursor-pointer">
+              <Checkbox
+                checked={showArchived}
+                onCheckedChange={(v) => setShowArchived(v === true)}
+              />
+              Mostrar arquivados
+            </label>
             <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1.5" />
               Importar CSV
@@ -953,7 +1101,7 @@ export default function NotebooksPage() {
                               >
                                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                                   <span className="text-sm tabular-nums font-medium text-foreground truncate max-w-[160px]">
-                                    {nb.hostname}
+                                    {originalHostname(nb.hostname)}
                                   </span>
                                   {nb.serial && (
                                     <span className="text-xs text-muted-foreground hidden sm:inline">
@@ -970,10 +1118,12 @@ export default function NotebooksPage() {
                                       "text-xs shrink-0",
                                       nb.status === "ATIVO"
                                         ? "bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30 hover:bg-itc-sucesso/15"
-                                        : "bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15",
+                                        : nb.status === "ARQUIVADO"
+                                          ? "bg-muted text-muted-foreground border-border hover:bg-muted"
+                                          : "bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15",
                                     )}
                                   >
-                                    {nb.status === "ATIVO" ? "Ativo" : "Manutenção"}
+                                    {nb.status === "ATIVO" ? "Ativo" : nb.status === "ARQUIVADO" ? "Arquivado" : "Manutenção"}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-0.5 shrink-0">
@@ -982,10 +1132,12 @@ export default function NotebooksPage() {
                                     size="icon"
                                     className="h-7 w-7"
                                     title="Histórico"
-                                    onClick={() => setHistoryNotebook({ id: nb.id, hostname: nb.hostname })}
+                                    onClick={() => setHistoryNotebook({ id: nb.id, hostname: originalHostname(nb.hostname) })}
                                   >
                                     <History className="h-3.5 w-3.5" />
                                   </Button>
+                                  {nb.status !== "ARQUIVADO" && (
+                                  <>
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -1022,6 +1174,8 @@ export default function NotebooksPage() {
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
+                                  </>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -1060,7 +1214,7 @@ export default function NotebooksPage() {
         open={!!deletingId}
         onOpenChange={(v) => !v && setDeletingId(null)}
         title="Excluir Notebook"
-        description="Esta ação não pode ser desfeita. O notebook será permanentemente removido."
+        description="Sem histórico, o notebook é removido permanentemente. Com histórico, ele é arquivado: sai das conferências e listas, mas o histórico é preservado."
         confirmLabel="Excluir"
         onConfirm={handleDelete}
         destructive
@@ -1071,7 +1225,7 @@ export default function NotebooksPage() {
         open={!!bulkDeletingUmId}
         onOpenChange={(v) => !v && setBulkDeletingUmId(null)}
         title={`Excluir todos os notebooks — ${bulkDeletingUmNome}`}
-        description="Esta ação é irreversível. Todos os notebooks desta UM serão permanentemente removidos."
+        description="Notebooks sem histórico são removidos permanentemente; os com histórico são arquivados (histórico preservado)."
         confirmLabel="Excluir todos"
         onConfirm={handleBulkDelete}
         destructive

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { conflictResponse, removeNotebooks } from "@/lib/services/notebook.service";
 
 const schema = z.object({ umId: z.string().min(1) });
 
@@ -20,9 +20,11 @@ export async function POST(request: Request) {
   const { umId } = parsed.data;
 
   try {
-    const result = await prisma.notebook.deleteMany({ where: { umId } });
-    return Response.json({ deleted: result.count });
+    // Sem histórico → excluídos; com histórico → arquivados. Uma transação.
+    return Response.json(await removeNotebooks({ umId }, session.user.id));
   } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
     logger.captureException(error);
     return Response.json({ message: "Erro interno" }, { status: 500 });
   }

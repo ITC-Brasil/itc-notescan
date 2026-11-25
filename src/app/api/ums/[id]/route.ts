@@ -29,7 +29,7 @@ export async function PUT(
       data: parsed.data,
       include: {
         project: { select: { id: true, nome: true, cor: true } },
-        _count: { select: { notebooks: true } },
+        _count: { select: { notebooks: { where: { status: { not: "ARQUIVADO" } } } } },
       },
     });
     return Response.json(um);
@@ -52,10 +52,19 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const notebooksCount = await prisma.notebook.count({ where: { umId: id } });
-  if (notebooksCount > 0)
+  // Arquivados também bloqueiam: o histórico deles referencia a UM.
+  const notebooks = await prisma.notebook.groupBy({
+    by: ["status"],
+    where: { umId: id },
+    _count: true,
+  });
+  if (notebooks.length > 0)
     return Response.json(
-      { message: "Não é possível excluir uma UM com notebooks associados" },
+      {
+        message: notebooks.every((g) => g.status === "ARQUIVADO")
+          ? "Não é possível excluir uma UM com notebooks arquivados (histórico preservado)"
+          : "Não é possível excluir uma UM com notebooks associados",
+      },
       { status: 409 },
     );
 
