@@ -93,6 +93,16 @@ export const createUserSchema = z.object({
   metaDiaria: z.number().int().min(1).default(2),
 });
 
+// AGENTE: sem senha, sem meta e sem e-mail informado (gerado pela API).
+// strict: password/metaDiaria/email enviados → 400.
+export const createAgentSchema = z
+  .object({
+    role: z.literal("AGENTE"),
+    nome: z.string().min(2).max(100),
+    descricao: z.string().max(500).optional(),
+  })
+  .strict();
+
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
