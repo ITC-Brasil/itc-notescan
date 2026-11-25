@@ -11,6 +11,16 @@ const credentials: Record<Role, { email: string; password: string }> = {
 export async function loginAs(page: Page, role: Role) {
   const { email, password } = credentials[role];
 
+  // O overlay de dev do Next (<nextjs-portal>) fica sobre o rodapé da sidebar e
+  // intercepta cliques. Oculto em toda navegação desta página; só afeta o teste.
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = "nextjs-portal { display: none !important; }";
+      document.head.appendChild(style);
+    });
+  });
+
   // networkidle: o submit antes da hidratação vira POST nativo e recarrega a página sem logar
   await page.goto("/", { waitUntil: "networkidle" });
   await page.getByLabel("E-mail").fill(email);
