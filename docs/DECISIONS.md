@@ -787,6 +787,11 @@ recusa role não humana.
   nunca faz login por Credentials (bloqueio da Fase 1, mantido e coberto por teste).
 - `metaDiaria` não se aplica a `AGENTE`: ignorada, e rejeitada se enviada na criação.
 - Criação de `AGENTE` só por MASTER, com nome e descrição; sem senha e sem meta.
+- E-mail gerado: `agente-<slug>@notescan.invalid` (`.invalid` é reservado pela RFC 2606;
+  `.local` pode resolver em rede local). Colisão de slug → sufixo numérico (`-2`, `-3`...).
+- Excluir agente com tokens ou AuditLog: 409 "agentes com histórico não podem ser
+  excluídos; para desativar, revogue o token". O token revogado continua referenciando o
+  agente (FKs `Restrict`, histórico nunca em cascade).
 
 **Decisão — token:**
 - Modelo `ApiToken`: hash sha256 do token (nunca o valor em claro), prefixo visível para
@@ -794,15 +799,22 @@ recusa role não humana.
 - Um token ativo por agente; emitir um novo revoga o anterior. O valor em claro aparece
   uma única vez, na emissão.
 - Escopos: `read:catalog`, `write:catalog`, `delete:catalog`, `destructive`.
+  Independentes: nenhum implica outro. Operações em massa ou irreversíveis (bulk-delete
+  por UM, exclusão de projeto e de UM) exigem `delete:catalog` E `destructive`.
+- Formato `nsk_` + 32 bytes aleatórios (`crypto.randomBytes`) em base64url; banco guarda
+  só o sha256 hex; prefixo exibido = 12 primeiros caracteres.
 - Fora do alcance de agentes (escrita): conferências, criação/edição de usuários,
   notificações.
 
 **Decisão — autorização:**
 - `resolveActor()` substitui `auth()` nas rotas: aceita Bearer token OU cookie de sessão
   (Bearer tem precedência) e valida expiração, revogação, role e escopo. `requireScope()`
-  por rota. Rate limit por ator.
+  por rota. Bearer presente e inválido responde 401 sem cair no cookie.
+- Rate limit por ator (`actor:<userId>`, mecanismo em memória atual): 120 req/min para
+  leitura, 30 req/min para escrita (um MCP lendo uma UM de 106 notebooks estouraria 30).
 - Modelo `AuditLog` (`entidade`, `entidadeId`, `acao`, `actorId`, `tokenId`, `payload`,
-  `createdAt`) para escritas em entidades sem LifecycleEvent (projetos, UMs).
+  `createdAt`) para escritas em entidades sem LifecycleEvent (projetos, UMs). Cobre TODAS
+  as escritas em projetos e UMs, humanas e de agentes (gravação implementada na Fase 3).
 - Gestão de tokens: aba dentro do card do usuário `AGENTE` em `/usuarios` (MASTER).
 
 **Decisão — MCP:** servidor separado, repositório próprio, container em
