@@ -726,3 +726,30 @@ de ajuste.
 
 **Consequências:** nada muda no APK, que carrega `server.url`. O deploy precisa aplicar a
 migration.
+
+## sec-06 — Next 16.4.5 (complemento da sec-05)
+
+**Contexto:** em 03/11/2026 o npm publicou 7 advisories contra `next` `>=16.x <=16.4.4`, todos
+moderate. O gate (`--audit-level=high`) não ficou vermelho por eles, mas o `next dev` passou a
+interromper a primeira subida com um aviso de upgrade (código 1), o que quebrava o webServer
+do Playwright.
+
+**Advisories (corrigidos na 16.4.5):**
+- GHSA-vc7v-qv4w-wrv8 — vazamento de cache entre root params em `use cache` aninhado.
+- GHSA-rhh4-g77r-r9qj — vazamento/envenenamento de cache entre usuários em `use cache` com
+  argumentos binários.
+- GHSA-mfr8-8qww-v76h — `use cache` via `unstable_cache()` expõe dados entre root params.
+- GHSA-7qx7-33qx-rqx2 — bypass da rejeição de SVG no Image Optimization.
+- GHSA-f3mh-rxg3-f5g2 — cookie HttpOnly exposto por header interno no Edge runtime.
+- GHSA-pc58-hwjq-p385 — injeção/vazamento de resposta entre clientes em self-hosted que
+  repassa respostas de fetch.
+- GHSA-vvgp-ww4w-46vf — envenenamento de fallback shells em Cache Components.
+
+**Decisão:** `next` e `eslint-config-next` `16.4.1 → 16.4.5`, versão exata. Ambos publicados em
+03/11/2026 (22 dias antes da instalação, dentro da regra dos 14 dias da sec-05). Não usamos
+`next upgrade`: o comando é sugerido pelo próprio CLI e reescreveria dependências fora do
+nosso controle. O lockfile só mudou em `next`, `@next/*` e `eslint-config-next`.
+
+**Audit após o bump (`--omit=dev`):** 12 (9 moderate, 3 high), antes 13. `next` saiu da lista.
+Os 3 high restantes são a cadeia `prisma` → `@prisma/config` → `effect`, anterior a este bump;
+o gate continua vermelho por ela.
