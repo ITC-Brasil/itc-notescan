@@ -671,3 +671,58 @@ reinstalação, que o moveu de pasta, e um JDK próprio não depende disso.
 instalado num Galaxy S23 (Android 16, alvo 36). Biometria, login, sessão após segundo
 plano, scanner nativo em lote e geolocalização testados no aparelho. Nenhum crash no
 logcat.
+
+---
+
+## nb-01 — Excluir notebook com histórico = arquivar (status ARQUIVADO + sufixo)
+
+**Contexto:** `DELETE /api/notebooks/[id]` e `bulk-delete` falhavam com 500 para todo
+notebook com histórico. `ConferenceItem.notebook` e `LifecycleEvent.notebook` não têm
+`onDelete` (Restrict), e conferências e LifecycleEvents são imutáveis: não se apaga nem se
+usa cascade.
+
+**Alternativas consideradas:**
+- Cascade ou apagar o histórico (rejeitado: quebra a imutabilidade e os relatórios)
+- Soft delete com `deletedAt` (rejeitado: obrigaria a filtrar em toda consulta e não
+  resolve o `@unique` do hostname)
+- Guardar o hostname original numa coluna nova (rejeitado: o original sai do próprio
+  sufixo, removendo `~arq-…`)
+
+**Decisão:**
+- Novo valor `ARQUIVADO` em `NotebookStatus` (migration `20261125120000`).
+- Sem nenhum ConferenceItem nem LifecycleEvent → exclusão real. Com histórico → status
+  `ARQUIVADO`, hostname `ORIGINAL~arq-YYYYMMDD` (data em America/Sao_Paulo; em colisão no
+  mesmo dia, `-2`, `-3`...) e LifecycleEvent `ARQUIVADO` com o hostname original, tudo numa
+  transação. O sufixo libera o `@unique` para recadastrar o hostname.
+- O padrão `~arq-\d{8}(-\d+)?$` é reservado: POST, PUT, lote e import respondem 400.
+- Erros esperados respondem 409 com mensagem, nunca 500.
+- Arquivado fica fora do uso operacional: `GET /api/notebooks` o exclui por padrão (lista
+  esperada da conferência e lookup do scanner), assim como o total do dashboard e as
+  contagens de UM. `?includeArchived=1` serve à tela de notebooks ("Mostrar arquivados") e
+  ao scanner, que mostra "notebook arquivado — procure o administrador". O reducer da
+  conferência nunca põe ARQUIVADO em pendentes ou manutenção.
+- Histórico, relatórios, resumo e Telegram exibem `originalHostname()`.
+- **Bulk-delete:** transação interativa com `timeout: 30s` explícito, em vez dos 5s
+  padrão. Cada arquivado precisa de um `update` próprio (hostname único), mas a busca de
+  colisões e os eventos saem em uma consulta cada. São cerca de 110 statements para uma UM
+  de 106. Rever se uma UM passar de cerca de 1000 notebooks.
+- UM com notebooks arquivados continua sem poder ser excluída (o FK do histórico exige),
+  com mensagem 409 própria.
+
+**Recadastro de hostname arquivado:** no cadastro individual, a API responde 409
+`ARCHIVED_MATCH` e a UI pergunta:
+- **Reativar** (mesma máquina): restaura o hostname, status ATIVO e a UM escolhida, grava o
+  LifecycleEvent `REATIVADO` e preserva o histórico.
+- **Cadastrar como novo** (outra máquina): cria um registro novo, e o arquivado mantém o
+  sufixo.
+
+No lote e no import, os conflitos aparecem no resultado com uma ação em massa (Reativar
+todos / Cadastrar todos como novos / Pular). Se já existir notebook ativo com o hostname, a
+reativação é recusada: 409 no individual, `blocked` no lote.
+
+**Replay offline:** uma conferência no outbox com um notebook arquivado depois é gravada
+normalmente. O id não muda, o FK continua válido e o POST não valida status. Não precisou
+de ajuste.
+
+**Consequências:** nada muda no APK, que carrega `server.url`. O deploy precisa aplicar a
+migration.
