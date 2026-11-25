@@ -17,7 +17,9 @@ export async function authorizeCredentials(
     where: { email: credentials.email as string },
   });
 
-  if (!user) return null;
+  // Antes do bcrypt: agente (sem senha) é recusado sem custo e sem lançar
+  // exceção com hash null.
+  if (!user || !user.passwordHash || !isHumanRole(user.role)) return null;
 
   const valid = await bcrypt.compare(
     credentials.password as string,
@@ -25,7 +27,6 @@ export async function authorizeCredentials(
   );
 
   if (!valid) return null;
-  if (!isHumanRole(user.role)) return null;
 
   return {
     id: user.id,

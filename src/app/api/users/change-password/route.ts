@@ -34,6 +34,9 @@ export async function PUT(request: Request) {
     if (!user)
       return Response.json({ message: "Usuário não encontrado" }, { status: 404 });
 
+    if (!user.passwordHash)
+      return Response.json({ message: "Usuário sem senha" }, { status: 409 });
+
     const isValid = await bcrypt.compare(
       parsed.data.currentPassword,
       user.passwordHash,
