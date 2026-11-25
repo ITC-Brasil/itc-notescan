@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { rateLimit, rateLimitByIp } from "@/lib/rate-limit";
+import { rateLimit, rateLimitByActor, rateLimitByIp } from "@/lib/rate-limit";
 
 // Unique keys prevent shared Map state from bleeding between tests.
 let keyCounter = 0;
@@ -135,5 +135,33 @@ describe("rateLimitByIp", () => {
       });
     for (let i = 0; i < 2; i++) rateLimitByIp(makeReq(), 2, 60_000);
     expect(rateLimitByIp(makeReq(), 2, 60_000).allowed).toBe(false);
+  });
+});
+
+describe("rateLimitByActor", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const exhaust = (id: string, kind: "read" | "write") => {
+    let n = 0;
+    while (rateLimitByActor(id, kind).allowed) n++;
+    return n;
+  };
+
+  it("leitura 120/min, escrita 30/min, contadores separados por ator e tipo", () => {
+    const id = uniqueKey("actor");
+    expect(exhaust(id, "write")).toBe(30);
+    expect(exhaust(id, "read")).toBe(120);
+    expect(rateLimitByActor(uniqueKey("actor"), "write").allowed).toBe(true);
+  });
+
+  it("libera após a janela de 1 minuto", () => {
+    const id = uniqueKey("actor");
+    exhaust(id, "write");
+    vi.setSystemTime(60_001);
+    expect(rateLimitByActor(id, "write").allowed).toBe(true);
   });
 });
