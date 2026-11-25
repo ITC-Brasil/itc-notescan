@@ -1214,7 +1214,7 @@ export default function NotebooksPage() {
         open={!!deletingId}
         onOpenChange={(v) => !v && setDeletingId(null)}
         title="Excluir Notebook"
-        description="Sem histórico, o notebook é removido permanentemente. Com histórico de conferências, ele é arquivado: sai das conferências e listas, mas o histórico é preservado."
+        description="Sem histórico, o notebook é removido permanentemente. Com histórico, ele é arquivado: sai das conferências e listas, mas o histórico é preservado."
         confirmLabel="Excluir"
         onConfirm={handleDelete}
         destructive
@@ -1225,7 +1225,7 @@ export default function NotebooksPage() {
         open={!!bulkDeletingUmId}
         onOpenChange={(v) => !v && setBulkDeletingUmId(null)}
         title={`Excluir todos os notebooks — ${bulkDeletingUmNome}`}
-        description="Notebooks sem histórico são removidos permanentemente; os com histórico de conferências são arquivados (histórico preservado)."
+        description="Notebooks sem histórico são removidos permanentemente; os com histórico são arquivados (histórico preservado)."
         confirmLabel="Excluir todos"
         onConfirm={handleBulkDelete}
         destructive
