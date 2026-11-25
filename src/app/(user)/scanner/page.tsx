@@ -72,7 +72,7 @@ function UMSelectionPhase({
       carregadores: selectedUM.carregadores,
       fones: selectedUM.fones,
     };
-    const nbs: NotebookSlim[] = notebooks.map((n) => ({
+    const nbs: NotebookSlim[] = notebooks.filter((n) => n.status !== "ARQUIVADO").map((n) => ({
       id: n.id,
       hostname: n.hostname,
       serial: n.serial,
@@ -667,7 +667,9 @@ export default function ScannerPage() {
   const dailyLimitReached = meta > 0 && (todayConferences?.length ?? 0) >= meta;
 
   const [activeUM, setActiveUM] = useState<{ id: string; notebooks: NotebookSlim[] } | null>(null);
-  const { data: rawNotebooks } = useNotebooks(activeUM?.id);
+  // Lookup do scan inclui arquivados só para a mensagem "notebook arquivado";
+  // a lista esperada vem de handleStart (sem arquivados) e o reducer ignora ARQUIVADO.
+  const { data: rawNotebooks } = useNotebooks(activeUM?.id, { includeArchived: true });
   // Memoizado: identidade estável enquanto rawNotebooks não muda, para o
   // handleScan (e o efeito do scanner web que depende dele) não remontar por render.
   const allNotebooks = useMemo<NotebookSlim[]>(

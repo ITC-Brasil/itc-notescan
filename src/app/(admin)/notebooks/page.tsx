@@ -43,6 +43,8 @@ import {
   type UpdateNotebookInput,
 } from "@/lib/validations";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Checkbox } from "@/components/ui/checkbox";
+import { originalHostname } from "@/lib/notebook-hostname";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -691,7 +693,8 @@ function HistoryModal({
 }
 
 export default function NotebooksPage() {
-  const { data: notebooks, isLoading } = useNotebooks();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: notebooks, isLoading } = useNotebooks(undefined, { includeArchived: showArchived });
   const deleteMutation = useDeleteNotebook();
   const updateMutation = useUpdateNotebook();
   const bulkDeleteMutation = useBulkDeleteNotebooks();
@@ -776,8 +779,12 @@ export default function NotebooksPage() {
   const handleDelete = async () => {
     if (!deletingId) return;
     try {
-      await deleteMutation.mutateAsync(deletingId);
-      toast.success("Notebook excluído.");
+      const { action } = await deleteMutation.mutateAsync(deletingId);
+      toast.success(
+        action === "archived"
+          ? "Notebook arquivado (possui histórico de conferências)."
+          : "Notebook excluído.",
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir notebook.");
     } finally {
@@ -789,7 +796,10 @@ export default function NotebooksPage() {
     if (!bulkDeletingUmId) return;
     try {
       const result = await bulkDeleteMutation.mutateAsync(bulkDeletingUmId);
-      toast.success(`${result.deleted} notebook${result.deleted !== 1 ? "s" : ""} excluído${result.deleted !== 1 ? "s" : ""}.`);
+      const plural = (n: number, s: string) => `${n} ${s}${n !== 1 ? "s" : ""}`;
+      toast.success(
+        `${plural(result.deleted, "excluído")}, ${plural(result.archived, "arquivado")} (com histórico).`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir notebooks.");
     } finally {
@@ -821,7 +831,7 @@ export default function NotebooksPage() {
     }
   };
 
-  const totalNotebooks = notebooks?.length ?? 0;
+  const totalNotebooks = notebooks?.filter((n) => n.status !== "ARQUIVADO").length ?? 0;
 
   return (
     <div className="space-y-6 page-transition">
@@ -831,6 +841,13 @@ export default function NotebooksPage() {
         icon={Laptop}
         action={
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2 cursor-pointer">
+              <Checkbox
+                checked={showArchived}
+                onCheckedChange={(v) => setShowArchived(v === true)}
+              />
+              Mostrar arquivados
+            </label>
             <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1.5" />
               Importar CSV
@@ -953,7 +970,7 @@ export default function NotebooksPage() {
                               >
                                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                                   <span className="text-sm tabular-nums font-medium text-foreground truncate max-w-[160px]">
-                                    {nb.hostname}
+                                    {originalHostname(nb.hostname)}
                                   </span>
                                   {nb.serial && (
                                     <span className="text-xs text-muted-foreground hidden sm:inline">
@@ -970,10 +987,12 @@ export default function NotebooksPage() {
                                       "text-xs shrink-0",
                                       nb.status === "ATIVO"
                                         ? "bg-itc-sucesso/15 text-itc-sucesso border-itc-sucesso/30 hover:bg-itc-sucesso/15"
-                                        : "bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15",
+                                        : nb.status === "ARQUIVADO"
+                                          ? "bg-muted text-muted-foreground border-border hover:bg-muted"
+                                          : "bg-itc-atencao/15 text-itc-atencao border-itc-atencao/30 hover:bg-itc-atencao/15",
                                     )}
                                   >
-                                    {nb.status === "ATIVO" ? "Ativo" : "Manutenção"}
+                                    {nb.status === "ATIVO" ? "Ativo" : nb.status === "ARQUIVADO" ? "Arquivado" : "Manutenção"}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-0.5 shrink-0">
@@ -982,10 +1001,12 @@ export default function NotebooksPage() {
                                     size="icon"
                                     className="h-7 w-7"
                                     title="Histórico"
-                                    onClick={() => setHistoryNotebook({ id: nb.id, hostname: nb.hostname })}
+                                    onClick={() => setHistoryNotebook({ id: nb.id, hostname: originalHostname(nb.hostname) })}
                                   >
                                     <History className="h-3.5 w-3.5" />
                                   </Button>
+                                  {nb.status !== "ARQUIVADO" && (
+                                  <>
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -1022,6 +1043,8 @@ export default function NotebooksPage() {
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
+                                  </>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -1060,7 +1083,7 @@ export default function NotebooksPage() {
         open={!!deletingId}
         onOpenChange={(v) => !v && setDeletingId(null)}
         title="Excluir Notebook"
-        description="Esta ação não pode ser desfeita. O notebook será permanentemente removido."
+        description="Sem histórico, o notebook é removido permanentemente. Com histórico de conferências, ele é arquivado: sai das conferências e listas, mas o histórico é preservado."
         confirmLabel="Excluir"
         onConfirm={handleDelete}
         destructive
@@ -1071,7 +1094,7 @@ export default function NotebooksPage() {
         open={!!bulkDeletingUmId}
         onOpenChange={(v) => !v && setBulkDeletingUmId(null)}
         title={`Excluir todos os notebooks — ${bulkDeletingUmNome}`}
-        description="Esta ação é irreversível. Todos os notebooks desta UM serão permanentemente removidos."
+        description="Notebooks sem histórico são removidos permanentemente; os com histórico de conferências são arquivados (histórico preservado)."
         confirmLabel="Excluir todos"
         onConfirm={handleBulkDelete}
         destructive

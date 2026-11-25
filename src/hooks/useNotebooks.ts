@@ -11,7 +11,7 @@ export interface Notebook {
   hostname: string;
   serial: string | null;
   patrimonio: string | null;
-  status: "ATIVO" | "MANUTENCAO";
+  status: "ATIVO" | "MANUTENCAO" | "ARQUIVADO";
   umId: string;
   createdAt: string;
   um: {
@@ -21,17 +21,20 @@ export interface Notebook {
   };
 }
 
-async function fetchNotebooks(umId?: string): Promise<Notebook[]> {
-  const url = umId ? `/api/notebooks?umId=${umId}` : "/api/notebooks";
-  const res = await fetch(url);
+async function fetchNotebooks(umId?: string, includeArchived = false): Promise<Notebook[]> {
+  const params = new URLSearchParams();
+  if (umId) params.set("umId", umId);
+  if (includeArchived) params.set("includeArchived", "1");
+  const res = await fetch(`/api/notebooks?${params}`);
   if (!res.ok) throw new Error("Falha ao carregar notebooks");
   return res.json() as Promise<Notebook[]>;
 }
 
-export function useNotebooks(umId?: string) {
+/** Sem `includeArchived`, a API já exclui os ARQUIVADO (uso operacional). */
+export function useNotebooks(umId?: string, { includeArchived = false } = {}) {
   return useQuery({
-    queryKey: ["notebooks", umId],
-    queryFn: () => fetchNotebooks(umId),
+    queryKey: ["notebooks", umId, includeArchived],
+    queryFn: () => fetchNotebooks(umId, includeArchived),
   });
 }
 
@@ -82,6 +85,7 @@ export function useDeleteNotebook() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
+      return res.json() as Promise<{ action: "deleted" | "archived" }>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });
@@ -158,7 +162,7 @@ export function useBulkDeleteNotebooks() {
         const err = (await res.json()) as { message: string };
         throw new Error(err.message);
       }
-      return res.json() as Promise<{ deleted: number }>;
+      return res.json() as Promise<{ deleted: number; archived: number }>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notebooks"] }),
   });

@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { originalHostname } from "@/lib/notebook-hostname";
 
 interface NamedItem {
   id: string;
@@ -134,7 +135,7 @@ export function ConferenceSummary({
             {faltantesList.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
-                <span className="text-sm tabular-nums text-foreground">{nb.hostname}</span>
+                <span className="text-sm tabular-nums text-foreground">{originalHostname(nb.hostname)}</span>
                 {nb.detail && <span className="ml-auto text-xs text-muted-foreground">{nb.detail}</span>}
               </div>
             ))}
@@ -150,7 +151,7 @@ export function ConferenceSummary({
             {manutencaoList.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
                 <Wrench className="h-3.5 w-3.5 text-itc-atencao shrink-0" />
-                <span className="text-sm tabular-nums text-foreground">{nb.hostname}</span>
+                <span className="text-sm tabular-nums text-foreground">{originalHostname(nb.hostname)}</span>
                 {nb.detail && <span className="ml-auto text-xs text-muted-foreground">{nb.detail}</span>}
               </div>
             ))}
