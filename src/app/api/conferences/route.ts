@@ -252,7 +252,7 @@ async function notifyTelegram(conference: {
   }
 
   lines.push(`\`------------------------------------\``);
-  lines.push(`💻 Dispositivos Ativos \\(Esperados\\): ${totalAtivos}`);
+  lines.push(`💻 Dispositivos Ativos: ${totalAtivos}`);
   lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
   lines.push(`❗️ Dispositivos Faltantes: ${faltanteItems.length}`);
   lines.push(`🔧 Dispositivos em Manutenção: ${manutencaoItems.length}`);
