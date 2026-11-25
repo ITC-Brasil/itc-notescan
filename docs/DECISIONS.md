@@ -753,3 +753,21 @@ nosso controle. O lockfile só mudou em `next`, `@next/*` e `eslint-config-next`
 **Audit após o bump (`--omit=dev`):** 12 (9 moderate, 3 high), antes 13. `next` saiu da lista.
 Os 3 high restantes são a cadeia `prisma` → `@prisma/config` → `effect`, anterior a este bump;
 o gate continua vermelho por ela.
+
+### sec-06a — Override de `effect` 3.22.5 (exceção à regra dos 14 dias)
+
+**Contexto:** os 3 high restantes do audit vinham de `prisma` 7.9.0 → `@prisma/config` →
+`effect` 3.20.0 (GHSA-7589-6fvf-x4pw). O Prisma ainda não publicou versão com `effect` corrigido.
+
+**Decisão:** `overrides.effect = "3.22.5"` (exato). A 3.22.4 (22/10) já corrigia o advisory e
+cumpria a regra dos 14 dias; a 3.22.5 (19/11/2026) entrou com 6 dias de publicação por decisão
+do Matheus Nobre em 25/11/2026, como exceção explícita à regra da sec-05.
+
+**Verificação antes de instalar:** mesmos mantenedores das versões anteriores
+(michael.arnaldi, effect-bot), publicação via GitHub Actions (OIDC), sem scripts de
+install/postinstall; integrity `sha512-AdIU4llI…Zkmjpw==`. O lockfile só mudou em `effect`.
+`prisma validate`/`generate`/`migrate` sem alteração; type-check, testes e E2E verdes.
+
+**Audit (`--omit=dev`):** 9 moderate, 0 high; o gate `audit:security` sai com código 0.
+
+**Remover o override** quando o Prisma publicar versão que já dependa de `effect` corrigido.
