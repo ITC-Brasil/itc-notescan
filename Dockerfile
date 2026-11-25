@@ -23,6 +23,9 @@ RUN npm run build
 
 # Estágio 3 — Runner
 FROM node:20-alpine AS runner
+# Escopo do prune no deploy (GLPI-SRV hospeda outros serviços): só imagens com
+# este label são removidas. Só o estágio final vira imagem; os de build não.
+LABEL com.itc.project=notescan
 RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
