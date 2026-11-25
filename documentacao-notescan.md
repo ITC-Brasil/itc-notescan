@@ -541,7 +541,7 @@ Documentação detalhada de cada módulo em `docs/modules/`.
 | 4 — Docker/Deploy | [04-docker-deploy.md](docs/modules/04-docker-deploy.md) | Dockerfile multi-stage, docker-compose, Cloudflare Tunnel, GLPI-SRV |
 | 5 — Testes | [05-tests.md](docs/modules/05-tests.md) | Vitest 110+ testes 93%+ cobertura, Playwright 70 testes E2E |
 | 6 — CI/CD | [06-cicd.md](docs/modules/06-cicd.md) | GitHub Actions Quality Check, workflow Deploy (pendente) |
-| 7 — Capacitor APK | [07-capacitor-apk.md](docs/modules/07-capacitor-apk.md) | Android APK (Capacitor 7), scanner ML Kit em lote + flash, biometria, offline.html, persistência de sessão |
+| 7 — Capacitor APK | [07-capacitor-apk.md](docs/modules/07-capacitor-apk.md) | Android APK (Capacitor 8, release assinado), scanner ML Kit em lote + flash, biometria, offline.html, persistência de sessão |
 
 ---
 
