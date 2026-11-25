@@ -913,7 +913,7 @@ export default function NotebooksPage() {
       const { action } = await deleteMutation.mutateAsync(deletingId);
       toast.success(
         action === "archived"
-          ? "Notebook arquivado (possui histórico de conferências)."
+          ? "Notebook arquivado (possui histórico)."
           : "Notebook excluído.",
       );
     } catch (err) {
