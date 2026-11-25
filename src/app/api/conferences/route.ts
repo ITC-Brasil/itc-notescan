@@ -205,7 +205,12 @@ async function notifyTelegram(conference: {
 }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
+  if (!token || !chatId) {
+    // Só presença (booleanos), nunca os valores. Chaves sem "token"/"auth":
+    // o logger mascara essas chaves e esconderia o próprio booleano.
+    logger.warn("Telegram não configurado", { bot: !!token, chatId: !!chatId });
+    return;
+  }
 
   // MarkdownV2 requires every reserved char to be escaped. A single stray one
   // (e.g. the '-' in hostnames like BSBIA01-EST01) makes Telegram reject the
