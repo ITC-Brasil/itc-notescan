@@ -44,3 +44,15 @@ export function rateLimitByIp(
     "unknown";
   return rateLimit(ip, limit, windowMs);
 }
+
+// m8-01: limite por ator (humano ou agente), não por IP. Leitura mais folgada:
+// um MCP lendo uma UM de 106 notebooks estouraria 30/min.
+// ponytail: Map em memória vale por container (hoje há um); Redis se escalar.
+export const ACTOR_LIMITS = { read: 120, write: 30 } as const;
+
+export function rateLimitByActor(
+  actorId: string,
+  kind: keyof typeof ACTOR_LIMITS,
+): RateLimitResult {
+  return rateLimit(`actor:${kind}:${actorId}`, ACTOR_LIMITS[kind], 60_000);
+}

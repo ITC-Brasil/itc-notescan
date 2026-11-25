@@ -7,7 +7,7 @@ import bcrypt from "bcrypt";
 const updateUserSchema = z.object({
   nome: z.string().min(2).max(100),
   email: z.string().email(),
-  role: z.enum(["USER", "ADMIN", "MASTER"]),
+  role: z.enum(["USER", "ADMIN", "MASTER", "AGENTE"]),
   metaDiaria: z.number().int().min(1),
   password: z.string().min(8).optional(),
 });
@@ -32,6 +32,13 @@ export async function PUT(
 
   const { id } = await params;
   const { password, ...rest } = parsed.data;
+
+  // m8-01: AGENTE é imutável — nenhuma conversão de/para AGENTE.
+  const current = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+  if (!current)
+    return Response.json({ message: "Usuário não encontrado" }, { status: 404 });
+  if (current.role === "AGENTE" || rest.role === "AGENTE")
+    return Response.json({ message: "A role AGENTE é imutável" }, { status: 409 });
 
   try {
     const data: Parameters<typeof prisma.user.update>[0]["data"] = { ...rest };
@@ -74,6 +81,22 @@ export async function DELETE(
   if (id === session.user.id)
     return Response.json(
       { message: "Você não pode excluir sua própria conta" },
+      { status: 409 },
+    );
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true, _count: { select: { apiTokens: true, auditLogs: true } } },
+  });
+  if (
+    target?.role === "AGENTE" &&
+    target._count.apiTokens + target._count.auditLogs > 0
+  )
+    return Response.json(
+      {
+        message:
+          "Agentes com histórico não podem ser excluídos; para desativar, revogue o token",
+      },
       { status: 409 },
     );
 

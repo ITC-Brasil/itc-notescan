@@ -8,23 +8,64 @@ datasource db {
 }
 
 model User {
-  id               String           @id @default(cuid())
+  id               String            @id @default(cuid())
   nome             String
-  email            String           @unique
-  passwordHash     String
-  role             Role             @default(USER)
-  metaDiaria       Int              @default(2)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  email            String            @unique
+  // null para AGENTE: agentes não têm senha nem login por Credentials.
+  passwordHash     String?
+  descricao        String?
+  role             Role              @default(USER)
+  metaDiaria       Int               @default(2)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   conferences      Conference[]
   lifecycleEvents  LifecycleEvent[]
   pushSubscription PushSubscription?
+  apiTokens        ApiToken[]
+  auditLogs        AuditLog[]
 }
 
 enum Role {
   USER
   ADMIN
   MASTER
+  AGENTE
+}
+
+// m8-01: token de API de agente. Só o sha256 é guardado; o valor em claro
+// aparece uma vez, na emissão. Restrict: token revogado continua no histórico.
+model ApiToken {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  prefix     String
+  tokenHash  String     @unique
+  scopes     String[]
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime   @default(now())
+  auditLogs  AuditLog[]
+
+  @@index([userId, revokedAt])
+}
+
+// m8-01: trilha de escritas em entidades sem LifecycleEvent (projetos, UMs).
+// Imutável — apenas criação. Histórico nunca em cascade.
+model AuditLog {
+  id         String    @id @default(cuid())
+  entidade   String
+  entidadeId String
+  acao       String
+  actorId    String
+  actor      User      @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  tokenId    String?
+  token      ApiToken? @relation(fields: [tokenId], references: [id], onDelete: Restrict)
+  payload    Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([entidade, entidadeId])
+  @@index([actorId, createdAt])
 }
 
 model Project {
