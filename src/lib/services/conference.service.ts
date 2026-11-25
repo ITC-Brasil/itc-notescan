@@ -25,7 +25,7 @@ export async function getDashboardStats() {
     prisma.notebook.count({
       where: { status: "MANUTENCAO" },
     }),
-    prisma.notebook.count(),
+    prisma.notebook.count({ where: { status: { not: "ARQUIVADO" } } }),
     prisma.conference
       .findMany({
         where: { dataInicio: { gte: todayStart } },

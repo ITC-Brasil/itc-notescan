@@ -12,7 +12,7 @@ export async function GET() {
     orderBy: [{ project: { nome: "asc" } }, { nome: "asc" }],
     include: {
       project: { select: { id: true, nome: true, cor: true } },
-      _count: { select: { notebooks: true } },
+      _count: { select: { notebooks: { where: { status: { not: "ARQUIVADO" } } } } },
     },
   });
 
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       data: parsed.data,
       include: {
         project: { select: { id: true, nome: true, cor: true } },
-        _count: { select: { notebooks: true } },
+        _count: { select: { notebooks: { where: { status: { not: "ARQUIVADO" } } } } },
       },
     });
     return Response.json(um, { status: 201 });
