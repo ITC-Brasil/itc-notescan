@@ -1,7 +1,6 @@
-import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
+import { authorize, DESTRUCTIVE, WRITE_CATALOG } from "@/lib/auth/actor";
 import { audit } from "@/lib/services/audit.service";
 import { UM_INCLUDE } from "@/lib/services/um.service";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createUMSchema } from "@/lib/validations";
@@ -36,15 +35,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, DESTRUCTIVE);
+  if (actor instanceof Response) return actor;
 
   const { id } = await params;
 
@@ -65,7 +60,10 @@ export async function DELETE(
     );
 
   try {
-    await prisma.uM.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const { nome, projectId } = await tx.uM.delete({ where: { id } });
+      await audit(tx, actor, { entidade: "UM", entidadeId: id, acao: "EXCLUIDO", payload: { nome, projectId } });
+    });
     return new Response(null, { status: 204 });
   } catch (error) {
     logger.captureException(error);
