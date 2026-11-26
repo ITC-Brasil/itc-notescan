@@ -1,5 +1,4 @@
-import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
-import { auth } from "@/lib/auth";
+import { authorize, DELETE_CATALOG, WRITE_CATALOG } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { updateNotebookSchema } from "@/lib/validations";
@@ -78,15 +77,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, DELETE_CATALOG);
+  if (actor instanceof Response) return actor;
 
   const { id } = await params;
 
@@ -98,7 +93,7 @@ export async function DELETE(
       return Response.json({ message: "Notebook já está arquivado" }, { status: 409 });
 
     // Sem histórico → exclusão real; com histórico → arquivado.
-    const { archived } = await removeNotebooks({ id }, session.user.id);
+    const { archived } = await removeNotebooks({ id }, actor.userId);
     return Response.json({ action: archived > 0 ? "archived" : "deleted" });
   } catch (error) {
     const conflict = conflictResponse(error);
