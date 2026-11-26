@@ -1,12 +1,12 @@
 ﻿import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createUMSchema } from "@/lib/validations";
 
-export async function GET() {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
+export async function GET(request: Request) {
+  const actor = await authorize(request, { scopes: ["read:catalog"] });
+  if (actor instanceof Response) return actor;
 
   const ums = await prisma.uM.findMany({
     orderBy: [{ project: { nome: "asc" } }, { nome: "asc" }],

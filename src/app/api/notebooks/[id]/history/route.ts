@@ -1,14 +1,13 @@
-import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
+  const actor = await authorize(request, { scopes: ["read:catalog"] });
+  if (actor instanceof Response) return actor;
 
   const { id } = await params;
 
