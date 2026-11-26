@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 import { createProjectSchema } from "@/lib/validations";
 
 export async function GET(request: Request) {
-  const actor = await authorize(request, { scopes: ["read:catalog"] });
+  const actor = await authorize(request, { scopes: ["read:catalog"], rate: "read" });
   if (actor instanceof Response) return actor;
 
   const projects = await prisma.project.findMany({

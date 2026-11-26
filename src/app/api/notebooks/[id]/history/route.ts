@@ -6,7 +6,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const actor = await authorize(request, { scopes: ["read:catalog"] });
+  const actor = await authorize(request, { scopes: ["read:catalog"], rate: "read" });
   if (actor instanceof Response) return actor;
 
   const { id } = await params;

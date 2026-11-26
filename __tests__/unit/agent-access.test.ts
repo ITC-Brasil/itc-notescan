@@ -93,3 +93,13 @@ describe("fora do alcance de agentes → 403 com todos os escopos", () => {
     expect(auth).not.toHaveBeenCalled();
   });
 });
+
+describe("rate limit por ator nas leituras", () => {
+  it("121ª leitura no minuto → 429, por ator", async () => {
+    auth.mockResolvedValue({ user: { id: "rl-user", role: "USER" } });
+    for (let i = 0; i < 120; i++) expect((await projects(plain())).status).toBe(200);
+    expect((await projects(plain())).status).toBe(429);
+    auth.mockResolvedValue({ user: { id: "outro", role: "USER" } });
+    expect((await projects(plain())).status).toBe(200);
+  });
+});

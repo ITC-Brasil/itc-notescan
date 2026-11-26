@@ -6,7 +6,7 @@ import { createNotebookSchema } from "@/lib/validations";
 import { conflictResponse, createNotebook } from "@/lib/services/notebook.service";
 
 export async function GET(request: Request) {
-  const actor = await authorize(request, { scopes: ["read:catalog"] });
+  const actor = await authorize(request, { scopes: ["read:catalog"], rate: "read" });
   if (actor instanceof Response) return actor;
 
   const { searchParams } = new URL(request.url);
