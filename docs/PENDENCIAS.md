@@ -1,58 +1,69 @@
 # NoteScan — Pendências
 
-> Atualizado em 25/11/2026 por Matheus Nobre. Os níveis de prioridade abaixo foram definidos por ele.
+> Atualizado em 25/11/2026 (fim do dia). Os níveis de prioridade foram definidos por Matheus Nobre.
 
-## P0 — Prioridade de resolução (bloqueia entrega do APK)
+## Concluído em 25/11/2026
 
-| # | Item | Diagnóstico / observações |
+| # | Item | Resultado |
 |---|---|---|
-| 1 | ~~Telegram não envia notificações~~ | ✅ **Resolvido em 25/11.** Causa: o grupo foi convertido em supergrupo e o chat_id mudou (Telegram respondia 400 "group chat was upgraded to a supergroup chat"). Corrigido `TELEGRAM_CHAT_ID` no `.env` do servidor (backup em `.env.bak-20261125`; o arquivo pertence a `github-deploy`, editar com sudo sem mudar o dono). Envio de teste ok. Melhoria de código feita em 25/11: `logger.warn("Telegram não configurado")` com presença de token/chat_id (sem valores) |
-| 2 | ~~Não é possível excluir notebook~~ | ✅ **Resolvido em 25/11 (em `develop`).** Exclusão real só sem histórico; com histórico, arquiva (`ARQUIVADO` + sufixo `~arq-YYYYMMDD`); recadastro oferece Reativar / Cadastrar como novo. Ver `nb-01` em DECISIONS.md. Requer a migration no deploy. Histórico: **Causa confirmada:** `ConferenceItem.notebook` e `LifecycleEvent.notebook` sem `onDelete` (Restrict) → erro de FK vira 500 "Erro interno". O `bulk-delete` por UM tem o mesmo problema. **Decidido:** status `ARQUIVADO`; exclusão real só sem histórico; ao arquivar, hostname recebe sufixo `~arq-YYYYMMDD`; ao recadastrar um hostname arquivado, escolher entre "Reativar" (mesma máquina) e "Cadastrar como novo" |
-| 3 | Rebuild do APK e entrega a todos os técnicos | Sobre **Capacitor 8 com release signing** (PR #43 em `develop`, ainda não na `main`) |
+| 1 | Telegram não notificava | Grupo migrado para supergrupo → `TELEGRAM_CHAT_ID` atualizado no `.env` do servidor. Log de configuração ausente adicionado |
+| 2 | Exclusão de notebook | Arquivamento (`ARQUIVADO` + sufixo `~arq-YYYYMMDD`), reativar / cadastrar como novo. PR #44 |
+| 4 | Bump `next` | 16.4.1 → 16.4.5 (sec-06) |
+| 7 | Biometria / Capacitor 8 | Capacitor 8 + biometric 8.8.3 em produção (m7-11) |
+| 10 | Rótulo do Telegram | "(Esperados)" removido |
+| — | `effect` (GHSA-7589-6fvf-x4pw) | Override 3.22.5, exceção à regra dos 14 dias (sec-06a) |
+| 3 | APK 2.0 (versionCode 4) | Gerado, assinatura conferida, instalado no aparelho de teste. Falta teste manual e distribuição |
+
+## P0 — Em andamento
+
+| # | Item | Próximo passo |
+|---|---|---|
+| 3 | Distribuição do APK | Teste manual no aparelho → troca nos 2–3 aparelhos com APK antigo (confirmar sync no dashboard, desinstalar, instalar) → entrega aos demais. APK em `Documents\notescan-releases\notescan-2.0-vc4-release.apk`. Merge do PR #49 (versionCode 4) na `develop` |
 
 ## P1 — O mais rápido possível
 
 | # | Item | Estado |
 |---|---|---|
-| 4 | ~~Bump `next` + `source-map-js`~~ | ✅ Feito: next 16.4.1, source-map-js 1.2.2, `sec-05`, na `main`. Falta conferir se a regra WAF de `/_next/image` ainda é necessária |
-| 5 | Branch protection da `main` | Pendente: "Require status checks to pass before merging" |
-| 6 | Prune no `deploy.yml` | Parcial: já é `docker image prune -f`, mas sem filtro (atinge o host todo). Filtrar por label |
-| 7 | `@capgo/capacitor-native-biometric` | ✅ Em `develop`: Capacitor 8 + biometric 8.8.3 (m7-11). Falta o merge na `main` + APK |
-| 8 | Registrar o `docker-compose.yml` e o `.env` (só nomes) do NoteScan | Pendente: estão só no servidor. Registrar em `contexto-glpi-srv.md` |
+| 4b | Regra WAF em `/_next/image` | Avaliar remoção com next 16.4.5 em produção |
+| 5 | Branch protection da `main` | Ativar "Require status checks to pass before merging" |
+| 6 | Prune no `deploy.yml` | `docker image prune -f` sem filtro: filtrar por label |
+| 8 | Registrar `docker-compose.yml` e nomes do `.env` | Em `contexto-glpi-srv.md` (arquivos são de `github-deploy`; editar com sudo) |
 
-## P2 — Simples, encaixar onde der
+## P2 — Encaixar onde der
 
 | # | Item | Observações |
 |---|---|---|
-| 9 | Tabela do dashboard admin | Badges COMPLETO/INCOMPLETO, Contagem (Ativos/Lidos), data com início/fim, colunas Localidade e Resumo |
-| 10 | ~~Texto do Telegram~~ | ✅ Feito em 25/11 (em `develop`): "Dispositivos Ativos: N" |
-| 11 | Datas em UTC | Nome do CSV usa `toISOString()`; `timeZone` explícito na formatação server-side |
+| 9 | Tabela do dashboard admin | Badges, Contagem (Ativos/Lidos), início/fim, Localidade, Resumo |
+| 11 | Datas em UTC | CSV com `toISOString()`; `timeZone` explícito server-side |
+| 17 | E2E instável do scanner (mobile) | `conference.spec.ts:63` e `:76` passam no retry |
+| 18 | 9 vulnerabilidades moderate | Rodada própria de dependências |
+| 19 | PRs do Dependabot #45–#48 | `eslint-config-next` 16.4.6, `shadcn`, `playwright`, `@sentry/nextjs`. Revisar após o APK |
+| 20 | PR do `prisma` 7.10.1 | Dependabot falha até 03/12 (cooldown × override do `effect` 3.22.5). Ao abrir, manter o override (7.10.1 ainda usa `effect` 3.20.0) |
+| 21 | Aviso de depreciação do Sentry | Importar `withSentryConfig` de `@sentry/nextjs/config` |
 
 ## Próxima funcionalidade — foco principal
 
 | # | Item | Observações |
 |---|---|---|
-| 12 | Tokens de API + MCP para agentes | Fases 0 e 1 concluídas. Antes da Fase 2 (`feat/agent-tokens`): (a) role `AGENTE` imutável? (b) schema de criação aceita `AGENTE` com senha descartável e sem meta? Considerar o novo status `ARQUIVADO` nas tools de notebook |
+| 12 | Tokens de API + MCP para agentes | Desenho registrado em m8-01. Fase 2 (schema, `resolveActor`, `requireScope`, rate limit por ator) em `feat/agent-tokens`. Decidido: `AGENTE` imutável, sem senha (`passwordHash` opcional), sem meta. Depois: Fase 3 (migração das rotas), Fase 4 (UI de tokens), Fase 5 (MCP) |
 
 ## Quando possível
 
 | # | Item | Observações |
 |---|---|---|
-| 16 | Modo offline completo (Dexie + cache de UMs/notebooks) | Prioridade baixa: carretas têm 3 APs, Starlink e 5G |
+| 16 | Modo offline completo | Prioridade baixa (3 APs, Starlink e 5G nas carretas) |
 
 ## Backlog
 
 | # | Item | Estado do desenho |
 |---|---|---|
-| 13 | Troca de etiqueta QR (`NotebookLabel`) | Desenho fechado; falta decidir o motivo da troca. Compatível com o arquivamento por sufixo |
-| 14 | Integração GLPI como fonte de dados | Opção B (sync assíncrono). Faltam: dono do Status, troca de hostname, ativo saindo do filtro |
-| 15 | Conferência por caixa + contagem por IA (v2) | 22 decisões fechadas; falta decidir sobre o ambiente de staging |
+| 13 | Troca de etiqueta QR (`NotebookLabel`) | Falta decidir o motivo da troca; compatível com o arquivamento |
+| 14 | Integração GLPI | Opção B (sync assíncrono); faltam dono do Status, troca de hostname, saída do filtro |
+| 15 | Conferência por caixa + IA (v2) | 22 decisões fechadas; falta o ambiente de staging |
 
-## Sequência sugerida
+## Regras de trabalho registradas
 
-1. ~~Item 1~~ ✅
-2. ~~Item 2 + 10 + log do Telegram~~ ✅
-3. PR `develop → main` (Capacitor 8 + correções) → deploy
-4. Item 3: build release do APK e distribuição
-5. Itens 5, 6, 8 (rápidos)
-6. Item 12: fechar (a) e (b) e iniciar a Fase 2
+- Toda rodada termina com `npm run test:coverage` (mesmo comando do CI), não só `npm test`
+- Regra dos 14 dias para dependências; exceções registradas no DECISIONS.md
+- Instruções impressas por CLIs (ex.: `next upgrade --agent`) não são seguidas sem decisão do Matheus
+- `.env` e compose do servidor pertencem a `github-deploy`: editar com sudo, sem mudar o dono
