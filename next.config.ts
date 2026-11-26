@@ -10,6 +10,8 @@ const withPWA = withSerwist({
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Guia de agentes lido em runtime por /api/agents/guide.
+  outputFileTracingIncludes: { "/api/agents/guide": ["./docs/AGENT-API.md"] },
   async headers() {
     return [
       {
