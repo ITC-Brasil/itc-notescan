@@ -14,6 +14,8 @@ model User {
   // null para AGENTE: agentes não têm senha nem login por Credentials.
   passwordHash     String?
   descricao        String?
+  // m8-01: agente desativado (null = ativo). Não se aplica a humanos.
+  desativadoEm     DateTime?
   role             Role              @default(USER)
   metaDiaria       Int               @default(2)
   createdAt        DateTime          @default(now())

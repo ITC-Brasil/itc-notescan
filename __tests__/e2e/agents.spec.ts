@@ -127,8 +127,31 @@ test.describe("Agentes — API", () => {
     expect((await agent4.get("/api/projects")).status()).toBe(401);
     await agent4.dispose();
 
-    // Agente com histórico não pode ser excluído.
+    // Agente que agiu não pode ser excluído: a saída é desativar.
     expect((await master.delete(`/api/agents/${id}`)).status()).toBe(409);
+
+    // Desativar revoga o token ativo e impede emitir; reativar não devolve o token.
+    const t5 = await master.post(`/api/agents/${id}/token`, { data: { scopes: ["read:catalog"] } });
+    const agent5 = await agentApi(((await t5.json()) as { token: string }).token);
+    expect((await agent5.get("/api/projects")).status()).toBe(200);
+    expect((await master.post(`/api/agents/${id}/deactivate`)).status()).toBe(204);
+    expect((await agent5.get("/api/projects")).status()).toBe(401);
+    const ids = async (q = "") =>
+      ((await (await master.get(`/api/agents${q}`)).json()) as { id: string }[]).map((a) => a.id);
+    expect(await ids()).not.toContain(id);
+    expect(await ids("?includeInactive=1")).toContain(id);
+    expect((await master.post(`/api/agents/${id}/token`, { data: { scopes: ["read:catalog"] } })).status()).toBe(409);
+    expect((await master.post(`/api/agents/${id}/reactivate`)).status()).toBe(204);
+    expect((await agent5.get("/api/projects")).status()).toBe(401);
+    expect(await ids()).toContain(id);
+    await agent5.dispose();
+
+    // Token emitido e nunca usado não é histórico: o agente é excluído com o token.
+    const unused = await master.post("/api/agents", { data: { nome: "E2E Bot Sem Uso" } });
+    const { id: unusedId } = (await unused.json()) as { id: string };
+    await master.post(`/api/agents/${unusedId}/token`, { data: { scopes: ["read:catalog"] } });
+    expect((await master.delete(`/api/agents/${unusedId}`)).status()).toBe(204);
+    expect(await ids("?includeInactive=1")).not.toContain(unusedId);
 
     // /api/users não lista nem cria agentes.
     const users = (await (await master.get("/api/users")).json()) as { role: string }[];
@@ -183,26 +206,55 @@ test.describe("Agentes — página MCP e Agentes", () => {
     await expect(row).toContainText("Ativo");
     await expect(page.getByText(value)).toHaveCount(0);
 
-    // Agente com histórico: a exclusão mostra a mensagem do 409.
+    // Token emitido e não usado: sem histórico, a ação é "Excluir".
+    await expect(row.getByRole("button", { name: "Excluir agente" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Desativar agente" })).toHaveCount(0);
+    await expect(row).toContainText(value.slice(0, 12));
+    expect(await page.content()).not.toContain(value);
+
+    // Agente que agiu (teste de API): "Desativar", com tooltip.
+    const used = page.getByRole("row", { name: /E2E Bot API/ });
+    const deactivate = used.getByRole("button", { name: "Desativar agente" });
+    await deactivate.hover();
+    await expect(page.getByRole("tooltip", { name: "Desativar agente" })).toBeVisible();
+    await expect(used.getByRole("button", { name: "Excluir agente" })).toHaveCount(0);
+    await deactivate.click();
+    await page.getByRole("button", { name: "Desativar", exact: true }).click();
+    await expect(page.getByText("Agente desativado.")).toBeVisible();
+    await expect(used).toHaveCount(0);
+
+    await page.getByLabel("Mostrar desativados").check();
+    await expect(used).toContainText("Desativado");
+    await expect(used.getByRole("button", { name: "Emitir token" })).toHaveCount(0);
+    await used.getByRole("button", { name: "Reativar" }).click();
+    await expect(page.getByText(/Agente reativado/)).toBeVisible();
+    await expect(used).not.toContainText("Desativado");
+
+    // Exclusão do agente sem histórico (token não usado vai junto).
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await row.getByRole("button", { name: "Excluir agente" }).click();
     await page.getByRole("button", { name: "Excluir", exact: true }).click();
-    await expect(page.getByText(/revogue o token/)).toBeVisible();
-    await expect(row).toBeVisible();
-
-    // Agente sem histórico é excluído.
-    await page.getByRole("button", { name: "Novo agente" }).first().click();
-    await page.getByLabel("Nome").fill("E2E Bot Descartável");
-    await page.getByRole("button", { name: "Criar agente" }).click();
-    const tmp = page.getByRole("row", { name: /E2E Bot Descartável/ });
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(tmp).toBeVisible();
-    await tmp.getByRole("button", { name: "Excluir agente" }).click();
-    await page.getByRole("button", { name: "Excluir", exact: true }).click();
     await expect(page.getByText("Agente excluído.")).toBeVisible();
-    await expect(tmp).toHaveCount(0);
-    await expect(row).toContainText(value.slice(0, 12));
-    await expect(page.getByText(value)).toHaveCount(0);
-    expect(await page.content()).not.toContain(value);
+    await expect(row).toHaveCount(0);
     await page.screenshot({ path: "test-results/agentes-lista.png" });
+  });
+
+  test("Como conectar: URL base, guia só para MASTER e instruções sem token", async ({ page }) => {
+    await loginAs(page, "master");
+    await page.goto("/agentes");
+    await page.getByRole("tab", { name: "Como conectar" }).click();
+
+    await expect(page.getByLabel("URL base da API")).toHaveValue(`${BASE}/api`);
+    const instructions = page.getByLabel("Instruções para o agente");
+    await expect(instructions).toContainText("export NOTESCAN_TOKEN=<cole o token>");
+    await expect(instructions).toContainText(`URL base: ${BASE}/api`);
+    expect(await page.content()).not.toMatch(/nsk_[A-Za-z0-9_-]{20,}/);
+    await expect(page.getByRole("link", { name: "Abrir guia" })).toHaveAttribute("href", "/api/agents/guide");
+
+    const guide = await page.request.get("/api/agents/guide");
+    expect(guide.status()).toBe(200);
+    expect(guide.headers()["content-type"]).toContain("text/plain");
+    expect(await guide.text()).toContain("# NoteScan — Guia da API para agentes");
+    await page.screenshot({ path: "test-results/agentes-conectar.png", fullPage: true });
   });
 });

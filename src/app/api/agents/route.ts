@@ -7,7 +7,8 @@ import { createAgentSchema } from "@/lib/validations";
 export async function GET(request: Request) {
   const actor = await authorize(request, MASTER_ONLY);
   if (actor instanceof Response) return actor;
-  return Response.json(await listAgents());
+  const includeInactive = new URL(request.url).searchParams.get("includeInactive") === "1";
+  return Response.json(await listAgents({ includeInactive }));
 }
 
 export async function POST(request: Request) {
