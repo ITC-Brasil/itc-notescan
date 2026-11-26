@@ -145,23 +145,29 @@ describe("rateLimitByActor", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  const exhaust = (id: string, kind: "read" | "write") => {
+  const exhaust = (id: string, kind: "read" | "write", actor: "session" | "token") => {
     let n = 0;
-    while (rateLimitByActor(id, kind).allowed) n++;
+    while (rateLimitByActor(id, kind, actor).allowed) n++;
     return n;
   };
 
-  it("leitura 120/min, escrita 30/min, contadores separados por ator e tipo", () => {
+  it("token: leitura 120/min, escrita 30/min, contadores separados por ator e tipo", () => {
     const id = uniqueKey("actor");
-    expect(exhaust(id, "write")).toBe(30);
-    expect(exhaust(id, "read")).toBe(120);
-    expect(rateLimitByActor(uniqueKey("actor"), "write").allowed).toBe(true);
+    expect(exhaust(id, "write", "token")).toBe(30);
+    expect(exhaust(id, "read", "token")).toBe(120);
+    expect(rateLimitByActor(uniqueKey("actor"), "write", "token").allowed).toBe(true);
+  });
+
+  it("sessão humana: leitura e escrita 120/min", () => {
+    const id = uniqueKey("actor");
+    expect(exhaust(id, "write", "session")).toBe(120);
+    expect(exhaust(id, "read", "session")).toBe(120);
   });
 
   it("libera após a janela de 1 minuto", () => {
     const id = uniqueKey("actor");
-    exhaust(id, "write");
+    exhaust(id, "write", "token");
     vi.setSystemTime(60_001);
-    expect(rateLimitByActor(id, "write").allowed).toBe(true);
+    expect(rateLimitByActor(id, "write", "token").allowed).toBe(true);
   });
 });

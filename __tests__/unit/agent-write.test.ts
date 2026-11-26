@@ -147,10 +147,18 @@ describe("AuditLog em projetos e UMs", () => {
   });
 });
 
-describe("rate limit de escrita", () => {
-  it("31ª escrita no minuto → 429", async () => {
-    auth.mockResolvedValue({ user: { id: "rl-writer", role: "ADMIN" } });
-    for (let i = 0; i < 30; i++) expect((await projectCreate(req(project))).status).toBe(201);
+describe("rate limit de escrita por tipo de ator", () => {
+  it("token: 31ª escrita no minuto → 429", async () => {
+    db.apiToken.findUnique.mockResolvedValue(tokenRecord(["write:catalog"], { userId: "rl-agent" }));
+    for (let i = 0; i < 30; i++) expect((await projectCreate(req(project, true))).status).toBe(201);
+    const res = await projectCreate(req(project, true));
+    expect(res.status).toBe(429);
+    expect((await res.json()).message).toBe("Muitas requisições, aguarde alguns segundos");
+  });
+
+  it("sessão humana: 120 escritas passam, a 121ª → 429", async () => {
+    auth.mockResolvedValue({ user: { id: "rl-admin", role: "ADMIN" } });
+    for (let i = 0; i < 120; i++) expect((await projectCreate(req(project))).status).toBe(201);
     expect((await projectCreate(req(project))).status).toBe(429);
   });
 });

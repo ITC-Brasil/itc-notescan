@@ -84,8 +84,8 @@ export async function authorize(
   if (denied) return denied;
   if (actor.kind === "session" && roles && !roles.includes(actor.role))
     return Response.json({ message: "Proibido" }, { status: 403 });
-  if (rate && !rateLimitByActor(actor.userId, rate).allowed)
-    return Response.json({ message: "Muitas requisições" }, { status: 429 });
+  if (rate && !rateLimitByActor(actor.userId, rate, actor.kind).allowed)
+    return Response.json({ message: "Muitas requisições, aguarde alguns segundos" }, { status: 429 });
   return actor;
 }
 
