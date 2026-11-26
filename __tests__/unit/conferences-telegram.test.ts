@@ -11,7 +11,10 @@ const { db, auth } = vi.hoisted(() => ({
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: db }));
 vi.mock("@/lib/auth", () => ({ auth }));
-vi.mock("@/lib/rate-limit", () => ({ rateLimitByIp: () => ({ allowed: true }) }));
+vi.mock("@/lib/rate-limit", () => ({
+  rateLimitByIp: () => ({ allowed: true }),
+  rateLimitByActor: () => ({ allowed: true }),
+}));
 
 import { logger } from "@/lib/logger";
 import { GET, POST } from "@/app/api/conferences/route";
