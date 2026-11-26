@@ -441,8 +441,13 @@ function agentInstructions(baseUrl: string) {
 - 401: token inválido, revogado ou expirado. Pare e avise o responsável. 403: falta escopo ou a rota é proibida. Não insista.
 - 409: regra de negócio (duplicado, arquivado, UM ou projeto com vínculos). Leia a mensagem e decida; não force.
 - Proibido: conferências, usuários, notificações e gestão de agentes (sempre 403).
+- Antes de operar, leia o guia completo: GET ${baseUrl}/agents/guide (mesmo header de autenticação).
+- Campos obrigatórios nas criações:
+  - projeto (POST /projects): nome, cor (hex #RRGGBB)
+  - UM (POST /ums): nome, projectId, quantidadeEsperada (inteiro ≥ 1)
+  - notebook (POST /notebooks): hostname, umId
+  Para os demais campos, lote, import e notebooks arquivados, consulte o guia antes de criar.
 - Antes de excluir ou arquivar em lote, confirme com o usuário.
-- Guia completo: docs/AGENT-API.md (peça ao administrador).
 
 Configuração (o usuário cola o token; ele nunca aparece em texto na conversa):
 export NOTESCAN_TOKEN=<cole o token>`;
