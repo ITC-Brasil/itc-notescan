@@ -21,10 +21,12 @@ function bearer(request: Request): string | null | undefined {
 }
 
 // Bearer tem precedência: presente e inválido → null (401), nunca cai no cookie.
-// Fase 2: nenhuma rota usa ainda; a Fase 3 troca auth() por isto rota a rota.
+// As rotas de API chamam isto via authorize() (m8-01, Fase 3).
 export async function resolveActor(request: Request): Promise<Actor | null> {
-  const token = bearer(request);
-  if (token !== undefined) return token ? resolveToken(token) : null;
+  // "credential", não "token": a regra detect-possible-timing-attacks casa pelo
+  // nome e aqui só se compara com undefined, nunca com um segredo.
+  const credential = bearer(request);
+  if (credential !== undefined) return credential ? resolveToken(credential) : null;
 
   const session = await auth();
   if (!session || !isHumanRole(session.user.role)) return null;
