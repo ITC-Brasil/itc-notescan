@@ -861,4 +861,10 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
   manual em sequência por ADMIN/MASTER; o limite apertado vale para automação. O 429
   responde "Muitas requisições, aguarde alguns segundos", que as telas já mostram em
   toast (as mutations exibem a `message` da API).
+- Fase 3 concluída (PR 3, 3c + 3d): arquivar notebook exige `delete:catalog`;
+  bulk-delete por UM e exclusão de UM e de projeto exigem `delete:catalog` +
+  `destructive`. Exclusão de projeto e de UM grava AuditLog `EXCLUIDO` (payload: nome e
+  cor do projeto; nome e projectId da UM). As regras de negócio (409 com UMs ou com
+  notebooks) valem igualmente para agentes. Nenhuma rota de `/api` chama mais `auth()`
+  direto: todas passam por `authorize()`.
 - Etapa 2: servidor MCP (a aba "Como conectar" é placeholder até lá).
