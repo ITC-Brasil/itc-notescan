@@ -37,7 +37,7 @@ async function resolveToken(token: string): Promise<Actor | null> {
   const hash = hashToken(token);
   const record = await prisma.apiToken.findUnique({
     where: { tokenHash: hash },
-    include: { user: { select: { role: true } } },
+    include: { user: { select: { role: true, desativadoEm: true } } },
   });
   if (!record) return null;
   // Defesa extra além do lookup por índice: comparação em tempo constante.
@@ -46,6 +46,7 @@ async function resolveToken(token: string): Promise<Actor | null> {
   const now = Date.now();
   if (record.revokedAt || record.expiresAt.getTime() <= now) return null;
   if (record.user.role !== "AGENTE") return null;
+  if (record.user.desativadoEm) return null; // defesa extra: desativar já revoga o token
 
   if (!record.lastUsedAt || now - record.lastUsedAt.getTime() > LAST_USED_THROTTLE_MS) {
     prisma.apiToken
