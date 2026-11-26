@@ -2,7 +2,19 @@
 
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, Bot, Copy, KeyRound, Pencil, Plug, Plus, ShieldOff, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  Copy,
+  FileText,
+  KeyRound,
+  Pencil,
+  Plus,
+  Power,
+  RotateCcw,
+  ShieldOff,
+  Trash2,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -12,6 +24,7 @@ import {
   useDeleteAgent,
   useIssueToken,
   useRevokeToken,
+  useSetAgentActive,
   useUpdateAgent,
   type Agent,
   type IssuedToken,
@@ -30,6 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -255,20 +269,61 @@ function TokenDialog({ agent, onClose }: { agent: Agent; onClose: () => void }) 
   );
 }
 
-// ── Página ───────────────────────────────────────────────────────────────────
-function columns(actions: {
+// ── Ações da tabela ──────────────────────────────────────────────────────────
+// Botão com tooltip; aria-label igual ao texto do tooltip nos botões só com ícone.
+function IconAction({
+  label,
+  onClick,
+  icon: Icon,
+  danger = false,
+}: {
+  label: string;
+  onClick: () => void;
+  icon: typeof Pencil;
+  danger?: boolean;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`h-8 w-8 ${danger ? "text-muted-foreground hover:text-destructive" : ""}`}
+          aria-label={label}
+          onClick={onClick}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+type Actions = {
   edit: (a: Agent) => void;
   token: (a: Agent) => void;
   revoke: (a: Agent) => void;
   remove: (a: Agent) => void;
-}): ColumnDef<Agent>[] {
+  deactivate: (a: Agent) => void;
+  reactivate: (a: Agent) => void;
+};
+
+function columns(actions: Actions): ColumnDef<Agent>[] {
   return [
     {
       accessorKey: "nome",
       header: "Agente",
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">{row.original.nome}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-foreground">{row.original.nome}</p>
+            {row.original.desativadoEm && (
+              <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+                Desativado
+              </Badge>
+            )}
+          </div>
           {row.original.descricao && (
             <p className="text-xs text-muted-foreground line-clamp-2">{row.original.descricao}</p>
           )}
@@ -330,35 +385,44 @@ function columns(actions: {
       header: "",
       cell: ({ row }) => {
         const a = row.original;
+        if (a.desativadoEm)
+          return (
+            <div className="flex justify-end gap-1">
+              <IconAction label="Editar agente" icon={Pencil} onClick={() => actions.edit(a)} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => actions.reactivate(a)}>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Reativar
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Reativa o agente; é preciso emitir um novo token</TooltipContent>
+              </Tooltip>
+            </div>
+          );
+        const reissue = a.situacao === "ativo";
         return (
           <div className="flex justify-end gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Editar agente" onClick={() => actions.edit(a)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => actions.token(a)}>
-              <KeyRound className="h-3.5 w-3.5 mr-1.5" />
-              {a.situacao === "ativo" ? "Reemitir" : "Emitir token"}
-            </Button>
-            {a.situacao === "ativo" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                aria-label="Revogar token"
-                onClick={() => actions.revoke(a)}
-              >
-                <ShieldOff className="h-3.5 w-3.5" />
-              </Button>
+            <IconAction label="Editar agente" icon={Pencil} onClick={() => actions.edit(a)} />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => actions.token(a)}>
+                  <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+                  {reissue ? "Reemitir" : "Emitir token"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {reissue ? "Gera um novo token e revoga o atual" : "Gera um token de API para o agente"}
+              </TooltipContent>
+            </Tooltip>
+            {reissue && (
+              <IconAction label="Revogar token" icon={ShieldOff} danger onClick={() => actions.revoke(a)} />
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-              aria-label="Excluir agente"
-              onClick={() => actions.remove(a)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {a.temHistorico ? (
+              <IconAction label="Desativar agente" icon={Power} danger onClick={() => actions.deactivate(a)} />
+            ) : (
+              <IconAction label="Excluir agente" icon={Trash2} danger onClick={() => actions.remove(a)} />
+            )}
           </div>
         );
       },
@@ -366,36 +430,124 @@ function columns(actions: {
   ];
 }
 
+// ── Como conectar ────────────────────────────────────────────────────────────
+function agentInstructions(baseUrl: string) {
+  return `Você tem acesso à API do NoteScan (catálogo de projetos, UMs e notebooks da ITC Brasil).
+
+- URL base: ${baseUrl}
+- Autenticação: header "Authorization: Bearer $NOTESCAN_TOKEN". O token fica SÓ na variável de ambiente NOTESCAN_TOKEN: nunca o escreva em comandos, arquivos, logs ou na URL.
+- Escopos do token: read:catalog (ler), write:catalog (criar/editar), delete:catalog (arquivar notebook), destructive (com delete:catalog: excluir UM ou projeto e arquivar todos os notebooks de uma UM).
+- Limites: 120 leituras e 30 escritas por minuto. Em 429, aguarde alguns segundos e repita.
+- 401: token inválido, revogado ou expirado. Pare e avise o responsável. 403: falta escopo ou a rota é proibida. Não insista.
+- 409: regra de negócio (duplicado, arquivado, UM ou projeto com vínculos). Leia a mensagem e decida; não force.
+- Proibido: conferências, usuários, notificações e gestão de agentes (sempre 403).
+- Antes de excluir ou arquivar em lote, confirme com o usuário.
+- Guia completo: docs/AGENT-API.md (peça ao administrador).
+
+Configuração (o usuário cola o token; ele nunca aparece em texto na conversa):
+export NOTESCAN_TOKEN=<cole o token>`;
+}
+
+function CopyButton({ text, label }: { text: string | (() => Promise<string>); label: string }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(typeof text === "string" ? text : await text());
+      toast.success("Copiado.");
+    } catch {
+      toast.error("Não foi possível copiar.");
+    }
+  };
+  return (
+    <Button type="button" variant="outline" size="sm" onClick={copy}>
+      <Copy className="h-3.5 w-3.5 mr-1.5" />
+      {label}
+    </Button>
+  );
+}
+
+async function fetchGuide() {
+  const res = await fetch("/api/agents/guide");
+  if (!res.ok) throw new Error("Guia indisponível");
+  return res.text();
+}
+
+function ConnectSection() {
+  // Origem atual: na tela do MASTER é a de produção (ou a de dev, em dev).
+  const baseUrl = typeof window === "undefined" ? "/api" : `${window.location.origin}/api`;
+  const instructions = agentInstructions(baseUrl);
+  return (
+    <div className="space-y-6">
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold">URL base da API</h2>
+        <div className="flex gap-2">
+          <Input readOnly value={baseUrl} aria-label="URL base da API" className="font-mono text-xs" />
+          <CopyButton text={baseUrl} label="Copiar" />
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold">Guia da API para agentes</h2>
+        <p className="text-sm text-muted-foreground">
+          Endpoints, escopos, regras de negócio e o que fazer em cada erro. Cole o guia nas
+          instruções do agente (Claude Code, Hermes).
+        </p>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href="/api/agents/guide" target="_blank" rel="noopener noreferrer">
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              Abrir guia
+            </a>
+          </Button>
+          <CopyButton text={fetchGuide} label="Copiar guia" />
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Instruções para o agente</h2>
+          <CopyButton text={instructions} label="Copiar instruções" />
+        </div>
+        <pre
+          aria-label="Instruções para o agente"
+          className="whitespace-pre-wrap rounded-lg border border-border bg-muted/40 p-4 text-xs font-mono"
+        >
+          {instructions}
+        </pre>
+        <p className="text-xs text-muted-foreground">
+          O token não aparece aqui: ele só é exibido uma vez, na emissão. Nunca o coloque na URL.
+        </p>
+      </section>
+
+      <p className="text-xs text-muted-foreground border-t border-border pt-4">
+        Servidor MCP remoto: planejado. MCP local (no desktop do usuário): alternativa futura. Por
+        enquanto, os agentes usam a API REST acima.
+      </p>
+    </div>
+  );
+}
+
+// ── Página ───────────────────────────────────────────────────────────────────
 export default function AgentesPage() {
-  const { data: agents, isLoading } = useAgents();
+  const [showInactive, setShowInactive] = useState(false);
+  const { data: agents, isLoading } = useAgents({ includeInactive: showInactive });
   const revoke = useRevokeToken();
   const remove = useDeleteAgent();
-  const [removing, setRemoving] = useState<Agent | null>(null);
+  const setActive = useSetAgentActive();
   const [editing, setEditing] = useState<Agent | "new" | null>(null);
   const [tokenFor, setTokenFor] = useState<Agent | null>(null);
   const [revoking, setRevoking] = useState<Agent | null>(null);
+  const [removing, setRemoving] = useState<Agent | null>(null);
+  const [deactivating, setDeactivating] = useState<Agent | null>(null);
 
-  const handleRevoke = async () => {
-    if (!revoking) return;
+  // Toast de sucesso ou a mensagem da API (inclusive o 409 de histórico).
+  const run = async (fn: () => Promise<unknown>, ok: string, fail: string, done?: () => void) => {
     try {
-      await revoke.mutateAsync(revoking.id);
-      toast.success("Token revogado.");
+      await fn();
+      toast.success(ok);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao revogar token.");
+      toast.error(err instanceof Error ? err.message : fail);
     } finally {
-      setRevoking(null);
-    }
-  };
-
-  const handleRemove = async () => {
-    if (!removing) return;
-    try {
-      await remove.mutateAsync(removing.id);
-      toast.success("Agente excluído.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir agente.");
-    } finally {
-      setRemoving(null);
+      done?.();
     }
   };
 
@@ -421,7 +573,11 @@ export default function AgentesPage() {
           <TabsTrigger value="conectar">Como conectar</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="agentes" className="mt-4">
+        <TabsContent value="agentes" className="mt-4 space-y-3">
+          <label className="flex w-fit items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <Checkbox checked={showInactive} onCheckedChange={(v) => setShowInactive(v === true)} />
+            Mostrar desativados
+          </label>
           {isLoading ? (
             <SkeletonTable rows={3} />
           ) : !agents?.length ? (
@@ -433,18 +589,26 @@ export default function AgentesPage() {
             />
           ) : (
             <DataTable
-              columns={columns({ edit: setEditing, token: setTokenFor, revoke: setRevoking, remove: setRemoving })}
+              columns={columns({
+                edit: setEditing,
+                token: setTokenFor,
+                revoke: setRevoking,
+                remove: setRemoving,
+                deactivate: setDeactivating,
+                reactivate: (a) =>
+                  void run(
+                    () => setActive.mutateAsync({ id: a.id, active: true }),
+                    "Agente reativado. Emita um novo token.",
+                    "Erro ao reativar agente.",
+                  ),
+              })}
               data={agents}
             />
           )}
         </TabsContent>
 
         <TabsContent value="conectar" className="mt-4">
-          <EmptyState
-            icon={Plug}
-            title="Servidor MCP chega na Etapa 2"
-            description="Por enquanto, o token acessa a API REST do NoteScan no cabeçalho Authorization: Bearer <token>. Nunca coloque o token na URL ou em query string."
-          />
+          <ConnectSection />
         </TabsContent>
       </Tabs>
 
@@ -462,7 +626,12 @@ export default function AgentesPage() {
         title="Revogar token"
         description={`O token de ${revoking?.nome ?? ""} deixa de funcionar imediatamente. Para voltar a dar acesso, emita um novo.`}
         confirmLabel="Revogar"
-        onConfirm={handleRevoke}
+        onConfirm={() =>
+          revoking &&
+          void run(() => revoke.mutateAsync(revoking.id), "Token revogado.", "Erro ao revogar token.", () =>
+            setRevoking(null),
+          )
+        }
         destructive
         loading={revoke.isPending}
       />
@@ -471,11 +640,35 @@ export default function AgentesPage() {
         open={!!removing}
         onOpenChange={(v) => !v && setRemoving(null)}
         title="Excluir agente"
-        description={`Excluir ${removing?.nome ?? ""}? Esta ação não pode ser desfeita. Agentes que já tiveram token não podem ser excluídos: nesse caso, revogue o token.`}
+        description={`Excluir ${removing?.nome ?? ""}? Ele nunca agiu no sistema; tokens não usados são apagados junto. Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
-        onConfirm={handleRemove}
+        onConfirm={() =>
+          removing &&
+          void run(() => remove.mutateAsync(removing.id), "Agente excluído.", "Erro ao excluir agente.", () =>
+            setRemoving(null),
+          )
+        }
         destructive
         loading={remove.isPending}
+      />
+
+      <ConfirmationDialog
+        open={!!deactivating}
+        onOpenChange={(v) => !v && setDeactivating(null)}
+        title="Desativar agente"
+        description={`${deactivating?.nome ?? ""} já agiu no sistema, então o histórico é preservado. Desativar revoga o token agora e impede emitir outro até reativar.`}
+        confirmLabel="Desativar"
+        onConfirm={() =>
+          deactivating &&
+          void run(
+            () => setActive.mutateAsync({ id: deactivating.id, active: false }),
+            "Agente desativado.",
+            "Erro ao desativar agente.",
+            () => setDeactivating(null),
+          )
+        }
+        destructive
+        loading={setActive.isPending}
       />
     </div>
   );

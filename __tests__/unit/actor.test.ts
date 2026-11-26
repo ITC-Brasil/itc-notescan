@@ -46,6 +46,7 @@ describe("resolveActor — Bearer", () => {
       scopes: ["read:catalog", "write:catalog"],
     });
     expect(db.apiToken.findUnique.mock.calls[0][0].where).toEqual({ tokenHash: hashToken(TOKEN) });
+    expect(db.apiToken.findUnique.mock.calls[0][0].include.user.select).toEqual({ role: true, desativadoEm: true });
     expect(db.apiToken.update).toHaveBeenCalled();
   });
 
@@ -60,6 +61,7 @@ describe("resolveActor — Bearer", () => {
     ["expirado", record({ expiresAt: new Date(Date.now() - 1) })],
     ["revogado", record({ revokedAt: new Date() })],
     ["de role humana", record({ user: { role: "ADMIN" } })],
+    ["de agente desativado (não revogado)", record({ user: { role: "AGENTE", desativadoEm: new Date() } })],
   ])("token %s → null", async (_, value) => {
     db.apiToken.findUnique.mockResolvedValue(value);
     await expect(resolveActor(req(`Bearer ${TOKEN}`))).resolves.toBeNull();

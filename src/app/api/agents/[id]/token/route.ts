@@ -21,7 +21,13 @@ export async function POST(request: Request, { params }: Ctx) {
     );
 
   const { id } = await params;
-  if (!(await findAgent(id))) return notFound();
+  const agent = await findAgent(id);
+  if (!agent) return notFound();
+  if (agent.desativadoEm)
+    return Response.json(
+      { message: "Agente desativado; reative antes de emitir token" },
+      { status: 409 },
+    );
 
   try {
     const { token, prefix, scopes, expiresAt } = await issueApiToken(id, parsed.data.scopes, actor);

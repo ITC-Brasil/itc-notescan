@@ -12,4 +12,5 @@ playwright.config.ts
 playwright-report
 coverage
 *.md
+!docs/AGENT-API.md
 .github

@@ -8,6 +8,9 @@ export interface Agent {
   descricao: string | null;
   email: string;
   createdAt: string;
+  desativadoEm: string | null;
+  // O agente já agiu (AuditLog próprio ou token usado): exclusão vira desativação.
+  temHistorico: boolean;
   situacao: TokenSituacao;
   token: {
     prefix: string;
@@ -41,8 +44,11 @@ async function send<T>(url: string, method: string, body?: unknown): Promise<T> 
   return (res.status === 204 ? undefined : res.json()) as Promise<T>;
 }
 
-export function useAgents() {
-  return useQuery({ queryKey: KEY, queryFn: () => send<Agent[]>("/api/agents", "GET") });
+export function useAgents({ includeInactive = false } = {}) {
+  return useQuery({
+    queryKey: [...KEY, includeInactive],
+    queryFn: () => send<Agent[]>(`/api/agents${includeInactive ? "?includeInactive=1" : ""}`, "GET"),
+  });
 }
 
 export function useCreateAgent() {
@@ -80,6 +86,15 @@ export function useDeleteAgent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => send<void>(`/api/agents/${id}`, "DELETE"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useSetAgentActive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      send<void>(`/api/agents/${id}/${active ? "reactivate" : "deactivate"}`, "POST"),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

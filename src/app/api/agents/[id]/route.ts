@@ -40,7 +40,7 @@ export async function DELETE(request: Request, { params }: Ctx) {
       return Response.json(
         {
           message:
-            "Agentes com histórico não podem ser excluídos; para desativar, revogue o token",
+            "Este agente já agiu no sistema e não pode ser excluído; desative-o",
         },
         { status: 409 },
       );

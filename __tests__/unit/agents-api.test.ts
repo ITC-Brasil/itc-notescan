@@ -16,6 +16,7 @@ const { db, auth } = vi.hoisted(() => ({
       update: vi.fn(),
       updateMany: vi.fn(),
       create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(),
@@ -30,6 +31,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { GET, POST } from "@/app/api/agents/route";
 import { DELETE, PATCH } from "@/app/api/agents/[id]/route";
 import { DELETE as REVOKE, POST as ISSUE } from "@/app/api/agents/[id]/token/route";
+import { POST as DEACTIVATE } from "@/app/api/agents/[id]/deactivate/route";
+import { POST as REACTIVATE } from "@/app/api/agents/[id]/reactivate/route";
 import { hashToken } from "@/lib/auth/token";
 import { tokenSituacao } from "@/lib/services/agent.service";
 import { ALL_SCOPES, tokenRecord, withBearer } from "./helpers/actor";
@@ -45,7 +48,8 @@ beforeEach(() => {
   auth.mockResolvedValue({ user: { id: "m1", role: "MASTER" } });
   db.$transaction.mockImplementation((fn: (tx: typeof db) => unknown) => fn(db));
   db.user.findMany.mockResolvedValue([]);
-  db.user.findFirst.mockResolvedValue({ id: "ag1" });
+  db.user.findFirst.mockResolvedValue({ id: "ag1", desativadoEm: null });
+  db.apiToken.deleteMany.mockResolvedValue({ count: 0 });
   db.user.create.mockImplementation(({ data }) => Promise.resolve({ id: "ag1", ...data }));
   db.user.update.mockImplementation(({ data }) => Promise.resolve({ id: "ag1", ...data }));
   db.apiToken.create.mockImplementation(({ data }) => Promise.resolve({ id: "t9", ...data }));
@@ -59,6 +63,8 @@ describe("autorização de /api/agents", () => {
     ["DELETE", () => DELETE(req("DELETE"), params)],
     ["ISSUE", () => ISSUE(req("POST", { scopes: ["read:catalog"] }), params)],
     ["REVOKE", () => REVOKE(req("DELETE"), params)],
+    ["DEACTIVATE", () => DEACTIVATE(req("POST"), params)],
+    ["REACTIVATE", () => REACTIVATE(req("POST"), params)],
   ] as const;
 
   it.each(calls)("%s: sem sessão → 401", async (_, call) => {
@@ -87,18 +93,41 @@ describe("autorização de /api/agents", () => {
   });
 });
 
+const none = { auditLogs: 0, lifecycleEvents: 0, apiTokens: 0 };
+
 describe("GET /api/agents", () => {
   it("situação do token mais recente, sem tokenHash", async () => {
     const future = new Date(Date.now() + 1000);
     db.user.findMany.mockResolvedValue([
-      { id: "a", nome: "A", apiTokens: [] },
-      { id: "b", nome: "B", apiTokens: [{ prefix: "nsk_b", revokedAt: null, expiresAt: future }] },
+      { id: "a", nome: "A", apiTokens: [], _count: none },
+      {
+        id: "b",
+        nome: "B",
+        apiTokens: [{ prefix: "nsk_b", revokedAt: null, expiresAt: future }],
+        _count: { ...none, apiTokens: 1 },
+      },
     ]);
     const body = await (await GET(req("GET"))).json();
     expect(body.map((a: { situacao: string }) => a.situacao)).toEqual(["nenhum", "ativo"]);
+    expect(body.map((a: { temHistorico: boolean }) => a.temHistorico)).toEqual([false, true]);
+    expect(body[0]).not.toHaveProperty("_count");
     const select = db.user.findMany.mock.calls[0][0].select.apiTokens.select;
     expect(select).not.toHaveProperty("tokenHash");
+    expect(db.user.findMany.mock.calls[0][0].where).toEqual({ role: "AGENTE", desativadoEm: null });
+  });
+
+  it("?includeInactive=1 traz os desativados", async () => {
+    await GET(new Request(`${URL_}?includeInactive=1`));
     expect(db.user.findMany.mock.calls[0][0].where).toEqual({ role: "AGENTE" });
+  });
+
+  it("histórico conta só o que o agente fez (token usado, não emitido)", async () => {
+    await GET(req("GET"));
+    expect(db.user.findMany.mock.calls[0][0].select._count.select).toEqual({
+      auditLogs: true,
+      lifecycleEvents: true,
+      apiTokens: { where: { lastUsedAt: { not: null } } },
+    });
   });
 
   it("tokenSituacao", () => {
@@ -154,21 +183,84 @@ describe("PATCH / DELETE /api/agents/[id]", () => {
     expect((await PATCH(req("PATCH", { password: "12345678" }), params)).status).toBe(400);
   });
 
-  it.each([
-    [1, 0],
-    [0, 1],
-  ])("tokens=%i auditLogs=%i → 409", async (apiTokens, auditLogs) => {
-    db.user.findUnique.mockResolvedValue({ _count: { apiTokens, auditLogs } });
-    const res = await DELETE(req("DELETE"), params);
-    expect(res.status).toBe(409);
-    expect((await res.json()).message).toMatch(/revogue o token/);
-    expect(db.user.delete).not.toHaveBeenCalled();
+  const history = (c: Partial<typeof none>) =>
+    db.user.findUnique.mockResolvedValue({ _count: { ...none, ...c } });
+
+  it("recém-criado (sem token): excluído, AuditLog EXCLUIDO", async () => {
+    history({});
+    expect((await DELETE(req("DELETE"), params)).status).toBe(204);
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: "ag1" } });
+    expect(audited()[0]).toMatchObject({ acao: "EXCLUIDO", entidadeId: "ag1" });
   });
 
-  it("sem histórico é excluído", async () => {
-    db.user.findUnique.mockResolvedValue({ _count: { apiTokens: 0, auditLogs: 0 } });
+  it("token emitido e nunca usado: excluído, tokens apagados na mesma transação", async () => {
+    history({}); // apiTokens conta só os usados
+    db.apiToken.deleteMany.mockResolvedValue({ count: 2 });
     expect((await DELETE(req("DELETE"), params)).status).toBe(204);
-    expect(audited()[0]).toMatchObject({ acao: "EXCLUIDO", entidadeId: "ag1" });
+    expect(db.apiToken.deleteMany).toHaveBeenCalledWith({ where: { userId: "ag1" } });
+    expect(db.apiToken.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+      db.user.delete.mock.invocationCallOrder[0],
+    );
+    expect(audited()[0].payload).toEqual({ tokensApagados: 2 });
+  });
+
+  it.each([
+    ["token usado", { apiTokens: 1 }],
+    ["autor de AuditLog", { auditLogs: 1 }],
+    ["autor de LifecycleEvent", { lifecycleEvents: 1 }],
+  ])("%s → 409 (desativar)", async (_, c) => {
+    history(c);
+    const res = await DELETE(req("DELETE"), params);
+    expect(res.status).toBe(409);
+    expect((await res.json()).message).toMatch(/desative/);
+    expect(db.user.delete).not.toHaveBeenCalled();
+    expect(db.apiToken.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("desativar / reativar", () => {
+  it("desativa: revoga token ativo, grava desativadoEm e AuditLog na transação", async () => {
+    db.user.findUnique.mockResolvedValue({ desativadoEm: null });
+    db.apiToken.findFirst.mockResolvedValue({ prefix: "nsk_abcdefgh" });
+    expect((await DEACTIVATE(req("POST"), params)).status).toBe(204);
+    expect(db.apiToken.updateMany).toHaveBeenCalledWith({
+      where: { userId: "ag1", revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(db.user.update.mock.calls[0][0].data).toEqual({ desativadoEm: expect.any(Date) });
+    expect(audited()[0]).toMatchObject({ acao: "DESATIVADO", payload: { tokenRevogado: "nsk_abcdefgh" } });
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("desativar já desativado → 409; reativar ativo → 409", async () => {
+    db.user.findUnique.mockResolvedValue({ desativadoEm: new Date() });
+    expect((await DEACTIVATE(req("POST"), params)).status).toBe(409);
+    db.user.findUnique.mockResolvedValue({ desativadoEm: null });
+    expect((await REACTIVATE(req("POST"), params)).status).toBe(409);
+    expect(db.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("reativa sem devolver token, com AuditLog", async () => {
+    db.user.findUnique.mockResolvedValue({ desativadoEm: new Date() });
+    expect((await REACTIVATE(req("POST"), params)).status).toBe(204);
+    expect(db.user.update.mock.calls[0][0].data).toEqual({ desativadoEm: null });
+    expect(db.apiToken.create).not.toHaveBeenCalled();
+    expect(audited()[0]).toMatchObject({ acao: "REATIVADO" });
+  });
+
+  it("agente desativado não recebe token (409)", async () => {
+    db.user.findFirst.mockResolvedValue({ id: "ag1", desativadoEm: new Date() });
+    const res = await ISSUE(req("POST", { scopes: ["read:catalog"] }), params);
+    expect(res.status).toBe(409);
+    expect((await res.json()).message).toMatch(/reative/);
+    expect(db.apiToken.create).not.toHaveBeenCalled();
+  });
+
+  it("id inexistente → 404; erro no banco → 500", async () => {
+    db.user.findFirst.mockResolvedValueOnce(null);
+    expect((await DEACTIVATE(req("POST"), params)).status).toBe(404);
+    db.$transaction.mockRejectedValueOnce(new Error("db"));
+    expect((await REACTIVATE(req("POST"), params)).status).toBe(500);
   });
 });
 
