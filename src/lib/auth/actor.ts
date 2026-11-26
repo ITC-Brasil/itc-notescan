@@ -89,3 +89,10 @@ export async function authorize(
 
 // Rotas só de MASTER em sessão (gestão de agentes): nenhum escopo libera token.
 export const MASTER_ONLY = { scopes: [], roles: ["MASTER"] } as const;
+
+// Escrita no catálogo (3b): agente com write:catalog; humano ADMIN/MASTER como antes.
+export const WRITE_CATALOG = {
+  scopes: ["write:catalog"],
+  roles: ["ADMIN", "MASTER"],
+  rate: "write",
+} as const;

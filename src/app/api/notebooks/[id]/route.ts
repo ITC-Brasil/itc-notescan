@@ -1,3 +1,4 @@
+import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
@@ -8,12 +9,8 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, WRITE_CATALOG);
+  if (actor instanceof Response) return actor;
 
   const parsed = updateNotebookSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -59,7 +56,7 @@ export async function PUT(
         prisma.lifecycleEvent.create({
           data: {
             notebookId: id,
-            userId: session.user.id,
+            userId: actor.userId,
             tipo: isMaintenance ? "Manutenção" : "Retorno",
             descricao: isMaintenance
               ? "Notebook colocado em manutenção"

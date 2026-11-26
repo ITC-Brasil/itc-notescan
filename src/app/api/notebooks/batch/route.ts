@@ -1,15 +1,11 @@
-﻿import { auth } from "@/lib/auth";
+﻿import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
 import { logger } from "@/lib/logger";
 import { createNotebooksBatchSchema } from "@/lib/validations";
 import { conflictResponse, createNotebooksBulk } from "@/lib/services/notebook.service";
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, WRITE_CATALOG);
+  if (actor instanceof Response) return actor;
 
   const parsed = createNotebooksBatchSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -37,7 +33,7 @@ export async function POST(request: Request) {
       hostnames.map((hostname) => ({ hostname })),
       umId,
       status,
-      session.user.id,
+      actor.userId,
       onArchived,
     );
     return Response.json(result, { status: 201 });
