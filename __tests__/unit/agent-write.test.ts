@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { db, auth, svc } = vi.hoisted(() => {
   const db = {
     apiToken: { findUnique: vi.fn(), update: vi.fn() },
-    notebook: { findUnique: vi.fn(), update: vi.fn() },
+    notebook: { findUnique: vi.fn(), update: vi.fn(), groupBy: vi.fn() },
     lifecycleEvent: { create: vi.fn() },
-    project: { create: vi.fn(), update: vi.fn() },
-    uM: { create: vi.fn(), update: vi.fn() },
+    project: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    uM: { create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(),
   };
@@ -30,11 +30,11 @@ vi.mock("@/lib/services/notebook.service", () => svc);
 import { POST as notebookCreate } from "@/app/api/notebooks/route";
 import { POST as notebookBatch } from "@/app/api/notebooks/batch/route";
 import { POST as notebookImport } from "@/app/api/notebooks/import/route";
-import { PUT as notebookUpdate } from "@/app/api/notebooks/[id]/route";
+import { DELETE as notebookDelete, PUT as notebookUpdate } from "@/app/api/notebooks/[id]/route";
 import { POST as projectCreate } from "@/app/api/projects/route";
-import { PUT as projectUpdate } from "@/app/api/projects/[id]/route";
+import { DELETE as projectDelete, PUT as projectUpdate } from "@/app/api/projects/[id]/route";
 import { POST as umCreate } from "@/app/api/ums/route";
-import { PUT as umUpdate } from "@/app/api/ums/[id]/route";
+import { DELETE as umDelete, PUT as umUpdate } from "@/app/api/ums/[id]/route";
 import { ALL_SCOPES, invalidTokens, tokenRecord, TOKEN } from "./helpers/actor";
 
 const params = { params: Promise.resolve({ id: "x1" }) };
@@ -152,5 +152,98 @@ describe("rate limit de escrita", () => {
     auth.mockResolvedValue({ user: { id: "rl-writer", role: "ADMIN" } });
     for (let i = 0; i < 30; i++) expect((await projectCreate(req(project))).status).toBe(201);
     expect((await projectCreate(req(project))).status).toBe(429);
+  });
+});
+
+describe("regras de negócio das escritas (sessão ADMIN)", () => {
+  beforeEach(() => auth.mockResolvedValue({ user: { id: "a1", role: "ADMIN" } }));
+
+  it("body inválido → 400 em todas as rotas", async () => {
+    for (const [, , call] of routes) expect((await call(req({}))).status).toBe(400);
+  });
+
+  it("lote com fim < início → 400", async () => {
+    const res = await notebookBatch(req({ prefix: "P", start: 5, end: 2, umId: "um1" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("lote gera hostnames com zero à esquerda só de 1 a 9", async () => {
+    await notebookBatch(req({ prefix: "P-", start: 9, end: 10, umId: "um1" }));
+    expect(svc.createNotebooksBulk.mock.calls[0][0]).toEqual([{ hostname: "P-09" }, { hostname: "P-10" }]);
+  });
+
+  it("conflito do serviço vira a resposta dele; erro inesperado → 500", async () => {
+    svc.conflictResponse.mockReturnValueOnce(Response.json({}, { status: 409 }) as never);
+    svc.createNotebooksBulk.mockRejectedValueOnce(new Error("dup"));
+    expect((await notebookImport(req({ umId: "um1", rows: [{ hostname: "A-01" }] }))).status).toBe(409);
+    svc.createNotebook.mockRejectedValueOnce(new Error("db"));
+    expect((await notebookCreate(req(nb))).status).toBe(500);
+  });
+
+  it("PUT notebook: 404, arquivado 409, troca de status gera LifecycleEvent", async () => {
+    db.notebook.findUnique.mockResolvedValueOnce(null);
+    expect((await notebookUpdate(req(nb), params)).status).toBe(404);
+    db.notebook.findUnique.mockResolvedValueOnce({ status: "ARQUIVADO" });
+    expect((await notebookUpdate(req(nb), params)).status).toBe(409);
+    await notebookUpdate(req({ ...nb, status: "MANUTENCAO" }), params);
+    expect(db.lifecycleEvent.create.mock.calls[0][0].data).toMatchObject({ userId: "a1", tipo: "Manutenção" });
+  });
+
+  it("PUT de projeto/UM com erro no banco → 500", async () => {
+    db.project.update.mockRejectedValueOnce(new Error("db"));
+    expect((await projectUpdate(req(project), params)).status).toBe(500);
+    db.uM.update.mockRejectedValueOnce(new Error("db"));
+    expect((await umUpdate(req(um), params)).status).toBe(500);
+  });
+});
+
+// Linha de base das exclusões antes do 3c/3d (PR 3): comportamento humano atual.
+describe("exclusões — sessão humana (antes do 3c/3d)", () => {
+  const del = () => new Request(URL_, { method: "DELETE" });
+
+  it("sem sessão 401; USER 403", async () => {
+    for (const call of [() => notebookDelete(del(), params), () => projectDelete(del(), params), () => umDelete(del(), params)]) {
+      auth.mockResolvedValueOnce(null);
+      expect((await call()).status).toBe(401);
+      auth.mockResolvedValueOnce({ user: { id: "u1", role: "USER" } });
+      expect((await call()).status).toBe(403);
+    }
+  });
+
+  describe("ADMIN", () => {
+    beforeEach(() => auth.mockResolvedValue({ user: { id: "a1", role: "ADMIN" } }));
+
+    it("notebook: 404, já arquivado 409, arquiva ou exclui", async () => {
+      db.notebook.findUnique.mockResolvedValueOnce(null);
+      expect((await notebookDelete(del(), params)).status).toBe(404);
+      db.notebook.findUnique.mockResolvedValueOnce({ status: "ARQUIVADO" });
+      expect((await notebookDelete(del(), params)).status).toBe(409);
+      svc.removeNotebooks.mockResolvedValueOnce({ archived: 1 });
+      expect(await (await notebookDelete(del(), params)).json()).toEqual({ action: "archived" });
+      svc.removeNotebooks.mockResolvedValueOnce({ archived: 0 });
+      expect(await (await notebookDelete(del(), params)).json()).toEqual({ action: "deleted" });
+      svc.removeNotebooks.mockRejectedValueOnce(new Error("db"));
+      expect((await notebookDelete(del(), params)).status).toBe(500);
+    });
+
+    it("projeto: com UMs 409; sem UMs 204; erro 500", async () => {
+      db.uM.count.mockResolvedValueOnce(2);
+      expect((await projectDelete(del(), params)).status).toBe(409);
+      db.uM.count.mockResolvedValue(0);
+      expect((await projectDelete(del(), params)).status).toBe(204);
+      db.project.delete.mockRejectedValueOnce(new Error("db"));
+      expect((await projectDelete(del(), params)).status).toBe(500);
+    });
+
+    it("UM: com notebooks 409 (mensagem própria para só arquivados); vazia 204; erro 500", async () => {
+      db.notebook.groupBy.mockResolvedValueOnce([{ status: "ATIVO" }]);
+      expect((await (await umDelete(del(), params)).json()).message).toMatch(/notebooks associados/);
+      db.notebook.groupBy.mockResolvedValueOnce([{ status: "ARQUIVADO" }]);
+      expect((await (await umDelete(del(), params)).json()).message).toMatch(/arquivados/);
+      db.notebook.groupBy.mockResolvedValue([]);
+      expect((await umDelete(del(), params)).status).toBe(204);
+      db.uM.delete.mockRejectedValueOnce(new Error("db"));
+      expect((await umDelete(del(), params)).status).toBe(500);
+    });
   });
 });
