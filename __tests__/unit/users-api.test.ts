@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { db, auth } = vi.hoisted(() => ({
   db: {
     user: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    apiToken: { findUnique: vi.fn(), update: vi.fn() },
   },
   auth: vi.fn(),
 }));
@@ -11,10 +12,11 @@ vi.mock("@/lib/db/prisma", () => ({ prisma: db }));
 vi.mock("@/lib/auth", () => ({ auth }));
 vi.mock("bcrypt", () => ({ default: { hash: vi.fn().mockResolvedValue("h") } }));
 
-import { Prisma } from "@/generated/prisma/client";
-import { POST } from "@/app/api/users/route";
+import { GET, POST } from "@/app/api/users/route";
 import { PUT, DELETE } from "@/app/api/users/[id]/route";
+import { PUT as CHANGE_PASSWORD } from "@/app/api/users/change-password/route";
 import { agentEmail, agentSlug } from "@/lib/services/user.service";
+import { ALL_SCOPES, tokenRecord, withBearer } from "./helpers/actor";
 
 const req = (method: string, body?: unknown) =>
   new Request("http://x/api/users", { method, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -43,38 +45,10 @@ describe("agentEmail", () => {
   });
 });
 
-describe("POST /api/users (AGENTE)", () => {
-  it("só MASTER cria", async () => {
-    auth.mockResolvedValue({ user: { id: "a", role: "ADMIN" } });
-    expect((await POST(req("POST", { role: "AGENTE", nome: "Bot" }))).status).toBe(403);
-  });
-
-  it("cria sem senha e com e-mail gerado", async () => {
-    db.user.findMany.mockResolvedValue([{ email: "agente-bot@notescan.invalid" }]);
-    const res = await POST(req("POST", { role: "AGENTE", nome: "Bot", descricao: "MCP" }));
-    expect(res.status).toBe(201);
-    expect(db.user.create.mock.calls[0][0].data).toMatchObject({
-      role: "AGENTE",
-      passwordHash: null,
-      descricao: "MCP",
-      email: "agente-bot-2@notescan.invalid",
-    });
-  });
-
-  it.each([{ password: "12345678" }, { metaDiaria: 3 }, { email: "x@y.com" }])(
-    "rejeita campo humano %o (400)",
-    async (extra) => {
-      const res = await POST(req("POST", { role: "AGENTE", nome: "Bot", ...extra }));
-      expect(res.status).toBe(400);
-      expect(db.user.create).not.toHaveBeenCalled();
-    },
-  );
-
-  it("corrida de e-mail (P2002) → 409", async () => {
-    db.user.create.mockRejectedValue(
-      new Prisma.PrismaClientKnownRequestError("x", { code: "P2002", clientVersion: "t" }),
-    );
-    expect((await POST(req("POST", { role: "AGENTE", nome: "Bot" }))).status).toBe(409);
+describe("POST /api/users", () => {
+  it("AGENTE saiu daqui: role AGENTE → 400", async () => {
+    expect((await POST(req("POST", { role: "AGENTE", nome: "Bot" }))).status).toBe(400);
+    expect(db.user.create).not.toHaveBeenCalled();
   });
 
   it("humano continua exigindo senha", async () => {
@@ -106,23 +80,37 @@ describe("PUT /api/users/[id] — AGENTE imutável", () => {
   });
 });
 
-describe("DELETE /api/users/[id] — agente com histórico", () => {
-  const target = (role: string, apiTokens: number, auditLogs: number) =>
-    db.user.findUnique.mockResolvedValue({ role, _count: { apiTokens, auditLogs } });
+describe("GET /api/users", () => {
+  it("não lista agentes", async () => {
+    await GET(req("GET"));
+    expect(db.user.findMany.mock.calls[0][0].where).toEqual({ role: { not: "AGENTE" } });
+  });
+});
 
-  it.each([
-    [1, 0],
-    [0, 1],
-  ])("tokens=%i auditLogs=%i → 409", async (t, a) => {
-    target("AGENTE", t, a);
-    const res = await DELETE(req("DELETE"), params);
-    expect(res.status).toBe(409);
-    expect((await res.json()).message).toMatch(/revogue o token/);
+describe("DELETE /api/users/[id]", () => {
+  it("agente é gerido em /api/agents → 404", async () => {
+    db.user.findUnique.mockResolvedValue({ role: "AGENTE" });
+    expect((await DELETE(req("DELETE"), params)).status).toBe(404);
     expect(db.user.delete).not.toHaveBeenCalled();
   });
 
-  it("agente sem histórico é excluído", async () => {
-    target("AGENTE", 0, 0);
+  it("humano é excluído", async () => {
+    db.user.findUnique.mockResolvedValue({ role: "USER" });
     expect((await DELETE(req("DELETE"), params)).status).toBe(204);
+  });
+});
+
+describe("token de agente em /api/users → 403 mesmo com todos os escopos", () => {
+  beforeEach(() => db.apiToken.findUnique.mockResolvedValue(tokenRecord(ALL_SCOPES)));
+  const url = "http://x/api/users";
+  it.each([
+    ["GET", () => GET(withBearer(url))],
+    ["POST", () => POST(withBearer(url, { method: "POST", body: "{}" }))],
+    ["PUT", () => PUT(withBearer(url, { method: "PUT", body: "{}" }), params)],
+    ["DELETE", () => DELETE(withBearer(url, { method: "DELETE" }), params)],
+    ["change-password", () => CHANGE_PASSWORD(withBearer(url, { method: "PUT", body: "{}" }))],
+  ])("%s", async (_, call) => {
+    expect((await call()).status).toBe(403);
+    expect(auth).not.toHaveBeenCalled();
   });
 });
