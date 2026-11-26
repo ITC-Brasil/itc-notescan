@@ -88,12 +88,44 @@ test.describe("Agentes — API", () => {
     expect((await agent2.post("/api/notebooks", { data: { hostname: "E2E-AG01", umId } })).status()).toBe(201);
     expect(await auditCount(projectId, umId)).toEqual({ project: 2, um: 1 });
 
-    // Exclusão continua fora do alcance (3c/3d no PR 3).
-    expect((await agent2.delete(`/api/projects/${projectId}`)).status()).toBe(401);
+    const emptyProject = await agent2.post("/api/projects", { data: { nome: "E2E Vazio", cor: "#654321" } });
+    const { id: emptyProjectId } = (await emptyProject.json()) as { id: string };
+    const { id: nbId } = (await (await agent2.get(`/api/notebooks?umId=${umId}`)).json())[0] as { id: string };
+
+    // Sem delete:catalog, nenhuma exclusão.
+    expect((await agent2.delete(`/api/notebooks/${nbId}`)).status()).toBe(403);
+    expect((await agent2.delete(`/api/projects/${emptyProjectId}`)).status()).toBe(403);
+
+    // 3c: delete:catalog arquiva notebook, mas não libera as destrutivas.
+    const t3 = await master.post(`/api/agents/${id}/token`, { data: { scopes: ["delete:catalog"] } });
+    const agent3 = await agentApi(((await t3.json()) as { token: string }).token);
+    expect((await agent3.delete(`/api/notebooks/${nbId}`)).status()).toBe(200);
+    expect((await agent3.post("/api/notebooks/bulk-delete", { data: { umId } })).status()).toBe(403);
+    expect((await agent3.delete(`/api/ums/${umId}`)).status()).toBe(403);
+    expect((await agent3.delete(`/api/projects/${emptyProjectId}`)).status()).toBe(403);
+
+    // 3d: delete:catalog + destructive.
+    const t4 = await master.post(`/api/agents/${id}/token`, {
+      data: { scopes: ["read:catalog", "delete:catalog", "destructive"] },
+    });
+    const { token: token4 } = (await t4.json()) as { token: string };
+    const agent4 = await agentApi(token4);
+    expect((await agent4.post("/api/notebooks/bulk-delete", { data: { umId } })).status()).toBe(200);
+    // Projeto com UM → 409: a regra de negócio vale para agente também.
+    expect((await agent4.delete(`/api/projects/${projectId}`)).status()).toBe(409);
+    // O notebook arquivado não tinha conferência: o bulk-delete o remove e a UM fica vazia.
+    expect((await agent4.delete(`/api/ums/${umId}`)).status()).toBe(204);
+    expect((await agent4.delete(`/api/projects/${projectId}`)).status()).toBe(204);
+    expect((await agent4.delete(`/api/projects/${emptyProjectId}`)).status()).toBe(204);
+    // CRIADO + EXCLUIDO, todos por token.
+    expect(await auditCount(emptyProjectId, umId)).toEqual({ project: 2, um: 2 });
+    await agent3.dispose();
 
     // Revogar → 401.
+    expect((await agent4.get("/api/projects")).status()).toBe(200);
     expect((await master.delete(`/api/agents/${id}/token`)).status()).toBe(204);
-    expect((await agent2.get("/api/projects")).status()).toBe(401);
+    expect((await agent4.get("/api/projects")).status()).toBe(401);
+    await agent4.dispose();
 
     // Agente com histórico não pode ser excluído.
     expect((await master.delete(`/api/agents/${id}`)).status()).toBe(409);
@@ -162,6 +194,8 @@ test.describe("Agentes — página MCP e Agentes", () => {
     await page.getByLabel("Nome").fill("E2E Bot Descartável");
     await page.getByRole("button", { name: "Criar agente" }).click();
     const tmp = page.getByRole("row", { name: /E2E Bot Descartável/ });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(tmp).toBeVisible();
     await tmp.getByRole("button", { name: "Excluir agente" }).click();
     await page.getByRole("button", { name: "Excluir", exact: true }).click();
     await expect(page.getByText("Agente excluído.")).toBeVisible();

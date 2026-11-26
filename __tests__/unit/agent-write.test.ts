@@ -28,6 +28,7 @@ vi.mock("@/lib/auth", () => ({ auth }));
 vi.mock("@/lib/services/notebook.service", () => svc);
 
 import { POST as notebookCreate } from "@/app/api/notebooks/route";
+import { POST as bulkDelete } from "@/app/api/notebooks/bulk-delete/route";
 import { POST as notebookBatch } from "@/app/api/notebooks/batch/route";
 import { POST as notebookImport } from "@/app/api/notebooks/import/route";
 import { DELETE as notebookDelete, PUT as notebookUpdate } from "@/app/api/notebooks/[id]/route";
@@ -75,6 +76,11 @@ beforeEach(() => {
     m.update.mockImplementation(({ data }) => Promise.resolve({ id: "x1", ...data }));
   }
   svc.createNotebook.mockResolvedValue({ id: "n1" });
+  svc.removeNotebooks.mockResolvedValue({ archived: 1, deleted: 0 });
+  db.project.delete.mockResolvedValue({ id: "x1", nome: "P", cor: "#000000" });
+  db.uM.delete.mockResolvedValue({ id: "x1", nome: "UM", projectId: "p1" });
+  db.uM.count.mockResolvedValue(0);
+  db.notebook.groupBy.mockResolvedValue([]);
   svc.createNotebooksBulk.mockResolvedValue({ created: 1 });
 });
 
@@ -205,8 +211,8 @@ describe("regras de negócio das escritas (sessão ADMIN)", () => {
   });
 });
 
-// Linha de base das exclusões antes do 3c/3d (PR 3): comportamento humano atual.
-describe("exclusões — sessão humana (antes do 3c/3d)", () => {
+// Exclusões: o comportamento humano é o mesmo de antes do 3c/3d.
+describe("exclusões — sessão humana", () => {
   const del = () => new Request(URL_, { method: "DELETE" });
 
   it("sem sessão 401; USER 403", async () => {
@@ -253,5 +259,91 @@ describe("exclusões — sessão humana (antes do 3c/3d)", () => {
       db.uM.delete.mockRejectedValueOnce(new Error("db"));
       expect((await umDelete(del(), params)).status).toBe(500);
     });
+  });
+});
+
+describe("3c/3d — exclusões por token", () => {
+  const del = (bearer = true) =>
+    new Request(URL_, { method: "DELETE", headers: bearer ? { authorization: `Bearer ${TOKEN}` } : {} });
+  const bulk = (bearer = true) =>
+    new Request(URL_, {
+      method: "POST",
+      body: JSON.stringify({ umId: "um1" }),
+      headers: bearer ? { authorization: `Bearer ${TOKEN}` } : {},
+    });
+  const withScopes = (scopes: Parameters<typeof tokenRecord>[0]) =>
+    db.apiToken.findUnique.mockResolvedValue(tokenRecord(scopes));
+
+  it("3c: arquivar notebook exige delete:catalog", async () => {
+    withScopes(["read:catalog", "write:catalog", "destructive"]);
+    expect((await notebookDelete(del(), params)).status).toBe(403);
+    withScopes(["delete:catalog"]);
+    expect((await notebookDelete(del(), params)).status).toBe(200);
+    expect(svc.removeNotebooks).toHaveBeenCalledWith({ id: "x1" }, "ag1");
+  });
+
+  const destructive = [
+    ["POST /api/notebooks/bulk-delete", (b?: boolean) => bulkDelete(bulk(b))],
+    ["DELETE /api/projects/[id]", (b?: boolean) => projectDelete(del(b), params)],
+    ["DELETE /api/ums/[id]", (b?: boolean) => umDelete(del(b), params)],
+  ] as const;
+
+  describe.each(destructive)("3d: %s", (_, call) => {
+    it.each([
+      [["delete:catalog"]],
+      [["destructive"]],
+      [["read:catalog", "write:catalog"]],
+    ] as const)("só %j → 403", async (scopes) => {
+      withScopes([...scopes]);
+      expect((await call()).status).toBe(403);
+      expect(svc.removeNotebooks).not.toHaveBeenCalled();
+      expect(db.project.delete).not.toHaveBeenCalled();
+      expect(db.uM.delete).not.toHaveBeenCalled();
+    });
+
+    it("delete:catalog + destructive → 2xx", async () => {
+      withScopes(["delete:catalog", "destructive"]);
+      expect((await call()).status).toBeLessThan(300);
+    });
+
+    it.each(Object.entries(invalidTokens))("token %s → 401", async (_k, rec) => {
+      db.apiToken.findUnique.mockResolvedValue(rec === null ? null : rec());
+      auth.mockResolvedValue({ user: { id: "m1", role: "MASTER" } });
+      expect((await call()).status).toBe(401);
+    });
+
+    it("sessão humana inalterada: USER 403, ADMIN 2xx", async () => {
+      auth.mockResolvedValue({ user: { id: "u1", role: "USER" } });
+      expect((await call(false)).status).toBe(403);
+      auth.mockResolvedValue({ user: { id: "a1", role: "ADMIN" } });
+      expect((await call(false)).status).toBeLessThan(300);
+    });
+  });
+
+  it("exclusão de projeto e de UM grava AuditLog EXCLUIDO com tokenId", async () => {
+    withScopes(["delete:catalog", "destructive"]);
+    await projectDelete(del(), params);
+    await umDelete(del(), params);
+    expect(db.auditLog.create.mock.calls.map((c) => c[0].data)).toEqual([
+      expect.objectContaining({ entidade: "Project", acao: "EXCLUIDO", entidadeId: "x1", tokenId: "tok1", payload: { nome: "P", cor: "#000000" } }),
+      expect.objectContaining({ entidade: "UM", acao: "EXCLUIDO", entidadeId: "x1", tokenId: "tok1", payload: { nome: "UM", projectId: "p1" } }),
+    ]);
+  });
+
+  it("humano também é auditado na exclusão", async () => {
+    auth.mockResolvedValue({ user: { id: "m1", role: "MASTER" } });
+    await umDelete(del(false), params);
+    expect(db.auditLog.create.mock.calls[0][0].data).toMatchObject({ actorId: "m1", tokenId: null, acao: "EXCLUIDO" });
+  });
+
+  it("bulk-delete: body inválido 400; conflito do serviço; erro 500", async () => {
+    auth.mockResolvedValue({ user: { id: "a1", role: "ADMIN" } });
+    const bad = new Request(URL_, { method: "POST", body: "{}" });
+    expect((await bulkDelete(bad)).status).toBe(400);
+    svc.removeNotebooks.mockRejectedValueOnce(new Error("x"));
+    svc.conflictResponse.mockReturnValueOnce(Response.json({}, { status: 409 }) as never);
+    expect((await bulkDelete(bulk(false))).status).toBe(409);
+    svc.removeNotebooks.mockRejectedValueOnce(new Error("db"));
+    expect((await bulkDelete(bulk(false))).status).toBe(500);
   });
 });
