@@ -58,11 +58,13 @@ steps:
   Para atualizar: escolher release com 14+ dias, conferir o SHA da mesma forma e
   trocar SHA e comentário juntos.
 - `fingerprint`: verifica a chave do host (proteção contra MITM). Formato
-  `SHA256:<base64>`, obtido com
-  `ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub | cut -d ' ' -f2` (a chave
-  que o sshd apresenta na porta de deploy). Sucesso é silencioso no log; divergência
-  aborta antes do script com `ssh: host key fingerprint mismatch`. Trocar a chave
-  do host exige atualizar o secret.
+  `SHA256:<base64>`. Sucesso é silencioso no log; divergência aborta antes do
+  script com `ssh: host key fingerprint mismatch`.
+  - **Tipo de chave:** o `DEPLOY_HOST_FINGERPRINT` é o SHA256 da chave **ECDSA** do
+    servidor, não a ed25519: o `x/crypto/ssh` (usado pela ação) prefere ECDSA
+    quando o servidor oferece as duas. Obtido com:
+    `ssh-keyscan -p 2222 -t ecdsa <host> | ssh-keygen -lf - -E sha256`
+  - Se as host keys do servidor forem regeneradas, o secret precisa ser atualizado.
 - Porta via secret `DEPLOY_PORT` em vez de `2222` fixo.
 - `git pull --ff-only`: checkout divergente no servidor faz o deploy falhar em vez
   de criar merge local.
