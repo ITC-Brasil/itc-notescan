@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { authorize, DESTRUCTIVE } from "@/lib/auth/actor";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { conflictResponse, removeNotebooks } from "@/lib/services/notebook.service";
@@ -6,12 +6,8 @@ import { conflictResponse, removeNotebooks } from "@/lib/services/notebook.servi
 const schema = z.object({ umId: z.string().min(1) });
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, DESTRUCTIVE);
+  if (actor instanceof Response) return actor;
 
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success)
@@ -21,7 +17,7 @@ export async function POST(request: Request) {
 
   try {
     // Sem histórico → excluídos; com histórico → arquivados. Uma transação.
-    return Response.json(await removeNotebooks({ umId }, session.user.id));
+    return Response.json(await removeNotebooks({ umId }, actor.userId));
   } catch (error) {
     const conflict = conflictResponse(error);
     if (conflict) return conflict;

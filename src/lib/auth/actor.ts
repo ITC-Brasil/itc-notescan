@@ -98,3 +98,17 @@ export const WRITE_CATALOG = {
   roles: ["ADMIN", "MASTER"],
   rate: "write",
 } as const;
+
+// Exclusão simples (3c): arquivar notebook um a um.
+export const DELETE_CATALOG = {
+  scopes: ["delete:catalog"],
+  roles: ["ADMIN", "MASTER"],
+  rate: "write",
+} as const;
+
+// Destrutivas (3d): exclusão de UM e de projeto e bulk-delete por UM exigem os dois escopos.
+export const DESTRUCTIVE = {
+  scopes: ["delete:catalog", "destructive"],
+  roles: ["ADMIN", "MASTER"],
+  rate: "write",
+} as const;
