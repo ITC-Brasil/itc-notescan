@@ -815,7 +815,8 @@ recusa role não humana.
 - Modelo `AuditLog` (`entidade`, `entidadeId`, `acao`, `actorId`, `tokenId`, `payload`,
   `createdAt`) para escritas em entidades sem LifecycleEvent (projetos, UMs). Cobre TODAS
   as escritas em projetos e UMs, humanas e de agentes (gravação implementada na Fase 3).
-- Gestão de tokens: aba dentro do card do usuário `AGENTE` em `/usuarios` (MASTER).
+- ~~Gestão de tokens: aba dentro do card do usuário `AGENTE` em `/usuarios` (MASTER).~~
+  Substituído em 25/11/2026 (Etapa 1), ver "Revisão — menu MCP e Agentes" abaixo.
 
 **Decisão — MCP:** servidor separado, repositório próprio, container em
 `notescan-mcp.itcbr.xyz`. Tools sem escopo correspondente são omitidas. Tools de notebook
@@ -826,3 +827,44 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
 - Fase 3: migração das rotas
 - Fase 4: UI de tokens
 - Fase 5: MCP
+
+
+**Revisão — menu MCP e Agentes (25/11/2026, Etapa 1):**
+- A gestão de agentes sai de `/usuarios` e vai para o menu próprio "MCP e Agentes"
+  (`/agentes`, só MASTER, no proxy e no menu lateral).
+- API própria `/api/agents` (MASTER em sessão; 403 a qualquer token):
+  `GET/POST /api/agents`, `PATCH/DELETE /api/agents/[id]`,
+  `POST/DELETE /api/agents/[id]/token`. A emissão responde `Cache-Control: no-store`.
+- `/api/users` recusa `AGENTE` na criação (400), não lista agentes e responde 404 à
+  exclusão de agente. Continua o 409 nas conversões `AGENTE ↔ humano`.
+- Regras mantidas: `AGENTE` imutável, sem senha, sem meta; 409 ao excluir agente com
+  histórico.
+- AuditLog também nas ações sobre agentes (`entidade: "Agente"`: `CRIADO`, `EDITADO`,
+  `EXCLUIDO`, `TOKEN_EMITIDO`, `TOKEN_REVOGADO`). Payload de token só com `prefix`,
+  `scopes` e `expiresAt`, nunca o token nem o hash.
+- Rotas fora do alcance de agentes (conferências, usuários, notificações,
+  change-password, agentes) usam `authorize(request, { scopes: [] })`: 403 explícito a
+  qualquer token, em vez de 401 por ignorar o Bearer.
+- Sessão com role não humana passa a receber 401 nessas rotas (antes 403); o proxy já
+  derruba essa sessão.
+- Leituras do catálogo com rate limit por ator de 120/min, humanos e agentes. Medido no
+  E2E: o scanner faz 8 chamadas ao abrir (4 a `/api/notebooks`) e 0 durante 108
+  leituras; o dashboard faz 4/min (só `/api/conferences/dashboard`).
+- Sentry (servidor, edge, cliente): `beforeSend`, `beforeSendTransaction` e
+  `beforeBreadcrumb` removem `authorization`, `cookie` e `set-cookie` de
+  `request.headers` e dos breadcrumbs de fetch/xhr. O cliente não usa Session Replay
+  nem captura de tela; o modal de token leva `data-sentry-block` por precaução.
+- O token em claro vive só no estado do modal: mutation com `gcTime: 0` e `reset()`
+  logo após a emissão; a lista invalida `["agents"]`, que só traz o prefixo.
+- Rate limit de escrita diferenciado por tipo de ator (PR 2, 3b): token 30/min,
+  sessão humana 120/min; leitura 120/min para ambos. Motivo: evitar 429 em edição
+  manual em sequência por ADMIN/MASTER; o limite apertado vale para automação. O 429
+  responde "Muitas requisições, aguarde alguns segundos", que as telas já mostram em
+  toast (as mutations exibem a `message` da API).
+- Fase 3 concluída (PR 3, 3c + 3d): arquivar notebook exige `delete:catalog`;
+  bulk-delete por UM e exclusão de UM e de projeto exigem `delete:catalog` +
+  `destructive`. Exclusão de projeto e de UM grava AuditLog `EXCLUIDO` (payload: nome e
+  cor do projeto; nome e projectId da UM). As regras de negócio (409 com UMs ou com
+  notebooks) valem igualmente para agentes. Nenhuma rota de `/api` chama mais `auth()`
+  direto: todas passam por `authorize()`.
+- Etapa 2: servidor MCP (a aba "Como conectar" é placeholder até lá).

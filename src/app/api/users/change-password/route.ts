@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
-import { isHumanRole } from "@/lib/auth/roles";
+import { authorize } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 
@@ -11,12 +10,8 @@ const changePasswordSchema = z.object({
 });
 
 export async function PUT(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!isHumanRole(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, { scopes: [] });
+  if (actor instanceof Response) return actor;
 
   const parsed = changePasswordSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -27,7 +22,7 @@ export async function PUT(request: Request) {
 
   try {
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: actor.userId },
       select: { passwordHash: true },
     });
 
@@ -46,7 +41,7 @@ export async function PUT(request: Request) {
 
     const hash = await bcrypt.hash(parsed.data.newPassword, 12);
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: actor.userId },
       data: { passwordHash: hash },
     });
 

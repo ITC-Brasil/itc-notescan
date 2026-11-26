@@ -1,12 +1,12 @@
-﻿import { auth } from "@/lib/auth";
+﻿import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
+import { audit } from "@/lib/services/audit.service";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createProjectSchema } from "@/lib/validations";
 
-export async function GET() {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
+export async function GET(request: Request) {
+  const actor = await authorize(request, { scopes: ["read:catalog"], rate: "read" });
+  if (actor instanceof Response) return actor;
 
   const projects = await prisma.project.findMany({
     orderBy: { nome: "asc" },
@@ -17,12 +17,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, WRITE_CATALOG);
+  if (actor instanceof Response) return actor;
 
   const parsed = createProjectSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -32,7 +28,11 @@ export async function POST(request: Request) {
     );
 
   try {
-    const project = await prisma.project.create({ data: parsed.data });
+    const project = await prisma.$transaction(async (tx) => {
+      const created = await tx.project.create({ data: parsed.data });
+      await audit(tx, actor, { entidade: "Project", entidadeId: created.id, acao: "CRIADO", payload: parsed.data });
+      return created;
+    });
     return Response.json(project, { status: 201 });
   } catch (error) {
     logger.captureException(error);

@@ -48,6 +48,8 @@ async function seedDatabase() {
     await pool.query('DELETE FROM "Notebook"');
     await pool.query('DELETE FROM "UM"');
     await pool.query('DELETE FROM "Project"');
+    await pool.query('DELETE FROM "AuditLog"');
+    await pool.query('DELETE FROM "ApiToken"');
     await pool.query('DELETE FROM "User"');
 
     // Users
@@ -106,6 +108,8 @@ async function truncateDatabase() {
     await pool.query('DELETE FROM "Notebook"');
     await pool.query('DELETE FROM "UM"');
     await pool.query('DELETE FROM "Project"');
+    await pool.query('DELETE FROM "AuditLog"');
+    await pool.query('DELETE FROM "ApiToken"');
     await pool.query('DELETE FROM "User"');
   } finally {
     await pool.end();

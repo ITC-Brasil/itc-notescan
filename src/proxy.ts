@@ -49,7 +49,7 @@ export default auth((req) => {
     "/notificacoes",
     "/relatorios",
   ];
-  const masterRoutes = ["/usuarios"];
+  const masterRoutes = ["/usuarios", "/agentes"];
 
   if (
     masterRoutes.some((r) => pathname.startsWith(r)) &&
@@ -82,6 +82,7 @@ export const config = {
     "/notebooks/:path*",
     "/notificacoes/:path*",
     "/usuarios/:path*",
+    "/agentes/:path*",
     "/inicio/:path*",
     "/scanner/:path*",
     "/alterar-senha",

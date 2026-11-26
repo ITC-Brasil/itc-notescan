@@ -1,13 +1,12 @@
-﻿import { auth } from "@/lib/auth";
+﻿import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createNotebookSchema } from "@/lib/validations";
 import { conflictResponse, createNotebook } from "@/lib/services/notebook.service";
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
+  const actor = await authorize(request, { scopes: ["read:catalog"], rate: "read" });
+  if (actor instanceof Response) return actor;
 
   const { searchParams } = new URL(request.url);
   const umId = searchParams.get("umId");
@@ -40,12 +39,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, WRITE_CATALOG);
+  if (actor instanceof Response) return actor;
 
   const parsed = createNotebookSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -56,7 +51,7 @@ export async function POST(request: Request) {
 
   try {
     const { onArchived, ...data } = parsed.data;
-    const notebook = await createNotebook(data, session.user.id, onArchived);
+    const notebook = await createNotebook(data, actor.userId, onArchived);
     return Response.json(notebook, { status: 201 });
   } catch (error) {
     const conflict = conflictResponse(error);

@@ -23,7 +23,10 @@ const { db, txOpts, auth } = vi.hoisted(() => {
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: db }));
 vi.mock("@/lib/auth", () => ({ auth }));
-vi.mock("@/lib/rate-limit", () => ({ rateLimitByIp: () => ({ allowed: true }) }));
+vi.mock("@/lib/rate-limit", () => ({
+  rateLimitByIp: () => ({ allowed: true }),
+  rateLimitByActor: () => ({ allowed: true }),
+}));
 vi.mock("@/lib/offline/sync", () => ({ saveToOutbox: vi.fn() }));
 
 import {
