@@ -47,7 +47,7 @@ Nenhum item aberto.
 
 | # | Item | Observações |
 |---|---|---|
-| 12 | Tokens de API + MCP para agentes | Desenho registrado em m8-01. Fase 2 em produção (#53). Próxima: Fase 3 em lotes — 3a leitura (`read:catalog`), 3b escrita + AuditLog (`write:catalog`), 3c exclusão simples (`delete:catalog`), 3d destrutivas (`delete:catalog` + `destructive`). Decidido: `AGENTE` imutável, sem senha (`passwordHash` opcional), sem meta. Depois: Fase 3 (migração das rotas), Fase 4 (UI de tokens), Fase 5 (MCP) |
+| 12 | Acesso de agentes via API | Desenho em m8-01. Fase 3 concluída (#54, #55, #56; #57 develop → main). Etapa 2: acesso via API + guia `docs/AGENT-API.md` + desativação de agentes (este PR). Próximo, opcional: MCP local (desktop). MCP remoto: backlog |
 
 ## Quando possível
 

@@ -818,15 +818,16 @@ recusa role não humana.
 - ~~Gestão de tokens: aba dentro do card do usuário `AGENTE` em `/usuarios` (MASTER).~~
   Substituído em 25/11/2026 (Etapa 1), ver "Revisão — menu MCP e Agentes" abaixo.
 
-**Decisão — MCP:** servidor separado, repositório próprio, container em
-`notescan-mcp.itcbr.xyz`. Tools sem escopo correspondente são omitidas. Tools de notebook
+**Decisão — MCP:** ~~servidor separado, repositório próprio, container em
+`notescan-mcp.itcbr.xyz`.~~ Revisto em 26/11/2026: MCP remoto foi para o backlog; ver
+"Revisão — Etapa 2" abaixo. Se for retomado: Tools sem escopo correspondente são omitidas. Tools de notebook
 tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-01`.
 
 **Faseamento:**
 - Fase 2: schema + migration + `resolveActor` + `requireScope` + rate limit + testes
 - Fase 3: migração das rotas
-- Fase 4: UI de tokens
-- Fase 5: MCP
+- Fase 4: UI de tokens (feita na Etapa 1, menu MCP e Agentes)
+- ~~Fase 5: MCP~~ → Etapa 2 passou a ser acesso via API + guia; MCP local e remoto opcionais
 
 
 **Revisão — menu MCP e Agentes (25/11/2026, Etapa 1):**
@@ -867,4 +868,37 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
   cor do projeto; nome e projectId da UM). As regras de negócio (409 com UMs ou com
   notebooks) valem igualmente para agentes. Nenhuma rota de `/api` chama mais `auth()`
   direto: todas passam por `authorize()`.
-- Etapa 2: servidor MCP (a aba "Como conectar" é placeholder até lá).
+
+**Revisão — Etapa 2: acesso via API + guia (26/11/2026):**
+- Sem servidor MCP por enquanto. Agentes (Claude Code, Hermes) usam a API REST com o
+  guia `docs/AGENT-API.md`, gerado do código das rotas e dos schemas Zod. Um teste
+  (`agent-guide.test.ts`) falha se escopos, limites ou rotas do guia divergirem do código.
+- O guia é servido por `GET /api/agents/guide` (só MASTER, `text/plain`, `no-store`). Como
+  o `.dockerignore` exclui `*.md`, há exceção `!docs/AGENT-API.md` e
+  `outputFileTracingIncludes` para o build standalone levar o arquivo.
+- Aba "Como conectar": URL base (`window.location.origin + /api`), abrir e copiar o guia e
+  um bloco de instruções para colar no agente, com `export NOTESCAN_TOKEN=<cole o token>`
+  e nenhum token real.
+- Próximo passo opcional: MCP local (desktop do usuário, chamando a mesma API). MCP remoto:
+  backlog.
+
+**Revisão — desativação de agentes (26/11/2026):**
+- `User.desativadoEm` (migration `agent_deactivation`), `null` = ativo; só usado para
+  `AGENTE`.
+- Histórico = o agente AGIU: autor de AuditLog, token com `lastUsedAt` ou LifecycleEvent
+  próprio (defesa: `lastUsedAt` é gravado sem aguardar). O que outros fizeram sobre o
+  agente (criação, edição, emissão ou revogação de token) não conta; senão todo agente
+  nasceria com histórico.
+- Sem histórico: exclusão real; os ApiToken (nunca usados) são apagados na mesma transação
+  (FK Restrict). Os AuditLog sobre o agente ficam (`entidadeId` sem FK). Com histórico: 409
+  e a UI oferece "Desativar".
+- `POST /api/agents/[id]/deactivate`: revoga o token ativo e grava `desativadoEm` na mesma
+  transação; AuditLog `DESATIVADO` (payload: prefixo do token revogado). 409 se já
+  desativado.
+- `POST /api/agents/[id]/reactivate`: limpa `desativadoEm`, AuditLog `REATIVADO`; não
+  devolve token (emitir novo). 409 se já ativo.
+- Emitir token para agente desativado: 409. `resolveActor` recusa token de agente
+  desativado (401), como defesa extra.
+- `GET /api/agents` esconde desativados; `?includeInactive=1` traz todos. A UI tem o filtro
+  "Mostrar desativados" e a ação "Reativar".
+- Tooltips (shadcn `Tooltip`) e `aria-label` em todas as ações da tabela de agentes.
