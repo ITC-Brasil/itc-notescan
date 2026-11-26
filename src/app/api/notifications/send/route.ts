@@ -1,4 +1,4 @@
-﻿import { auth } from "@/lib/auth";
+﻿import { authorize } from "@/lib/auth/actor";
 import { HUMAN_ROLES } from "@/lib/auth/roles";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
@@ -20,12 +20,8 @@ if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, { scopes: [], roles: ["ADMIN", "MASTER"] });
+  if (actor instanceof Response) return actor;
 
   const parsed = sendSchema.safeParse(await request.json());
   if (!parsed.success)

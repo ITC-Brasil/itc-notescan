@@ -1,5 +1,4 @@
-﻿import { auth } from "@/lib/auth";
-import { isHumanRole } from "@/lib/auth/roles";
+﻿import { authorize } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -11,12 +10,8 @@ const subscribeSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!isHumanRole(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, { scopes: [] });
+  if (actor instanceof Response) return actor;
 
   const parsed = subscribeSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -27,7 +22,7 @@ export async function POST(request: Request) {
 
   try {
     await prisma.pushSubscription.upsert({
-      where: { userId: session.user.id },
+      where: { userId: actor.userId },
       update: {
         endpoint: parsed.data.endpoint,
         p256dh: parsed.data.p256dh,
@@ -37,7 +32,7 @@ export async function POST(request: Request) {
         endpoint: parsed.data.endpoint,
         p256dh: parsed.data.p256dh,
         auth: parsed.data.auth,
-        userId: session.user.id,
+        userId: actor.userId,
       },
     });
     return Response.json({ ok: true }, { status: 201 });
@@ -47,17 +42,13 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(_: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!isHumanRole(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+export async function DELETE(request: Request) {
+  const actor = await authorize(request, { scopes: [] });
+  if (actor instanceof Response) return actor;
 
   try {
     await prisma.pushSubscription.deleteMany({
-      where: { userId: session.user.id },
+      where: { userId: actor.userId },
     });
     return new Response(null, { status: 204 });
   } catch (error) {

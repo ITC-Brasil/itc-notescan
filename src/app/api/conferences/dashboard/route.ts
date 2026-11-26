@@ -1,14 +1,10 @@
-﻿import { auth } from "@/lib/auth";
+﻿import { authorize } from "@/lib/auth/actor";
 import { getDashboardStats } from "@/lib/services/conference.service";
 import { logger } from "@/lib/logger";
 
-export async function GET() {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+export async function GET(request: Request) {
+  const actor = await authorize(request, { scopes: [], roles: ["ADMIN", "MASTER"] });
+  if (actor instanceof Response) return actor;
 
   try {
     const stats = await getDashboardStats();

@@ -127,11 +127,11 @@ describe("notifyTelegram", () => {
 });
 
 describe("POST /api/conferences", () => {
-  it("sem sessão → 401; role não humana → 403; body inválido → 400", async () => {
+  it("sem sessão → 401; role não humana → 401; body inválido → 400", async () => {
     auth.mockResolvedValueOnce(null);
     expect((await post()).status).toBe(401);
     auth.mockResolvedValueOnce({ user: { id: "x", role: "BOT" } });
-    expect((await post()).status).toBe(403);
+    expect((await post()).status).toBe(401);
     expect((await post(undefined, { umId: "um1" })).status).toBe(400);
   });
 
@@ -164,11 +164,11 @@ describe("POST /api/conferences", () => {
 });
 
 describe("GET /api/conferences", () => {
-  it("401 sem sessão e 403 para role não humana", async () => {
+  it("401 sem sessão e para role não humana", async () => {
     auth.mockResolvedValueOnce(null);
     expect((await GET(new Request("http://x/api/conferences"))).status).toBe(401);
     auth.mockResolvedValueOnce({ user: { id: "x", role: "BOT" } });
-    expect((await GET(new Request("http://x/api/conferences"))).status).toBe(403);
+    expect((await GET(new Request("http://x/api/conferences"))).status).toBe(401);
   });
 
   it("USER só vê as próprias; ADMIN aplica filtros", async () => {
