@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { isHumanRole } from "@/lib/auth/roles";
+import { authorize } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -7,12 +6,8 @@ import { createConferenceSchema } from "@/lib/validations";
 import { originalHostname } from "@/lib/notebook-hostname";
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!isHumanRole(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, { scopes: [] });
+  if (actor instanceof Response) return actor;
 
   const { searchParams } = new URL(request.url);
   const limit = Math.min(Number(searchParams.get("limit") ?? "10"), 100);
@@ -36,7 +31,7 @@ export async function GET(request: Request) {
         }
       : {}),
     // Só roles humanas chegam aqui: ADMIN/MASTER veem tudo, USER só as próprias.
-    ...(session.user.role === "USER" && { userId: session.user.id }),
+    ...(actor.role === "USER" && { userId: actor.userId }),
   };
 
   const conferences = await prisma.conference.findMany({
@@ -69,12 +64,8 @@ export async function POST(request: Request) {
   if (!rl.allowed)
     return Response.json({ message: "Muitas requisições" }, { status: 429 });
 
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!isHumanRole(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, { scopes: [] });
+  if (actor instanceof Response) return actor;
 
   const parsed = createConferenceSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -110,7 +101,7 @@ export async function POST(request: Request) {
   const isSyncReplay = request.headers.get("x-sync-replay") === "1";
   if (!isSyncReplay) {
     const dbUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: actor.userId },
       select: { metaDiaria: true },
     });
     const meta = dbUser?.metaDiaria ?? 0;
@@ -121,7 +112,7 @@ export async function POST(request: Request) {
       endOfDay.setHours(23, 59, 59, 999);
       const todayCount = await prisma.conference.count({
         where: {
-          userId: session.user.id,
+          userId: actor.userId,
           dataInicio: { gte: startOfDay, lte: endOfDay },
         },
       });
@@ -137,7 +128,7 @@ export async function POST(request: Request) {
   try {
     const conference = await prisma.conference.create({
       data: {
-        userId: session.user.id,
+        userId: actor.userId,
         umId,
         dataInicio: new Date(dataInicio),
         dataFim: new Date(dataFim),
@@ -174,7 +165,7 @@ export async function POST(request: Request) {
       await prisma.lifecycleEvent.createMany({
         data: faltantes.map((item) => ({
           notebookId: item.notebookId,
-          userId: session.user.id,
+          userId: actor.userId,
           tipo: "FALTANTE",
           descricao: `Notebook não encontrado na conferência ${conference.id}`,
         })),
@@ -185,7 +176,7 @@ export async function POST(request: Request) {
 
     return Response.json(conference, { status: 201 });
   } catch (error) {
-    logger.captureException(error, { userId: session.user.id, umId });
+    logger.captureException(error, { userId: actor.userId, umId });
     return Response.json({ message: "Erro interno" }, { status: 500 });
   }
 }

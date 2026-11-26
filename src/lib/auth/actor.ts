@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { isHumanRole, type HumanRole } from "./roles";
 import { hashToken, SCOPES, type Scope } from "./token";
+import { rateLimitByActor } from "@/lib/rate-limit";
 
 // m8-01: ator da request. Humano vem do cookie (autorização pela role);
 // agente vem do Bearer (autorização SÓ pelos escopos do token).
@@ -67,3 +68,24 @@ export function requireScope(actor: Actor, ...scopes: Scope[]): Response | null 
   if (scopes.length > 0 && scopes.every((s) => actor.scopes.includes(s))) return null;
   return Response.json({ message: "Proibido" }, { status: 403 });
 }
+
+// Porta única das rotas migradas: 401 sem ator, 403 por escopo (agente) ou por
+// role (humano, mesma regra de antes), 429 pelo limite do ator.
+// scopes vazio = rota fechada a agentes (403 explícito a qualquer token).
+export async function authorize(
+  request: Request,
+  { scopes, roles, rate }: { scopes: readonly Scope[]; roles?: readonly HumanRole[]; rate?: "read" | "write" },
+): Promise<Actor | Response> {
+  const actor = await resolveActor(request);
+  if (!actor) return Response.json({ message: "Não autorizado" }, { status: 401 });
+  const denied = requireScope(actor, ...scopes);
+  if (denied) return denied;
+  if (actor.kind === "session" && roles && !roles.includes(actor.role))
+    return Response.json({ message: "Proibido" }, { status: 403 });
+  if (rate && !rateLimitByActor(actor.userId, rate).allowed)
+    return Response.json({ message: "Muitas requisições" }, { status: 429 });
+  return actor;
+}
+
+// Rotas só de MASTER em sessão (gestão de agentes): nenhum escopo libera token.
+export const MASTER_ONLY = { scopes: [], roles: ["MASTER"] } as const;

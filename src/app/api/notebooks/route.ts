@@ -1,13 +1,13 @@
 ﻿import { auth } from "@/lib/auth";
+import { authorize } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createNotebookSchema } from "@/lib/validations";
 import { conflictResponse, createNotebook } from "@/lib/services/notebook.service";
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
+  const actor = await authorize(request, { scopes: ["read:catalog"], rate: "read" });
+  if (actor instanceof Response) return actor;
 
   const { searchParams } = new URL(request.url);
   const umId = searchParams.get("umId");

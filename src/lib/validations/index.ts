@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SCOPES } from "@/lib/auth/scopes";
 import { isReservedHostname } from "@/lib/notebook-hostname";
 
 // Sufixo ~arq-YYYYMMDD é reservado ao arquivamento.
@@ -94,14 +95,22 @@ export const createUserSchema = z.object({
 });
 
 // AGENTE: sem senha, sem meta e sem e-mail informado (gerado pela API).
-// strict: password/metaDiaria/email enviados → 400.
+// strict: password/metaDiaria/email/role enviados → 400.
 export const createAgentSchema = z
   .object({
-    role: z.literal("AGENTE"),
-    nome: z.string().min(2).max(100),
-    descricao: z.string().max(500).optional(),
+    nome: z.string().trim().min(2).max(100),
+    descricao: z.string().trim().max(500).optional(),
   })
   .strict();
+
+export const updateAgentSchema = createAgentSchema.partial().strict();
+
+export const issueTokenSchema = z
+  .object({ scopes: z.array(z.enum(SCOPES)).min(1).transform((s) => [...new Set(s)]) })
+  .strict();
+
+export type CreateAgentInput = z.infer<typeof createAgentSchema>;
+export type UpdateAgentInput = z.infer<typeof updateAgentSchema>;
 
 export const loginSchema = z.object({
   email: z.string().email(),

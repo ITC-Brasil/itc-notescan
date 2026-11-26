@@ -30,6 +30,16 @@ describe("proxy — allowlist de roles", () => {
     expect(location(run("/", role))).toBe(`https://notescan.test${dest}`);
   });
 
+  it.each(["USER", "ADMIN"])("/agentes é só MASTER: %s vai para /inicio", (role) => {
+    expect(location(run("/agentes", role))).toBe("https://notescan.test/inicio");
+    expect(run("/agentes", "MASTER")).toBeUndefined();
+  });
+
+  it("/agentes está no matcher", async () => {
+    const { config } = await import("@/proxy");
+    expect(config.matcher).toContain("/agentes/:path*");
+  });
+
   it("USER em rota admin vai para /inicio", () => {
     expect(location(run("/dashboard", "USER"))).toBe("https://notescan.test/inicio");
   });

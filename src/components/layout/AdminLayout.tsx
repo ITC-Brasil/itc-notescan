@@ -11,6 +11,7 @@ import {
   Laptop,
   Bell,
   Users,
+  Bot,
   LogOut,
   Sun,
   Moon,
@@ -55,6 +56,7 @@ const navItems = [
   { href: "/notebooks", label: "Notebooks", icon: Laptop, roles: ["ADMIN", "MASTER"] },
   { href: "/notificacoes", label: "Notificações", icon: Bell, roles: ["ADMIN", "MASTER"] },
   { href: "/usuarios", label: "Usuários", icon: Users, roles: ["MASTER"] },
+  { href: "/agentes", label: "MCP e Agentes", icon: Bot, roles: ["MASTER"] },
 ] as const;
 
 function ThemeToggle() {
