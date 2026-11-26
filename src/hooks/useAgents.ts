@@ -75,6 +75,15 @@ export function useIssueToken() {
   });
 }
 
+// 409 quando o agente tem histórico: a mensagem da API vai para o toast.
+export function useDeleteAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => send<void>(`/api/agents/${id}`, "DELETE"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useRevokeToken() {
   const qc = useQueryClient();
   return useMutation({

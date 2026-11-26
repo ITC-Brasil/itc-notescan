@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, Bot, Copy, KeyRound, Pencil, Plug, Plus, ShieldOff } from "lucide-react";
+import { AlertTriangle, Bot, Copy, KeyRound, Pencil, Plug, Plus, ShieldOff, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   useAgents,
   useCreateAgent,
+  useDeleteAgent,
   useIssueToken,
   useRevokeToken,
   useUpdateAgent,
@@ -259,6 +260,7 @@ function columns(actions: {
   edit: (a: Agent) => void;
   token: (a: Agent) => void;
   revoke: (a: Agent) => void;
+  remove: (a: Agent) => void;
 }): ColumnDef<Agent>[] {
   return [
     {
@@ -348,6 +350,15 @@ function columns(actions: {
                 <ShieldOff className="h-3.5 w-3.5" />
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              aria-label="Excluir agente"
+              onClick={() => actions.remove(a)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
         );
       },
@@ -358,6 +369,8 @@ function columns(actions: {
 export default function AgentesPage() {
   const { data: agents, isLoading } = useAgents();
   const revoke = useRevokeToken();
+  const remove = useDeleteAgent();
+  const [removing, setRemoving] = useState<Agent | null>(null);
   const [editing, setEditing] = useState<Agent | "new" | null>(null);
   const [tokenFor, setTokenFor] = useState<Agent | null>(null);
   const [revoking, setRevoking] = useState<Agent | null>(null);
@@ -371,6 +384,18 @@ export default function AgentesPage() {
       toast.error(err instanceof Error ? err.message : "Erro ao revogar token.");
     } finally {
       setRevoking(null);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!removing) return;
+    try {
+      await remove.mutateAsync(removing.id);
+      toast.success("Agente excluído.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir agente.");
+    } finally {
+      setRemoving(null);
     }
   };
 
@@ -408,7 +433,7 @@ export default function AgentesPage() {
             />
           ) : (
             <DataTable
-              columns={columns({ edit: setEditing, token: setTokenFor, revoke: setRevoking })}
+              columns={columns({ edit: setEditing, token: setTokenFor, revoke: setRevoking, remove: setRemoving })}
               data={agents}
             />
           )}
@@ -440,6 +465,17 @@ export default function AgentesPage() {
         onConfirm={handleRevoke}
         destructive
         loading={revoke.isPending}
+      />
+
+      <ConfirmationDialog
+        open={!!removing}
+        onOpenChange={(v) => !v && setRemoving(null)}
+        title="Excluir agente"
+        description={`Excluir ${removing?.nome ?? ""}? Esta ação não pode ser desfeita. Agentes que já tiveram token não podem ser excluídos: nesse caso, revogue o token.`}
+        confirmLabel="Excluir"
+        onConfirm={handleRemove}
+        destructive
+        loading={remove.isPending}
       />
     </div>
   );
