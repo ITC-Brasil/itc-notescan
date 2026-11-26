@@ -37,22 +37,46 @@ services:
 
 ### `.github/workflows/deploy.yml` — CD Deploy
 
-Configurado, aguardando secrets:
+Roda no push para `main`. Um único passo SSH (sem `actions/checkout`: o código
+é atualizado no próprio servidor):
 
 ```yaml
-on:
-  push:
-    branches: [main]
+concurrency: { group: deploy-production, cancel-in-progress: false }
 steps:
-  - SSH para GLPI-SRV (porta 2222)
-  - git pull origin main
-  - docker compose down && docker compose up -d --build
+  - appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+    # host, port, username, key e fingerprint vindos de secrets
+    script:
+      git pull --ff-only origin main
+      docker compose up -d --build
+      docker image prune -f --filter "label=com.itc.project=notescan"
 ```
+
+**Endurecimento (ci/harden-deploy, 25/11/2026):**
+- `concurrency`: deploys enfileiram e nunca cancelam um em andamento.
+- Ação fixada pelo SHA do commit da v1.2.5 (release de 28/01/2026, cumpre a regra
+  dos 14 dias). SHA conferido com `gh api repos/appleboy/ssh-action/git/ref/tags/v1.2.5`.
+  Para atualizar: escolher release com 14+ dias, conferir o SHA da mesma forma e
+  trocar SHA e comentário juntos.
+- `fingerprint`: verifica a chave do host (proteção contra MITM). Formato
+  `SHA256:<base64>`. Sucesso é silencioso no log; divergência aborta antes do
+  script com `ssh: host key fingerprint mismatch`.
+  - **Tipo de chave:** o `DEPLOY_HOST_FINGERPRINT` é o SHA256 da chave **ECDSA** do
+    servidor, não a ed25519: o `x/crypto/ssh` (usado pela ação) prefere ECDSA
+    quando o servidor oferece as duas. Obtido com:
+    `ssh-keyscan -p 2222 -t ecdsa <host> | ssh-keygen -lf - -E sha256`
+  - Se as host keys do servidor forem regeneradas, o secret precisa ser atualizado.
+- Porta via secret `DEPLOY_PORT` em vez de `2222` fixo.
+- `git pull --ff-only`: checkout divergente no servidor faz o deploy falhar em vez
+  de criar merge local.
+- Prune restrito ao label `com.itc.project=notescan` (PR #51), definido no estágio
+  final do Dockerfile.
 
 **Secrets necessários:**
 - `DEPLOY_HOST`: hostname do servidor
+- `DEPLOY_PORT`: porta SSH
 - `DEPLOY_USER`: `github-deploy`
 - `DEPLOY_SSH_KEY`: chave privada ed25519
+- `DEPLOY_HOST_FINGERPRINT`: fingerprint SHA256 da chave do host
 
 ---
 
@@ -72,16 +96,15 @@ steps:
 | Workflow | Status |
 |---|---|
 | Quality Check (type-check, lint, test, audit) | ✅ Passando |
-| Deploy automático via SSH | ⏳ Pendente (secrets não configurados) |
+| Deploy automático via SSH | ✅ Operacional desde 28/10; endurecido em 25/11 |
 
 ---
 
 ## Pontos de atenção
 
-- O CD está configurado mas não operacional — usar deploy manual enquanto isso
 - `npm audit` com `--audit-level=high`: vulnerabilidades críticas e altas bloqueiam o CI
 - Se adicionar dependência com vulnerabilidade conhecida, avaliar se tem fix disponível antes de aceitar
-- O job de deploy usa SSH porta 2222 (não padrão) — garantir que o runner do GitHub Actions permite conexões de saída nessa porta
+- A porta SSH de deploy é não padrão (secret `DEPLOY_PORT`) — garantir que o runner do GitHub Actions permite conexões de saída nessa porta
 
 ---
 
