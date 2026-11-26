@@ -873,7 +873,12 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
 - Sem servidor MCP por enquanto. Agentes (Claude Code, Hermes) usam a API REST com o
   guia `docs/AGENT-API.md`, gerado do código das rotas e dos schemas Zod. Um teste
   (`agent-guide.test.ts`) falha se escopos, limites ou rotas do guia divergirem do código.
-- O guia é servido por `GET /api/agents/guide` (só MASTER, `text/plain`, `no-store`). Como
+- O guia é servido por `GET /api/agents/guide` (`text/plain`, `no-store`). Corrigido em
+  26/11/2026 após teste real com token: qualquer token válido lê o guia, sem escopo
+  exigido, para o agente consultá-lo antes de operar (token revogado, expirado ou de
+  agente desativado → 401); entre humanos, só MASTER (outros → 403). Leitura conta no
+  limite de 120/min. As instruções da aba "Como conectar" apontam para essa rota e listam
+  os campos obrigatórios das criações mais comuns. Como
   o `.dockerignore` exclui `*.md`, há exceção `!docs/AGENT-API.md` e
   `outputFileTracingIncludes` para o build standalone levar o arquivo.
 - Aba "Como conectar": URL base (`window.location.origin + /api`), abrir e copiar o guia e
