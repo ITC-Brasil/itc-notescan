@@ -248,6 +248,9 @@ test.describe("Agentes — página MCP e Agentes", () => {
     const instructions = page.getByLabel("Instruções para o agente");
     await expect(instructions).toContainText("export NOTESCAN_TOKEN=<cole o token>");
     await expect(instructions).toContainText(`URL base: ${BASE}/api`);
+    await expect(instructions).toContainText(`leia o guia completo: GET ${BASE}/api/agents/guide`);
+    await expect(instructions).toContainText("projeto (POST /projects): nome, cor");
+    await expect(instructions).not.toContainText("peça ao administrador");
     expect(await page.content()).not.toMatch(/nsk_[A-Za-z0-9_-]{20,}/);
     await expect(page.getByRole("link", { name: "Abrir guia" })).toHaveAttribute("href", "/api/agents/guide");
 
@@ -255,6 +258,19 @@ test.describe("Agentes — página MCP e Agentes", () => {
     expect(guide.status()).toBe(200);
     expect(guide.headers()["content-type"]).toContain("text/plain");
     expect(await guide.text()).toContain("# NoteScan — Guia da API para agentes");
+
+    // Agente lê o guia com o próprio token (qualquer escopo); revogado → 401.
+    const created = await page.request.post("/api/agents", { data: { nome: "E2E Leitor do Guia" } });
+    const { id } = (await created.json()) as { id: string };
+    const issued = await page.request.post(`/api/agents/${id}/token`, { data: { scopes: ["destructive"] } });
+    const agent = await agentApi(((await issued.json()) as { token: string }).token);
+    const byToken = await agent.get("/api/agents/guide");
+    expect(byToken.status()).toBe(200);
+    expect(await byToken.text()).toContain("# NoteScan — Guia da API para agentes");
+    expect((await agent.get("/api/agents")).status()).toBe(403);
+    await page.request.delete(`/api/agents/${id}/token`);
+    expect((await agent.get("/api/agents/guide")).status()).toBe(401);
+    await agent.dispose();
     await page.screenshot({ path: "test-results/agentes-conectar.png", fullPage: true });
   });
 });
