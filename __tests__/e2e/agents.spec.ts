@@ -6,6 +6,20 @@ test.beforeEach(({}, info) => test.skip(info.project.name !== "chromium", "só c
 
 const BASE = "http://localhost:3001";
 
+// AuditLog direto no banco de teste: a API não expõe a trilha.
+async function auditCount(projectId: string, umId: string) {
+  const { Pool } = await import("pg");
+  const { TEST_DB_URL } = await import("./setup/db");
+  const pool = new Pool({ connectionString: TEST_DB_URL });
+  try {
+    const q = (id: string) =>
+      pool.query('SELECT count(*)::int AS n FROM "AuditLog" WHERE "entidadeId" = $1 AND "tokenId" IS NOT NULL', [id]);
+    return { project: (await q(projectId)).rows[0].n, um: (await q(umId)).rows[0].n };
+  } finally {
+    await pool.end();
+  }
+}
+
 // Contexto sem cookies: o agente só tem o Bearer.
 async function agentApi(token: string): Promise<APIRequestContext> {
   return pwRequest.newContext({ baseURL: BASE, extraHTTPHeaders: { authorization: `Bearer ${token}` } });
@@ -32,8 +46,8 @@ test.describe("Agentes — API", () => {
     for (const path of ["/api/projects", "/api/ums", "/api/notebooks"])
       expect((await agent.get(path)).status(), path).toBe(200);
 
-    // Escrita ainda não migrada (3b, PR 2): sem cookie, o Bearer não autentica.
-    expect((await agent.post("/api/projects", { data: { nome: "X", cor: "#000000" } })).status()).toBe(401);
+    // Só leitura: escrita no catálogo → 403.
+    expect((await agent.post("/api/projects", { data: { nome: "X", cor: "#000000" } })).status()).toBe(403);
 
     // Fora do alcance de agentes: 403 explícito.
     expect((await agent.get("/api/conferences")).status()).toBe(403);
@@ -53,12 +67,29 @@ test.describe("Agentes — API", () => {
     expect(JSON.stringify(row)).not.toContain(token);
     expect(row.token).not.toHaveProperty("tokenHash");
 
-    // Reemitir revoga o anterior.
-    const reissued = await master.post(`/api/agents/${id}/token`, { data: { scopes: ["read:catalog"] } });
+    // Reemitir com write:catalog revoga o anterior; o novo escreve, e a escrita é auditada.
+    const reissued = await master.post(`/api/agents/${id}/token`, {
+      data: { scopes: ["read:catalog", "write:catalog"] },
+    });
     const { token: token2 } = (await reissued.json()) as { token: string };
     expect((await agent.get("/api/projects")).status()).toBe(401);
     const agent2 = await agentApi(token2);
     expect((await agent2.get("/api/projects")).status()).toBe(200);
+
+    const createdProject = await agent2.post("/api/projects", { data: { nome: "E2E Agente", cor: "#123456" } });
+    expect(createdProject.status()).toBe(201);
+    const { id: projectId } = (await createdProject.json()) as { id: string };
+    const createdUm = await agent2.post("/api/ums", {
+      data: { nome: "E2E UM Agente", projectId, quantidadeEsperada: 1 },
+    });
+    expect(createdUm.status()).toBe(201);
+    const { id: umId } = (await createdUm.json()) as { id: string };
+    expect((await agent2.put(`/api/projects/${projectId}`, { data: { nome: "E2E Agente 2", cor: "#123456" } })).status()).toBe(200);
+    expect((await agent2.post("/api/notebooks", { data: { hostname: "E2E-AG01", umId } })).status()).toBe(201);
+    expect(await auditCount(projectId, umId)).toEqual({ project: 2, um: 1 });
+
+    // Exclusão continua fora do alcance (3c/3d no PR 3).
+    expect((await agent2.delete(`/api/projects/${projectId}`)).status()).toBe(401);
 
     // Revogar → 401.
     expect((await master.delete(`/api/agents/${id}/token`)).status()).toBe(204);
@@ -118,6 +149,23 @@ test.describe("Agentes — página MCP e Agentes", () => {
     await page.getByRole("button", { name: "Já copiei, fechar" }).click();
 
     await expect(row).toContainText("Ativo");
+    await expect(page.getByText(value)).toHaveCount(0);
+
+    // Agente com histórico: a exclusão mostra a mensagem do 409.
+    await row.getByRole("button", { name: "Excluir agente" }).click();
+    await page.getByRole("button", { name: "Excluir", exact: true }).click();
+    await expect(page.getByText(/revogue o token/)).toBeVisible();
+    await expect(row).toBeVisible();
+
+    // Agente sem histórico é excluído.
+    await page.getByRole("button", { name: "Novo agente" }).first().click();
+    await page.getByLabel("Nome").fill("E2E Bot Descartável");
+    await page.getByRole("button", { name: "Criar agente" }).click();
+    const tmp = page.getByRole("row", { name: /E2E Bot Descartável/ });
+    await tmp.getByRole("button", { name: "Excluir agente" }).click();
+    await page.getByRole("button", { name: "Excluir", exact: true }).click();
+    await expect(page.getByText("Agente excluído.")).toBeVisible();
+    await expect(tmp).toHaveCount(0);
     await expect(row).toContainText(value.slice(0, 12));
     await expect(page.getByText(value)).toHaveCount(0);
     expect(await page.content()).not.toContain(value);

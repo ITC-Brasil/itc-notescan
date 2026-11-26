@@ -1,3 +1,5 @@
+import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
+import { audit } from "@/lib/services/audit.service";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
@@ -7,12 +9,8 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, WRITE_CATALOG);
+  if (actor instanceof Response) return actor;
 
   const parsed = createProjectSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -24,9 +22,10 @@ export async function PUT(
   const { id } = await params;
 
   try {
-    const project = await prisma.project.update({
-      where: { id },
-      data: parsed.data,
+    const project = await prisma.$transaction(async (tx) => {
+      const updated = await tx.project.update({ where: { id }, data: parsed.data });
+      await audit(tx, actor, { entidade: "Project", entidadeId: id, acao: "EDITADO", payload: parsed.data });
+      return updated;
     });
     return Response.json(project);
   } catch (error) {

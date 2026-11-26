@@ -856,4 +856,9 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
   nem captura de tela; o modal de token leva `data-sentry-block` por precaução.
 - O token em claro vive só no estado do modal: mutation com `gcTime: 0` e `reset()`
   logo após a emissão; a lista invalida `["agents"]`, que só traz o prefixo.
+- Rate limit de escrita diferenciado por tipo de ator (PR 2, 3b): token 30/min,
+  sessão humana 120/min; leitura 120/min para ambos. Motivo: evitar 429 em edição
+  manual em sequência por ADMIN/MASTER; o limite apertado vale para automação. O 429
+  responde "Muitas requisições, aguarde alguns segundos", que as telas já mostram em
+  toast (as mutations exibem a `message` da API).
 - Etapa 2: servidor MCP (a aba "Como conectar" é placeholder até lá).

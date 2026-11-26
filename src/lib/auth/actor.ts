@@ -21,10 +21,12 @@ function bearer(request: Request): string | null | undefined {
 }
 
 // Bearer tem precedência: presente e inválido → null (401), nunca cai no cookie.
-// Fase 2: nenhuma rota usa ainda; a Fase 3 troca auth() por isto rota a rota.
+// As rotas de API chamam isto via authorize() (m8-01, Fase 3).
 export async function resolveActor(request: Request): Promise<Actor | null> {
-  const token = bearer(request);
-  if (token !== undefined) return token ? resolveToken(token) : null;
+  // "credential", não "token": a regra detect-possible-timing-attacks casa pelo
+  // nome e aqui só se compara com undefined, nunca com um segredo.
+  const credential = bearer(request);
+  if (credential !== undefined) return credential ? resolveToken(credential) : null;
 
   const session = await auth();
   if (!session || !isHumanRole(session.user.role)) return null;
@@ -82,10 +84,17 @@ export async function authorize(
   if (denied) return denied;
   if (actor.kind === "session" && roles && !roles.includes(actor.role))
     return Response.json({ message: "Proibido" }, { status: 403 });
-  if (rate && !rateLimitByActor(actor.userId, rate).allowed)
-    return Response.json({ message: "Muitas requisições" }, { status: 429 });
+  if (rate && !rateLimitByActor(actor.userId, rate, actor.kind).allowed)
+    return Response.json({ message: "Muitas requisições, aguarde alguns segundos" }, { status: 429 });
   return actor;
 }
 
 // Rotas só de MASTER em sessão (gestão de agentes): nenhum escopo libera token.
 export const MASTER_ONLY = { scopes: [], roles: ["MASTER"] } as const;
+
+// Escrita no catálogo (3b): agente com write:catalog; humano ADMIN/MASTER como antes.
+export const WRITE_CATALOG = {
+  scopes: ["write:catalog"],
+  roles: ["ADMIN", "MASTER"],
+  rate: "write",
+} as const;

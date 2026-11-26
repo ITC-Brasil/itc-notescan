@@ -1,3 +1,6 @@
+import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
+import { audit } from "@/lib/services/audit.service";
+import { UM_INCLUDE } from "@/lib/services/um.service";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
@@ -7,12 +10,8 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session)
-    return Response.json({ message: "Não autorizado" }, { status: 401 });
-
-  if (!["ADMIN", "MASTER"].includes(session.user.role))
-    return Response.json({ message: "Proibido" }, { status: 403 });
+  const actor = await authorize(request, WRITE_CATALOG);
+  if (actor instanceof Response) return actor;
 
   const parsed = createUMSchema.safeParse(await request.json());
   if (!parsed.success)
@@ -24,13 +23,10 @@ export async function PUT(
   const { id } = await params;
 
   try {
-    const um = await prisma.uM.update({
-      where: { id },
-      data: parsed.data,
-      include: {
-        project: { select: { id: true, nome: true, cor: true } },
-        _count: { select: { notebooks: { where: { status: { not: "ARQUIVADO" } } } } },
-      },
+    const um = await prisma.$transaction(async (tx) => {
+      const updated = await tx.uM.update({ where: { id }, data: parsed.data, include: UM_INCLUDE });
+      await audit(tx, actor, { entidade: "UM", entidadeId: id, acao: "EDITADO", payload: parsed.data });
+      return updated;
     });
     return Response.json(um);
   } catch (error) {
