@@ -17,6 +17,8 @@ const { db, auth } = vi.hoisted(() => {
 });
 vi.mock("@/lib/db/prisma", () => ({ prisma: db }));
 vi.mock("@/lib/auth", () => ({ auth }));
+// As rotas de notificação chamam setVapidDetails ao importar; no CI não há chave VAPID.
+vi.mock("web-push", () => ({ default: { setVapidDetails: vi.fn(), sendNotification: vi.fn() } }));
 
 import { GET as notebooks } from "@/app/api/notebooks/route";
 import { GET as history } from "@/app/api/notebooks/[id]/history/route";
