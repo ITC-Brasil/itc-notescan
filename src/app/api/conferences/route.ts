@@ -4,6 +4,9 @@ import { rateLimitByIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { createConferenceSchema } from "@/lib/validations";
 import { originalHostname } from "@/lib/notebook-hostname";
+import { getItinerantCoverage, validateConference } from "@/lib/services/conference.service";
+import { CATEGORIA_LABEL } from "@/lib/constants";
+import { progressoPorCategoria, rotuloProgresso, type MetaCategoria, type ProgressoCategoria } from "@/lib/meta-categoria";
 
 export async function GET(request: Request) {
   const actor = await authorize(request, { scopes: [] });
@@ -48,10 +51,13 @@ export async function GET(request: Request) {
           mouses: true,
           carregadores: true,
           fones: true,
+          tipo: true,
           project: { select: { id: true, nome: true, cor: true } },
         },
       },
-      items: { select: { status: true, notebook: { select: { hostname: true } } } },
+      umFisica: { select: { id: true, nome: true } },
+      metas: { select: { categoria: true, meta: true } },
+      items: { select: { status: true, notebook: { select: { hostname: true, categoria: true } } } },
       _count: { select: { items: true } },
     },
   });
@@ -74,7 +80,13 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
-  const { umId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
+  const { umId, umFisicaId, dataInicio, dataFim, localizacao, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
+
+  const shape = await validateConference(parsed.data);
+  if ("error" in shape) return Response.json({ message: shape.error }, { status: 400 });
+  const itinerante = shape.tipo === "ITINERANTE";
+  // Fixa: o do cliente (já conferido com os itens). Itinerante: recalculado pela meta.
+  const status = shape.status;
 
   // Dedupe defensiva por notebookId (mantém a 1ª ocorrência). A @@unique
   // ([conferenceId, notebookId]) é a rede final no banco; esta dedupe impede
@@ -99,7 +111,8 @@ export async function POST(request: Request) {
   // conferences replayed from the syncQueue carry X-Sync-Replay and are always
   // recorded (they already happened; never drop data). Counts both statuses.
   const isSyncReplay = request.headers.get("x-sync-replay") === "1";
-  if (!isSyncReplay) {
+  // Conferência itinerante acompanha a da carreta: não conta para a meta diária.
+  if (!isSyncReplay && !itinerante) {
     const dbUser = await prisma.user.findUnique({
       where: { id: actor.userId },
       select: { metaDiaria: true },
@@ -114,6 +127,7 @@ export async function POST(request: Request) {
         where: {
           userId: actor.userId,
           dataInicio: { gte: startOfDay, lte: endOfDay },
+          um: { tipo: "FIXA" },
         },
       });
       if (todayCount >= meta) {
@@ -130,6 +144,7 @@ export async function POST(request: Request) {
       data: {
         userId: actor.userId,
         umId,
+        umFisicaId,
         dataInicio: new Date(dataInicio),
         dataFim: new Date(dataFim),
         localizacao,
@@ -143,6 +158,7 @@ export async function POST(request: Request) {
             status: item.status,
           })),
         },
+        ...(shape.metas.length > 0 && { metas: { create: shape.metas } }),
       },
       include: {
         user: { select: { id: true, nome: true } },
@@ -156,7 +172,9 @@ export async function POST(request: Request) {
             project: { select: { nome: true, cor: true } },
           },
         },
-        items: { include: { notebook: { select: { hostname: true } } } },
+        umFisica: { select: { nome: true } },
+        metas: { select: { categoria: true, meta: true } },
+        items: { include: { notebook: { select: { hostname: true, categoria: true } } } },
       },
     });
 
@@ -172,12 +190,46 @@ export async function POST(request: Request) {
       });
     }
 
-    await notifyTelegram(conference);
+    await notifyTelegram(conference, itinerante ? await itinerantSummary(conference) : undefined);
 
     return Response.json(conference, { status: 201 });
   } catch (error) {
     logger.captureException(error, { userId: actor.userId, umId });
     return Response.json({ message: "Erro interno" }, { status: 500 });
+  }
+}
+
+type CreatedConference = Omit<Parameters<typeof notifyTelegram>[0], "items"> & {
+  umId: string;
+  umFisica: { nome: string } | null;
+  metas: MetaCategoria[];
+  items: { status: string; notebook: { hostname: string; categoria: keyof typeof CATEGORIA_LABEL | null } }[];
+};
+
+interface ItinerantSummary {
+  umFisica: string;
+  progresso: ProgressoCategoria[];
+  grupo: { cobertos: number; total: number };
+}
+
+/** UM física, lidos × meta por categoria e cobertura do grupo no dia da conferência. */
+async function itinerantSummary(conference: CreatedConference): Promise<ItinerantSummary | undefined> {
+  try {
+    const progresso = progressoPorCategoria(
+      conference.metas,
+      conference.items.filter((i) => i.status === "ESCANEADO").map((i) => i.notebook.categoria),
+    );
+    // Dia da conferência (não "agora"): replay offline cai no dia certo.
+    const [grupo] = await getItinerantCoverage(new Date(conference.dataInicio), [conference.umId]);
+    return {
+      umFisica: conference.umFisica?.nome ?? "-",
+      progresso,
+      grupo: { cobertos: grupo?.cobertos ?? 0, total: grupo?.total ?? 0 },
+    };
+  } catch (err) {
+    // Telegram é acessório: a conferência já foi gravada.
+    logger.warn("Resumo itinerante do Telegram falhou", { error: String(err) });
+    return undefined;
   }
 }
 
@@ -193,7 +245,7 @@ async function notifyTelegram(conference: {
   user: { nome: string };
   um: { nome: string; mouses: boolean; carregadores: boolean; fones: boolean; project: { nome: string; cor: string } };
   items: { status: string; notebook: { hostname: string } }[];
-}) {
+}, itinerante?: ItinerantSummary) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) {
@@ -234,6 +286,7 @@ async function notifyTelegram(conference: {
     ``,
     `👤 Técnico: ${esc(conference.user.nome)}`,
     `🚚 UM: ${esc(um.nome)} \\(${esc(um.project.nome)}\\)`,
+    ...(itinerante ? [`🏠 UM física: ${esc(itinerante.umFisica)}`] : []),
     `📅 Data: ${esc(dataStr)}`,
     `🕒 Horário: ${esc(horaInicio)} às ${esc(horaFim)}`,
     `📍 Localização: ${localizacao}`,
@@ -248,6 +301,25 @@ async function notifyTelegram(conference: {
   }
 
   lines.push(`\`------------------------------------\``);
+  if (itinerante) {
+    // Mesmo layout da fixa; o faltante é a diferença por categoria (o notebook
+    // itinerante não tem carreta, então não dá para dizer QUAL falta).
+    const { progresso } = itinerante;
+    const incompletas = progresso.filter((p) => p.falta > 0);
+    lines.push(`💻 Meta: ${progresso.reduce((a, p) => a + p.meta, 0)}`);
+    lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
+    lines.push(`❗️ Dispositivos Faltantes: ${incompletas.reduce((a, p) => a + p.falta, 0)}`);
+    if (incompletas.length > 0) {
+      lines.push(``);
+      lines.push(`*Lista de Faltantes:*`);
+      for (const p of incompletas) lines.push(`\\- ${esc(`${rotuloProgresso(p)} — falta ${p.falta}`)}`);
+    }
+    lines.push(``);
+    lines.push(`👥 Grupo: ${itinerante.grupo.cobertos}/${itinerante.grupo.total} com 2 leituras hoje`);
+    lines.push(``);
+    lines.push(`Status: *${statusLabel}*`);
+    return sendTelegram(token, chatId, lines.join("\n"));
+  }
   lines.push(`💻 Dispositivos Ativos: ${totalAtivos}`);
   lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
   lines.push(`❗️ Dispositivos Faltantes: ${faltanteItems.length}`);
@@ -272,8 +344,10 @@ async function notifyTelegram(conference: {
   lines.push(``);
   lines.push(`Status: *${statusLabel}*`);
 
-  const text = lines.join("\n");
+  return sendTelegram(token, chatId, lines.join("\n"));
+}
 
+async function sendTelegram(token: string, chatId: string, text: string) {
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",

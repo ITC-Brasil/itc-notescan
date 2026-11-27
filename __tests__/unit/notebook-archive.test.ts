@@ -15,6 +15,7 @@ const { db, txOpts, auth } = vi.hoisted(() => {
     },
     lifecycleEvent: { create: vi.fn(), createMany: vi.fn() },
     conference: { create: vi.fn(), count: vi.fn(), findMany: vi.fn() },
+    uM: { findUnique: vi.fn(), findMany: vi.fn() },
     user: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   };
@@ -58,6 +59,8 @@ const NOW = new Date("2026-11-26T01:00:00Z");
 
 beforeEach(() => {
   vi.resetAllMocks();
+  db.uM.findUnique.mockResolvedValue({ tipo: "FIXA", projectId: "p1" });
+  db.uM.findMany.mockResolvedValue([]);
   txOpts.length = 0;
   db.$transaction.mockImplementation((fn: (tx: typeof db) => unknown, opts?: unknown) => {
     txOpts.push(opts);

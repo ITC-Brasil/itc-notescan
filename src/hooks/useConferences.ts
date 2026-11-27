@@ -1,4 +1,5 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import type { Categoria } from "@/lib/validations";
 
 export interface ConferenceRecord {
   id: string;
@@ -10,8 +11,10 @@ export interface ConferenceRecord {
   carregadoresQtd: number | null;
   fonesQtd: number | null;
   user: { id: string; nome: string };
-  um: { id: string; nome: string; mouses: boolean; carregadores: boolean; fones: boolean; project: { id: string; nome: string; cor: string } };
-  items: { status: string; notebook: { hostname: string } }[];
+  um: { id: string; nome: string; mouses: boolean; carregadores: boolean; fones: boolean; tipo?: "FIXA" | "ITINERANTE"; project: { id: string; nome: string; cor: string } };
+  umFisica?: { id: string; nome: string } | null;
+  metas: { categoria: Categoria; meta: number }[];
+  items: { status: string; notebook: { hostname: string; categoria: Categoria | null } }[];
   _count: { items: number };
 }
 
@@ -63,4 +66,9 @@ export function useInfiniteConferences(
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length < pageSize ? undefined : allPages.length * pageSize,
   });
+}
+
+/** Só conferências de UM FIXA contam para a meta diária (itinerantes não). */
+export function countsForMeta(c: Pick<ConferenceRecord, "um">): boolean {
+  return c.um.tipo !== "ITINERANTE";
 }

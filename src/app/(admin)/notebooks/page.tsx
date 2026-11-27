@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Laptop,
   Plus,
@@ -33,11 +33,14 @@ import {
   useCreateNotebooksBatch,
   useImportNotebooks,
   useNotebookHistory,
+  useNotebookLocations,
   useBulkDeleteNotebooks,
   type Notebook,
 } from "@/hooks/useNotebooks";
 import { useUMs } from "@/hooks/useUMs";
 import {
+  CATEGORIAS,
+  type Categoria,
   createNotebookSchema,
   createNotebooksBatchSchema,
   updateNotebookSchema,
@@ -48,6 +51,7 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Checkbox } from "@/components/ui/checkbox";
 import { originalHostname } from "@/lib/notebook-hostname";
+import { CATEGORIA_LABEL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -98,7 +102,42 @@ type NotebookFormValues = {
   patrimonio?: string;
   status: "ATIVO" | "MANUTENCAO";
   umId: string;
+  categoria?: Categoria | null;
 };
+
+/** Seletor de categoria — só aparece quando a UM escolhida é ITINERANTE. */
+function CategoriaField({
+  umId,
+  value,
+  onChange,
+}: {
+  umId: string;
+  value: Categoria | null | undefined;
+  onChange: (v: Categoria | null) => void;
+}) {
+  const { data: ums } = useUMs();
+  const itinerante = ums?.find((u) => u.id === umId)?.tipo === "ITINERANTE";
+  // UM fixa não tem categoria: limpa o valor ao trocar para uma UM fixa.
+  useEffect(() => {
+    if (ums && !itinerante && value) onChange(null);
+  }, [ums, itinerante, value, onChange]);
+  if (!itinerante) return null;
+  return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium text-foreground">Categoria</p>
+      <Select value={value ?? ""} onValueChange={(v) => onChange(v as Categoria)}>
+        <SelectTrigger>
+          <SelectValue placeholder="Obrigatória em UM itinerante" />
+        </SelectTrigger>
+        <SelectContent>
+          {CATEGORIAS.map((c) => (
+            <SelectItem key={c} value={c}>{CATEGORIA_LABEL[c]}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 function UMCombobox({
   value,
@@ -233,8 +272,22 @@ function NotebookFormDialog({
       patrimonio: notebook?.patrimonio ?? "",
       status: notebook?.status ?? "ATIVO",
       umId: notebook?.umId ?? "",
+      categoria: notebook?.categoria ?? null,
     } as NotebookFormValues,
   });
+  const { data: ums } = useUMs();
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const watchedUmId = form.watch("umId") as string;
+  const watchedCategoria = form.watch("categoria") as Categoria | null | undefined;
+  const setCategoria = useCallback(
+    (v: Categoria | null) => form.setValue("categoria", v),
+    [form],
+  );
+  // quantidadeEsperada é manual na UM: mover notebook não ajusta as contagens.
+  const movedFrom =
+    isEditing && watchedUmId && watchedUmId !== notebook.umId
+      ? ums?.find((u) => u.id === notebook.umId)?.nome
+      : undefined;
 
   const onSubmit = async (data: NotebookFormValues, onArchived?: "reactivate" | "new") => {
     try {
@@ -348,6 +401,13 @@ function NotebookFormDialog({
                 )}
               />
             </div>
+            <CategoriaField umId={watchedUmId} value={watchedCategoria} onChange={setCategoria} />
+            {movedFrom && (
+              <p className="text-xs rounded-lg border border-itc-atencao/30 bg-itc-atencao/10 p-2 text-foreground">
+                O notebook sai de <span className="font-medium">{movedFrom}</span>. A quantidade esperada
+                das UMs é manual: ajuste a de {movedFrom} (e a da UM de destino) em Unidades Móveis.
+              </p>
+            )}
             <FormField
               control={form.control}
               name="status"
@@ -441,6 +501,12 @@ function BatchDialog({
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const start = form.watch("start");
+  const batchUmId = form.watch("umId");
+  const batchCategoria = form.watch("categoria");
+  const setBatchCategoria = useCallback(
+    (v: Categoria | null) => form.setValue("categoria", v),
+    [form],
+  );
   const end = form.watch("end");
   const prefix = form.watch("prefix");
   const preview =
@@ -525,6 +591,7 @@ function BatchDialog({
                 )}
               />
             </div>
+            <CategoriaField umId={batchUmId} value={batchCategoria} onChange={setBatchCategoria} />
             {preview && (
               <p className="text-xs text-muted-foreground tabular-nums bg-muted rounded px-2 py-1.5">
                 Prévia: {preview} ({end - start + 1} notebooks)
@@ -552,8 +619,10 @@ function BatchDialog({
   );
 }
 
+type ImportRow = { hostname: string; serial?: string; patrimonio?: string; categoria?: Categoria };
+
 function downloadCSVTemplate() {
-  const csv = "hostname,serial,patrimonio,status\nBSBIA01-EST01,,, ATIVO\n";
+  const csv = "hostname,serial,patrimonio,status,categoria\nBSBIA01-EST01,,,ATIVO,\nQDFM-INSTR01,,,ATIVO,INSTRUTOR\n";
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -573,7 +642,7 @@ function ImportDialog({
   const importMutation = useImportNotebooks();
   const fileRef = useRef<HTMLInputElement>(null);
   const [selectedUmId, setSelectedUmId] = useState("");
-  const [preview, setPreview] = useState<{ hostname: string; serial?: string; patrimonio?: string }[]>([]);
+  const [preview, setPreview] = useState<ImportRow[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
 
   const parseCSV = useCallback((text: string) => {
@@ -583,16 +652,22 @@ function ImportDialog({
     const firstLine = lines[0].toLowerCase();
     const startIdx = firstLine.startsWith("hostname") ? 1 : 0;
 
-    const rows: { hostname: string; serial?: string; patrimonio?: string }[] = [];
+    const rows: ImportRow[] = [];
     const errors: string[] = [];
 
     for (let i = startIdx; i < lines.length; i++) {
       const cols = lines[i].split(",").map((c) => c.trim());
       if (!cols[0]) { errors.push(`Linha ${i + 1}: hostname vazio`); continue; }
+      const categoria = cols[4]?.toUpperCase() || undefined;
+      if (categoria && !(CATEGORIAS as readonly string[]).includes(categoria)) {
+        errors.push(`Linha ${i + 1}: categoria "${cols[4]}" inválida (use ${CATEGORIAS.join(", ")})`);
+        continue;
+      }
       rows.push({
         hostname: cols[0],
         serial: cols[1] || undefined,
         patrimonio: cols[2] || undefined,
+        categoria: categoria as Categoria | undefined,
       });
     }
 
@@ -676,7 +751,8 @@ function ImportDialog({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mb-2">
-              Colunas: hostname, serial (opcional), patrimônio (opcional), status (opcional)
+              Colunas: hostname, serial (opcional), patrimônio (opcional), status (opcional),
+              categoria (obrigatória em UM itinerante: INSTRUTOR, PEDAGOGA ou COORDENADORA)
             </p>
             <input
               ref={fileRef}
@@ -705,6 +781,7 @@ function ImportDialog({
                   )}
                 >
                   <span className="tabular-nums font-medium">{row.hostname}</span>
+                  {row.categoria && <span className="text-muted-foreground text-xs">{CATEGORIA_LABEL[row.categoria]}</span>}
                   {row.serial && <span className="text-muted-foreground text-xs">{row.serial}</span>}
                   {row.patrimonio && (
                     <span className="text-muted-foreground text-xs">{row.patrimonio}</span>
@@ -776,6 +853,7 @@ function HistoryModal({
   onOpenChange: (v: boolean) => void;
 }) {
   const { data: history, isLoading } = useNotebookHistory(open ? notebookId : null);
+  const { data: locations } = useNotebookLocations(open ? notebookId : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -816,6 +894,25 @@ function HistoryModal({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {!!locations?.length && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Localização (UM física por leitura)</p>
+            <div className="rounded-lg border border-border overflow-hidden max-h-60 overflow-y-auto divide-y divide-border">
+              {locations.map((l) => (
+                <div key={l.conferenceId} className="flex items-center gap-3 px-4 py-2 text-xs">
+                  <span className="tabular-nums text-muted-foreground">
+                    {new Date(l.dataInicio).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                  <span className="font-medium text-foreground">{l.umFisica?.nome ?? "-"}</span>
+                  <span className="ml-auto text-muted-foreground truncate">{l.tecnico}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </DialogContent>

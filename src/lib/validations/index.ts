@@ -12,6 +12,14 @@ const hostnameSchema = z
 const onArchivedSchema = z.enum(["reactivate", "new"]).optional();
 const onArchivedBulkSchema = z.enum(["skip", "reactivate", "new"]).default("skip");
 
+export const CATEGORIAS = ["INSTRUTOR", "PEDAGOGA", "COORDENADORA"] as const;
+export const categoriaSchema = z.enum(CATEGORIAS);
+export type Categoria = z.infer<typeof categoriaSchema>;
+
+// Categoria do notebook: obrigatória em UM ITINERANTE, nula em UM FIXA. A regra
+// depende do tipo da UM — validada no service (validateCategorias).
+const categoriaFieldSchema = categoriaSchema.nullable().optional();
+
 export const conferenceItemSchema = z.object({
   notebookId: z.string().min(1),
   status: z.enum(["ESCANEADO", "FALTANTE", "MANUTENCAO"]),
@@ -26,6 +34,8 @@ export const createConferenceSchema = z.object({
   mousesQtd: z.number().int().min(0).optional(),
   carregadoresQtd: z.number().int().min(0).optional(),
   fonesQtd: z.number().int().min(0).optional(),
+  // Só em conferência de UM ITINERANTE: a UM física (FIXA) onde o técnico está.
+  umFisicaId: z.string().min(1).optional(),
   items: z.array(conferenceItemSchema).min(1),
 });
 
@@ -35,6 +45,7 @@ export const createNotebookSchema = z.object({
   patrimonio: z.string().optional(),
   status: z.enum(["ATIVO", "MANUTENCAO"]).default("ATIVO"),
   umId: z.string().min(1),
+  categoria: categoriaFieldSchema,
   onArchived: onArchivedSchema,
 });
 
@@ -48,6 +59,7 @@ export const createNotebooksBatchSchema = z.object({
   end: z.number().int().min(1),
   umId: z.string().min(1),
   status: z.enum(["ATIVO", "MANUTENCAO"]).default("ATIVO"),
+  categoria: categoriaFieldSchema,
   onArchived: onArchivedBulkSchema,
 });
 
@@ -57,6 +69,7 @@ export const updateNotebookSchema = z.object({
   patrimonio: z.string().optional(),
   status: z.enum(["ATIVO", "MANUTENCAO"]),
   umId: z.string().min(1),
+  categoria: categoriaFieldSchema,
 });
 
 export const importNotebooksSchema = z.object({
@@ -66,6 +79,7 @@ export const importNotebooksSchema = z.object({
       hostname: hostnameSchema,
       serial: z.string().optional(),
       patrimonio: z.string().optional(),
+      categoria: categoriaFieldSchema,
     }),
   ).min(1),
   onArchived: onArchivedBulkSchema,
@@ -76,15 +90,31 @@ export const createProjectSchema = z.object({
   cor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve ser um hex válido"),
 });
 
-export const createUMSchema = z.object({
-  nome: z.string().min(1).max(100),
-  projectId: z.string().min(1),
-  quantidadeEsperada: z.number().int().min(1),
-  perifericos: z.boolean().default(false),
-  mouses: z.boolean().default(false),
-  carregadores: z.boolean().default(false),
-  fones: z.boolean().default(false),
-});
+export const createUMSchema = z
+  .object({
+    nome: z.string().min(1).max(100),
+    projectId: z.string().min(1),
+    quantidadeEsperada: z.number().int().min(1),
+    perifericos: z.boolean().default(false),
+    mouses: z.boolean().default(false),
+    carregadores: z.boolean().default(false),
+    fones: z.boolean().default(false),
+    tipo: z.enum(["FIXA", "ITINERANTE"]).default("FIXA"),
+    // Meta por conferência de cada categoria. Só faz sentido em UM ITINERANTE.
+    metas: z
+      .array(z.object({ categoria: categoriaSchema, meta: z.number().int().min(0).max(999) }))
+      .default([]),
+  })
+  .superRefine((um, ctx) => {
+    const cats = um.metas.map((m) => m.categoria);
+    if (new Set(cats).size !== cats.length)
+      ctx.addIssue({ code: "custom", path: ["metas"], message: "Categoria repetida nas metas" });
+    const positivas = um.metas.filter((m) => m.meta > 0).length;
+    if (um.tipo === "ITINERANTE" && positivas === 0)
+      ctx.addIssue({ code: "custom", path: ["metas"], message: "UM itinerante precisa de pelo menos uma meta maior que zero" });
+    if (um.tipo === "FIXA" && positivas > 0)
+      ctx.addIssue({ code: "custom", path: ["metas"], message: "UM fixa não tem metas por categoria" });
+  });
 
 export const createUserSchema = z.object({
   nome: z.string().min(2).max(100),
@@ -123,6 +153,6 @@ export type CreateConferenceInput = z.infer<typeof createConferenceSchema>;
 export type CreateNotebookInput = z.input<typeof createNotebookSchema>;
 export type CreateNotebooksBatchInput = z.input<typeof createNotebooksBatchSchema>;
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
-export type CreateUMInput = z.infer<typeof createUMSchema>;
+export type CreateUMInput = z.input<typeof createUMSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

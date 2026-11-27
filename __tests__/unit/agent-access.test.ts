@@ -11,6 +11,7 @@ const { db, auth } = vi.hoisted(() => {
       uM: list(),
       lifecycleEvent: list(),
       conference: list(),
+      conferenceItem: list(),
     },
     auth: vi.fn(),
   };
@@ -22,6 +23,7 @@ vi.mock("web-push", () => ({ default: { setVapidDetails: vi.fn(), sendNotificati
 
 import { GET as notebooks } from "@/app/api/notebooks/route";
 import { GET as history } from "@/app/api/notebooks/[id]/history/route";
+import { GET as locations } from "@/app/api/notebooks/[id]/locations/route";
 import { GET as projects } from "@/app/api/projects/route";
 import { GET as ums } from "@/app/api/ums/route";
 import { GET as conferencesGet, POST as conferencesPost } from "@/app/api/conferences/route";
@@ -41,6 +43,7 @@ const plain = () => new Request(URL_);
 const reads = [
   ["GET /api/notebooks", (r: Request) => notebooks(r)],
   ["GET /api/notebooks/[id]/history", (r: Request) => history(r, params)],
+  ["GET /api/notebooks/[id]/locations", (r: Request) => locations(r, params)],
   ["GET /api/projects", (r: Request) => projects(r)],
   ["GET /api/ums", (r: Request) => ums(r)],
 ] as const;

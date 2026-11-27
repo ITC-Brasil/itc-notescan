@@ -4,6 +4,7 @@ import type {
   UpdateNotebookInput,
   CreateNotebooksBatchInput,
   ImportNotebooksInput,
+  Categoria,
 } from "@/lib/validations";
 
 export interface Notebook {
@@ -12,6 +13,7 @@ export interface Notebook {
   serial: string | null;
   patrimonio: string | null;
   status: "ATIVO" | "MANUTENCAO" | "ARQUIVADO";
+  categoria: Categoria | null;
   umId: string;
   createdAt: string;
   um: {
@@ -168,6 +170,26 @@ export function useNotebookHistory(notebookId: string | null) {
       const res = await fetch(`/api/notebooks/${notebookId}/history`);
       if (!res.ok) throw new Error("Falha ao carregar histórico");
       return res.json() as Promise<NotebookHistoryItem[]>;
+    },
+    enabled: !!notebookId,
+  });
+}
+
+export interface NotebookLocation {
+  conferenceId: string;
+  dataInicio: string;
+  tecnico: string;
+  umFisica: { id: string; nome: string } | null;
+}
+
+/** UM física de cada leitura do notebook em conferência itinerante. */
+export function useNotebookLocations(notebookId: string | null) {
+  return useQuery({
+    queryKey: ["notebook-locations", notebookId],
+    queryFn: async () => {
+      const res = await fetch(`/api/notebooks/${notebookId}/locations`);
+      if (!res.ok) throw new Error("Falha ao carregar localizações");
+      return res.json() as Promise<NotebookLocation[]>;
     },
     enabled: !!notebookId,
   });

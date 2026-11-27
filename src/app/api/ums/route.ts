@@ -1,6 +1,6 @@
 ﻿import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
 import { audit } from "@/lib/services/audit.service";
-import { UM_INCLUDE } from "@/lib/services/um.service";
+import { replaceMetas, UM_INCLUDE } from "@/lib/services/um.service";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createUMSchema } from "@/lib/validations";
@@ -30,7 +30,10 @@ export async function POST(request: Request) {
 
   try {
     const um = await prisma.$transaction(async (tx) => {
-      const created = await tx.uM.create({ data: parsed.data, include: UM_INCLUDE });
+      const { metas, ...data } = parsed.data;
+      const { id } = await tx.uM.create({ data, select: { id: true } });
+      await replaceMetas(tx, id, metas);
+      const created = await tx.uM.findUniqueOrThrow({ where: { id }, include: UM_INCLUDE });
       await audit(tx, actor, { entidade: "UM", entidadeId: created.id, acao: "CRIADO", payload: parsed.data });
       return created;
     });

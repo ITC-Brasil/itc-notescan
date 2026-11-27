@@ -49,6 +49,12 @@ Nenhum item aberto.
 |---|---|---|
 | 12 | Acesso de agentes via API | Desenho em m8-01. Fase 3 concluída (#54, #55, #56; #57 develop → main). Etapa 2: acesso via API + guia `docs/AGENT-API.md` + desativação de agentes (este PR). Próximo, opcional: MCP local (desktop). MCP remoto: backlog |
 
+## Dívida registrada
+
+| Item | Observações |
+|---|---|
+| Fuso do "dia" na meta diária e no dashboard antigo | `metaDiaria` (POST /api/conferences), cards do dashboard e gate do scanner usam `setHours(0,0,0,0)` no fuso do servidor/cliente. Se o container rodar em UTC, o dia vira às 21h. Só as consultas novas (itinerantes) usam America/Sao_Paulo (`saoPauloDayRange`). |
+
 ## Quando possível
 
 | # | Item | Observações |
