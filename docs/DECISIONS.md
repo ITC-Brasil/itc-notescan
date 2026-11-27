@@ -908,32 +908,57 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
   "Mostrar desativados" e a ação "Reativar".
 - Tooltips (shadcn `Tooltip`) e `aria-label` em todas as ações da tabela de agentes.
 
-**UMs itinerantes (27/11/2026):**
-- Notebooks de instrutores, pedagogas e coordenadoras acompanham as pessoas entre carretas.
-  Cada projeto tem uma UM `tipo = ITINERANTE` (QDFM-PEDAGÓGICO, BSBIA-PEDAGÓGICO,
-  SEDET-COORDENAÇÃO). As UMs existentes ficam `FIXA` e o fluxo delas não mudou.
-- Meta por conferência em `UMMetaCategoria` (`@@unique([umId, categoria])`), não em colunas
-  na UM: categorias novas (COORDENADORA) não exigem migration. Meta 0 não é gravada.
+## m8-02 — UMs itinerantes
+
+**Contexto:** notebooks de instrutores, pedagogas e coordenadoras acompanham as pessoas
+entre carretas, então não pertencem a nenhuma UM fixa e não cabem na conferência por
+lista ("quais faltam"). Eles ficam em uma UM `tipo = ITINERANTE` por projeto; o técnico os
+confere na carreta onde está. As UMs existentes ficam `FIXA` e o fluxo delas não mudou.
+Em produção desde os PRs #62–#64 (27/11/2026).
+
+**Alternativas consideradas:**
+- Metas em colunas na UM (rejeitado: cada categoria nova, como COORDENADORA, exigiria
+  migration). Ficou a tabela `UMMetaCategoria`.
+- Itinerante sempre CONCLUIDO_OK, com a cobertura só no dashboard (rejeitado na revisão:
+  a itinerante segue a regra de status da fixa).
+- Itens FALTANTE para notebooks específicos (rejeitado: sem carreta fixa, não dá para dizer
+  QUAL notebook falta numa conferência).
+- Rejeitar no servidor o status que não bate com a meta (rejeitado: a meta pode mudar entre
+  o scan offline e o sync, e a conferência nunca pode ser perdida).
+- Aviso de "já lido por outro técnico" (removido: cada técnico fica numa carreta, então dois
+  técnicos não leem o mesmo notebook).
+- LifecycleEvent de troca de carreta (rejeitado: duplicaria ConferenceItem + `umFisicaId`).
+
+**Decisão:**
+- `UM.tipo` (FIXA | ITINERANTE, default FIXA). Meta por conferência em `UMMetaCategoria`
+  (`@@unique([umId, categoria])`); meta 0 não é gravada. Trocar o tipo de uma UM que já tem
+  conferências: 409 (mudaria o sentido do histórico).
 - `Notebook.categoria` (INSTRUTOR | PEDAGOGA | COORDENADORA): obrigatória em UM itinerante,
   proibida em UM fixa (`validateCategorias`, 400).
-- Trocar o tipo de uma UM que já tem conferências: 409 (mudaria o sentido do histórico).
-- `Conference.umFisicaId` (FK Restrict, relação nomeada): UM FIXA do mesmo projeto onde o
-  técnico estava. Conferência itinerante envia só ESCANEADO e pode ser enviada a qualquer
-  momento, como a fixa. Status: CONCLUIDO_OK com todas as metas por categoria atingidas,
-  senão CONCLUIDO_FALTANTES. Como o notebook itinerante não tem carreta, não dá para dizer
-  QUAL falta: o faltante é a diferença por categoria ("Instrutores 4/5 — falta 1"), sem item
-  FALTANTE. O servidor valida a forma (`checkConferenceShape`, 400) e recalcula o status pela
-  meta atual da UM; se a meta mudou entre o scan offline e o sync, grava o recalculado e loga
-  em vez de rejeitar (a conferência nunca pode ser perdida). A meta usada fica gravada em
-  `ConferenceMeta`, para o histórico não mudar se a meta da UM mudar depois. Não valida
-  posse dos notebooks.
-- Itinerante não conta para `metaDiaria` nem para o 409.
-- Cobertura do grupo, por dia em America/Sao_Paulo: notebook ATIVO coberto = ESCANEADO em
-  2+ conferências no dia (abertura e fechamento). Sem campo de turno. Offset fixo -03:00
-  (`saoPauloDayRange`); rever se o horário de verão voltar.
-- Sem aviso de "já lido por outro técnico": cada técnico fica numa carreta, então dois
-  técnicos não leem o mesmo notebook.
+- `Conference.umFisicaId` (FK Restrict, relação nomeada): a carreta, UM FIXA do mesmo
+  projeto onde o técnico estava.
+- Conferência itinerante envia só ESCANEADO e pode ser enviada a qualquer momento, como a
+  fixa. Status: CONCLUIDO_OK com todas as metas por categoria atingidas, senão
+  CONCLUIDO_FALTANTES. O faltante é a diferença por categoria ("Instrutores 4/5 — falta 1"),
+  sem item FALTANTE.
+- O servidor valida a forma (`checkConferenceShape`, 400) e recalcula o status pela meta
+  atual da UM; se divergir do enviado, grava o recalculado e registra no log. A meta usada
+  fica gravada em `ConferenceMeta`, para o histórico não mudar se a meta da UM mudar depois.
+  Não valida posse dos notebooks.
+- Itinerante não conta para `metaDiaria` nem para o 409. Na tela inicial, o botão "NOVA
+  CONFERÊNCIA" fica sempre habilitado; com a meta atingida, as UMs fixas aparecem
+  desabilitadas no seletor e as itinerantes e as carretas seguem liberadas.
+- Cobertura do dia, em America/Sao_Paulo: notebook ATIVO coberto = ESCANEADO em 2+
+  conferências no dia (abertura e fechamento). Sem campo de turno. Offset fixo -03:00
+  (`saoPauloDayRange`).
+- Histórico de localização vem de ConferenceItem + `umFisicaId`
+  (`GET /api/notebooks/[id]/locations`).
+
+**Consequências:**
+- Migrations só com adições (`ums_itinerantes`, `itinerante_meta_snapshot`); UMs
+  existentes viram FIXA pelo default.
 - Dexie sem versão nova: `umFisicaId` vai dentro do payload da outbox.
-- Histórico de localização vem de ConferenceItem + `umFisicaId`; sem LifecycleEvent de
-  troca de UM física (seria a mesma informação duplicada).
+- Resumo, dashboard, histórico do técnico e Telegram mostram faltantes por categoria no
+  mesmo padrão da fixa.
 - `quantidadeEsperada` continua manual: mover notebook de UM mostra aviso para ajustar.
+- Rever o offset fixo de `saoPauloDayRange` se o horário de verão voltar.

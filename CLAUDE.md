@@ -190,7 +190,7 @@ coordenadoras) ficam em UMs `tipo = ITINERANTE`. Em produção desde os PRs #62�
 - **Cobertura do dia** (dashboard): notebook coberto = lido em 2 conferências no dia
   (America/Sao_Paulo)
 
-Detalhes e motivos: `docs/DECISIONS.md`, m8-01, bloco "UMs itinerantes (27/11/2026)".
+Detalhes e motivos: `docs/DECISIONS.md`, m8-02.
 
 ---
 
