@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ScanLine,
   CheckCircle2,
@@ -37,7 +37,7 @@ import {
 import { CATEGORIA_LABEL } from "@/lib/constants";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
-import { countsForMeta, useConferences, useItinerantReads } from "@/hooks/useConferences";
+import { countsForMeta, useConferences } from "@/hooks/useConferences";
 import { usePlatform } from "@/hooks/usePlatform";
 import { QRScanner } from "@/components/scanner/QRScanner";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
@@ -782,19 +782,6 @@ export default function ScannerPage() {
       })),
     [rawNotebooks],
   );
-
-  // Itinerante: avisa (sem bloquear) leitura de notebook já lido hoje por outro
-  // técnico. Depende de rede — offline a consulta falha e simplesmente não avisa.
-  const { data: readByOthers } = useItinerantReads(state.um?.itinerante ? state.um.id : undefined);
-  const avisados = useRef(0);
-  useEffect(() => {
-    if (state.scanned.length < avisados.current) avisados.current = 0; // reiniciou
-    const novos = state.scanned.slice(avisados.current);
-    avisados.current = state.scanned.length;
-    if (!readByOthers?.length) return;
-    for (const nb of novos)
-      if (readByOthers.includes(nb.id)) toast.warning(`${nb.hostname} já foi lido hoje por outro técnico`);
-  }, [state.scanned, readByOthers]);
 
   const handleSelectUM = useCallback(
     (um: UMSlim, notebooks: NotebookSlim[]) => {

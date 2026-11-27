@@ -926,7 +926,8 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
 - Cobertura do grupo, por dia em America/Sao_Paulo: notebook ATIVO coberto = ESCANEADO em
   2+ conferências no dia (abertura e fechamento). Sem campo de turno. Offset fixo -03:00
   (`saoPauloDayRange`); rever se o horário de verão voltar.
-- Aviso "já lido por outro técnico": toast, não bloqueia, depende de rede.
+- Sem aviso de "já lido por outro técnico": cada técnico fica numa carreta, então dois
+  técnicos não leem o mesmo notebook.
 - Dexie sem versão nova: `umFisicaId` vai dentro do payload da outbox.
 - Histórico de localização vem de ConferenceItem + `umFisicaId`; sem LifecycleEvent de
   troca de UM física (seria a mesma informação duplicada).

@@ -126,9 +126,9 @@ describe("POST /api/conferences — itinerante", () => {
       },
     ]);
     db.conferenceItem.findMany.mockResolvedValue([
-      { notebookId: "i1", conference: { umId: "itin", userId: "x" } },
-      { notebookId: "i1", conference: { umId: "itin", userId: "tec1" } },
-      { notebookId: "p1", conference: { umId: "itin", userId: "tec1" } },
+      { notebookId: "i1", conference: { umId: "itin" } },
+      { notebookId: "i1", conference: { umId: "itin" } },
+      { notebookId: "p1", conference: { umId: "itin" } },
     ]);
     expect((await post(body)).status).toBe(201);
     const text = JSON.parse(fetchMock.mock.calls[0][1].body).text as string;

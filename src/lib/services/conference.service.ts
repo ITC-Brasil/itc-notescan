@@ -146,7 +146,7 @@ export async function getItinerantReadsToday(umIds: string[], now = new Date()) 
       status: "ESCANEADO",
       conference: { umId: { in: umIds }, dataInicio: saoPauloDayRange(now) },
     },
-    select: { notebookId: true, conference: { select: { umId: true, userId: true } } },
+    select: { notebookId: true, conference: { select: { umId: true } } },
   });
 }
 

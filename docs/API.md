@@ -38,11 +38,6 @@ usuário e retorna 409 se ≥ `metaDiaria` — exceto quando a request traz o he
 não contam para a meta nem passam pela trava. Telegram da itinerante: UM física, lidos por
 categoria e "grupo: X/Y com 2 leituras hoje".
 
-### GET /api/conferences/itinerant-reads?umId=
-Autenticação: sessão ativa  
-Resposta 200: `{ notebookIds: string[] }` — notebooks da UM lidos hoje (America/Sao_Paulo)
-por outros técnicos. Usado só para o aviso no scanner; offline o cliente não avisa.
-
 ### GET /api/conferences/dashboard
 Autenticação: ADMIN ou MASTER  
 Resposta 200: `{ conferencesToday, activeTechnicians, notebooksTotal, notebooksInMaintenance, conferencesWithMissing, latestConferences[], maintenanceNotebooks[], itinerantCoverage[] }`  

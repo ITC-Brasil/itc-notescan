@@ -66,21 +66,6 @@ export function useInfiniteConferences(
   });
 }
 
-/** IDs lidos hoje por OUTROS técnicos numa UM itinerante (aviso no scanner). */
-export function useItinerantReads(umId?: string) {
-  return useQuery({
-    queryKey: ["itinerant-reads", umId],
-    enabled: !!umId,
-    // Falha (offline) = sem aviso; não bloqueia o scan.
-    retry: false,
-    queryFn: async () => {
-      const res = await fetch(`/api/conferences/itinerant-reads?umId=${encodeURIComponent(umId!)}`);
-      if (!res.ok) throw new Error("Falha ao carregar leituras do dia");
-      return ((await res.json()) as { notebookIds: string[] }).notebookIds;
-    },
-  });
-}
-
 /** Só conferências de UM FIXA contam para a meta diária (itinerantes não). */
 export function countsForMeta(c: Pick<ConferenceRecord, "um">): boolean {
   return c.um.tipo !== "ITINERANTE";
