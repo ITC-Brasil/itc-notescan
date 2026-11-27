@@ -10,7 +10,8 @@ export interface ConferenceRecord {
   carregadoresQtd: number | null;
   fonesQtd: number | null;
   user: { id: string; nome: string };
-  um: { id: string; nome: string; mouses: boolean; carregadores: boolean; fones: boolean; project: { id: string; nome: string; cor: string } };
+  um: { id: string; nome: string; mouses: boolean; carregadores: boolean; fones: boolean; tipo?: "FIXA" | "ITINERANTE"; project: { id: string; nome: string; cor: string } };
+  umFisica?: { id: string; nome: string } | null;
   items: { status: string; notebook: { hostname: string } }[];
   _count: { items: number };
 }
@@ -63,4 +64,24 @@ export function useInfiniteConferences(
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length < pageSize ? undefined : allPages.length * pageSize,
   });
+}
+
+/** IDs lidos hoje por OUTROS técnicos numa UM itinerante (aviso no scanner). */
+export function useItinerantReads(umId?: string) {
+  return useQuery({
+    queryKey: ["itinerant-reads", umId],
+    enabled: !!umId,
+    // Falha (offline) = sem aviso; não bloqueia o scan.
+    retry: false,
+    queryFn: async () => {
+      const res = await fetch(`/api/conferences/itinerant-reads?umId=${encodeURIComponent(umId!)}`);
+      if (!res.ok) throw new Error("Falha ao carregar leituras do dia");
+      return ((await res.json()) as { notebookIds: string[] }).notebookIds;
+    },
+  });
+}
+
+/** Só conferências de UM FIXA contam para a meta diária (itinerantes não). */
+export function countsForMeta(c: Pick<ConferenceRecord, "um">): boolean {
+  return c.um.tipo !== "ITINERANTE";
 }

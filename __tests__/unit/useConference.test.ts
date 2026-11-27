@@ -7,7 +7,7 @@ vi.mock("@/lib/offline/sync", () => ({
   getOutboxCount: vi.fn().mockResolvedValue(0),
 }));
 
-import { useConference, type NotebookSlim, type UMSlim } from "@/hooks/useConference";
+import { metaAtingida, metaProgress, useConference, type NotebookSlim, type UMSlim } from "@/hooks/useConference";
 import { saveToOutbox } from "@/lib/offline/sync";
 
 const mockUM: UMSlim = {
@@ -435,5 +435,94 @@ describe("useConference — controles de fase", () => {
     expect(result.current.state.phase).toBe("idle");
     expect(result.current.state.scanned).toHaveLength(0);
     expect(result.current.state.um).toBeNull();
+  });
+});
+
+describe("useConference — UM itinerante", () => {
+  const itinUM: UMSlim = {
+    ...mockUM,
+    id: "itin",
+    nome: "QDFM-PEDAGÓGICO",
+    itinerante: {
+      umFisicaId: "fixa1",
+      umFisicaNome: "QDFM01",
+      metas: [
+        { categoria: "INSTRUTOR", meta: 2 },
+        { categoria: "PEDAGOGA", meta: 1 },
+      ],
+    },
+  };
+  const itinNbs: NotebookSlim[] = [
+    { id: "i1", hostname: "QDFM-INSTR01", serial: null, status: "ATIVO", categoria: "INSTRUTOR" },
+    { id: "i2", hostname: "QDFM-INSTR02", serial: null, status: "ATIVO", categoria: "INSTRUTOR" },
+    { id: "i3", hostname: "QDFM-INSTR03", serial: null, status: "ATIVO", categoria: "INSTRUTOR" },
+    { id: "p1", hostname: "QDFM-PEDAG-A", serial: null, status: "ATIVO", categoria: "PEDAGOGA" },
+    { id: "p2", hostname: "QDFM-PEDAG-B", serial: null, status: "MANUTENCAO", categoria: "PEDAGOGA" },
+  ];
+  const scanI = (r: { current: ReturnType<typeof useConference> }, h: string[], t: number) =>
+    act(() => r.current.processScanBatch(h, itinNbs, t));
+
+  it("progresso por categoria e meta liberada só ao atingir todas", async () => {
+    const { result } = renderHook(() => useConference());
+    await act(async () => result.current.startConference(itinUM, itinNbs));
+    scanI(result, ["QDFM-INSTR01", "QDFM-INSTR02"], 1000);
+    expect(metaProgress(result.current.state)).toEqual([
+      { categoria: "INSTRUTOR", meta: 2, lidos: 2 },
+      { categoria: "PEDAGOGA", meta: 1, lidos: 0 },
+    ]);
+    expect(metaAtingida(result.current.state)).toBe(false);
+    scanI(result, ["QDFM-PEDAG-A"], 2000);
+    expect(metaAtingida(result.current.state)).toBe(true);
+    // Ler além da meta é permitido.
+    scanI(result, ["QDFM-INSTR03"], 3000);
+    expect(result.current.state.scanned).toHaveLength(4);
+  });
+
+  it("duplicada na mesma conferência e notebook de outra UM continuam bloqueados", async () => {
+    const { result } = renderHook(() => useConference());
+    await act(async () => result.current.startConference(itinUM, itinNbs));
+    scanI(result, ["QDFM-INSTR01"], 1000);
+    scanI(result, ["QDFM-INSTR01"], 5000);
+    expect(result.current.state.error).toMatch(/já foi escaneado/);
+    scanI(result, ["BSBIA01-EST01"], 9000);
+    expect(result.current.state.error).toMatch(/não pertence/);
+    expect(result.current.state.scanned).toHaveLength(1);
+  });
+
+  it("finalize envia só ESCANEADO, CONCLUIDO_OK e umFisicaId", async () => {
+    const { result } = renderHook(() => useConference());
+    await act(async () => result.current.startConference(itinUM, itinNbs));
+    scanI(result, ["QDFM-INSTR01", "QDFM-INSTR02", "QDFM-PEDAG-A"], 1000);
+    await act(async () => { await result.current.finalize(); });
+    const [, options] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(options.body as string);
+    expect(body.status).toBe("CONCLUIDO_OK");
+    expect(body.umFisicaId).toBe("fixa1");
+    expect(body.items).toEqual([
+      { notebookId: "i1", status: "ESCANEADO" },
+      { notebookId: "i2", status: "ESCANEADO" },
+      { notebookId: "p1", status: "ESCANEADO" },
+    ]);
+  });
+
+  it("offline: payload itinerante vai para a outbox com umFisicaId", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    const { result } = renderHook(() => useConference());
+    await act(async () => result.current.startConference(itinUM, itinNbs));
+    scanI(result, ["QDFM-INSTR01", "QDFM-INSTR02", "QDFM-PEDAG-A"], 1000);
+    await act(async () => { await result.current.finalize(); });
+    expect(saveToOutbox).toHaveBeenCalledWith(expect.objectContaining({ umFisicaId: "fixa1", status: "CONCLUIDO_OK" }));
+  });
+
+  it("UM fixa não envia umFisicaId (fluxo intacto)", async () => {
+    const { result } = renderHook(() => useConference());
+    await startConference(result);
+    scan(result, ["BSBIA01-EST01"], 1000);
+    await act(async () => { await result.current.finalize(); });
+    const [, options] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(options.body as string);
+    expect(body.umFisicaId).toBeUndefined();
+    expect(body.status).toBe("CONCLUIDO_FALTANTES");
+    expect(metaProgress(result.current.state)).toEqual([]);
   });
 });

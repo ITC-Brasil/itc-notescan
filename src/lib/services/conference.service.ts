@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
-import type { CreateConferenceInput } from "@/lib/validations";
+import type { Categoria, CreateConferenceInput } from "@/lib/validations";
+import { archiveDateStamp } from "@/lib/notebook-hostname";
 
 type UMRef = { tipo: "FIXA" | "ITINERANTE"; projectId: string };
 
@@ -120,4 +121,73 @@ export async function getDashboardStats() {
     latestConferences,
     maintenanceNotebooks,
   };
+}
+
+
+/**
+ * [início, fim) do dia em America/Sao_Paulo que contém `now`.
+ * ponytail: offset fixo -03:00 (Brasil sem horário de verão desde 2019);
+ * se o DST voltar, trocar por cálculo de offset via Intl.
+ */
+export function saoPauloDayRange(now: Date): { gte: Date; lt: Date } {
+  const d = archiveDateStamp(now); // YYYYMMDD em SP
+  const gte = new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}T00:00:00-03:00`);
+  return { gte, lt: new Date(gte.getTime() + 86_400_000) };
+}
+
+/** Leituras (ESCANEADO) do dia em conferências das UMs informadas. */
+export async function getItinerantReadsToday(umIds: string[], now = new Date()) {
+  return prisma.conferenceItem.findMany({
+    where: {
+      status: "ESCANEADO",
+      conference: { umId: { in: umIds }, dataInicio: saoPauloDayRange(now) },
+    },
+    select: { notebookId: true, conference: { select: { umId: true, userId: true } } },
+  });
+}
+
+/** Leituras por notebook necessárias para cobertura do dia (abertura + fechamento). */
+export const LEITURAS_COBERTURA = 2;
+
+export interface CoverageNotebook {
+  id: string;
+  hostname: string;
+  categoria: Categoria | null;
+}
+
+/** Pura: cobertos = notebooks com >= 2 leituras no dia; pendentes com a contagem. */
+export function computeCoverage(notebooks: CoverageNotebook[], readNotebookIds: string[]) {
+  const leituras = new Map<string, number>();
+  for (const id of readNotebookIds) leituras.set(id, (leituras.get(id) ?? 0) + 1);
+  const pendentes = notebooks
+    .map((n) => ({ ...n, leituras: leituras.get(n.id) ?? 0 }))
+    .filter((n) => n.leituras < LEITURAS_COBERTURA);
+  return { total: notebooks.length, cobertos: notebooks.length - pendentes.length, pendentes };
+}
+
+/** Cobertura do dia de cada UM ITINERANTE (só notebooks ATIVO; MANUTENCAO não conta). */
+export async function getItinerantCoverage(now = new Date(), umIds?: string[]) {
+  const ums = await prisma.uM.findMany({
+    where: { tipo: "ITINERANTE", ...(umIds && { id: { in: umIds } }) },
+    orderBy: [{ project: { nome: "asc" } }, { nome: "asc" }],
+    select: {
+      id: true,
+      nome: true,
+      project: { select: { nome: true, cor: true } },
+      notebooks: {
+        where: { status: "ATIVO" },
+        orderBy: { hostname: "asc" },
+        select: { id: true, hostname: true, categoria: true },
+      },
+    },
+  });
+  if (!ums.length) return [];
+  const reads = await getItinerantReadsToday(ums.map((u) => u.id), now);
+  return ums.map(({ notebooks, ...um }) => ({
+    ...um,
+    ...computeCoverage(
+      notebooks,
+      reads.filter((r) => r.conference.umId === um.id).map((r) => r.notebookId),
+    ),
+  }));
 }

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones, CheckCircle2, XCircle, Cable, FileText } from "lucide-react";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { useSession } from "next-auth/react";
-import { useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
+import { countsForMeta, useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
+import { useUMs } from "@/hooks/useUMs";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -268,11 +269,15 @@ export default function InicioPage() {
     }
   }, [online, outboxCount]);
 
-  const todayTotal = conferences?.length ?? 0;
-  const todayOk = conferences?.filter((c) => c.status === "CONCLUIDO_OK").length ?? 0;
-  const todayFaltantes = conferences?.filter((c) => c.status === "CONCLUIDO_FALTANTES").length ?? 0;
+  // Itinerantes acompanham a conferência da carreta: fora dos cards e da meta.
+  const fixasHoje = conferences?.filter(countsForMeta);
+  const todayTotal = fixasHoje?.length ?? 0;
+  const todayOk = fixasHoje?.filter((c) => c.status === "CONCLUIDO_OK").length ?? 0;
+  const todayFaltantes = fixasHoje?.filter((c) => c.status === "CONCLUIDO_FALTANTES").length ?? 0;
   const meta = session?.user.metaDiaria ?? 2;
   const dailyLimitReached = meta > 0 && todayTotal >= meta;
+  const { data: ums } = useUMs();
+  const temItinerante = ums?.some((u) => u.tipo === "ITINERANTE") ?? false;
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-2">
@@ -344,7 +349,16 @@ export default function InicioPage() {
             <p className="text-sm text-muted-foreground leading-tight">Você já concluiu {meta} conferência{meta !== 1 ? "s" : ""} hoje.</p>
           </div>
         </div>
-      ) : (
+      ) : null}
+      {/* Itinerantes não contam para a meta: o acesso continua liberado. */}
+      {dailyLimitReached && temItinerante ? (
+        <Link href="/scanner" className="sm:hidden block">
+          <div className="w-full min-h-12 rounded-2xl border border-primary px-5 py-3 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform">
+            <ScanLine className="h-5 w-5 text-primary shrink-0" />
+            <span className="text-sm font-bold uppercase tracking-wide text-primary">Conferir itinerantes</span>
+          </div>
+        </Link>
+      ) : dailyLimitReached ? null : (
         <Link href="/scanner" className="sm:hidden block">
           <div className="w-full min-h-14 rounded-2xl bg-primary px-5 py-4 flex items-center justify-center gap-3 shadow-1 active:scale-[0.98] transition-transform">
             <ScanLine className="h-6 w-6 text-primary-foreground shrink-0" />
