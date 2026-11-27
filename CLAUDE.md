@@ -28,7 +28,8 @@ de uma fila de sincronização.
 
 **Empresa:** ITC Brasil — Unidades Móveis de Atendimento via contratos públicos
 
-**Projeto atendido:** Brasil.IA (BSBIA)
+**Projetos atendidos:** Brasil.IA (BSBIA), QDFM, SEDET e CODHAB. Os números abaixo são
+do BSBIA, origem do sistema.
 
 - 4 carretas itinerantes, rotação a cada 20 dias
 - 106 notebooks por carreta (100 alunos, 5 professores, 1 pedagoga)
@@ -54,7 +55,7 @@ confiabilidade. Nunca perder dados. Nunca duplicar registros.
 
 | Camada               | Tecnologia                                       |
 | -------------------- | ------------------------------------------------ |
-| Framework            | Next.js 16.4.1 (App Router, Turbopack, proxy.ts) |
+| Framework            | Next.js 16.4.5 (App Router, Turbopack, proxy.ts) |
 | Linguagem            | TypeScript 5.x — strict: true sem exceções       |
 | Estilização          | Tailwind CSS 4.x (tokens via @theme; usar `text-itc-*`, nunca `[--itc-*]`) |
 | Componentes          | shadcn/ui — único sistema de componentes         |
@@ -129,7 +130,10 @@ Toda API Route verifica autenticação com `auth()` antes de qualquer operação
 
 ### 1. Início
 
+- Botão **NOVA CONFERÊNCIA** na tela inicial, sempre habilitado (só mobile)
 - Técnico autenticado seleciona uma UM — obrigatório, sem UM não inicia
+- Com a `metaDiaria` atingida, as UMs FIXAS aparecem desabilitadas no seletor
+  ("meta diária atingida"); as ITINERANTES continuam liberadas
 
 ### 2. Carregamento
 
@@ -167,6 +171,26 @@ Toda API Route verifica autenticação com `auth()` antes de qualquer operação
 - Sem internet: salva no Dexie e adiciona na syncQueue
 - Com internet: sincronização automática via background sync
 - Retry com backoff exponencial: 1min → 5min → 15min
+
+### 9. UM ITINERANTE
+
+Notebooks que acompanham pessoas entre carretas (instrutores, pedagogas e
+coordenadoras) ficam em UMs `tipo = ITINERANTE`. Em produção desde os PRs #62–#64.
+
+- Após escolher a itinerante, o técnico escolhe a **carreta** (UM FIXA do mesmo
+  projeto), gravada em `Conference.umFisicaId`. Carretas sempre habilitadas
+- A tela de scan mostra a **meta por categoria** da UM (ex.: Instrutores 3/5)
+- Pode ser enviada a qualquer momento; envia só itens ESCANEADO
+- **CONCLUIDO_OK** com todas as metas atingidas; senão **CONCLUIDO_FALTANTES**.
+  O faltante é a quantidade que falta em cada categoria ("Instrutores 3/5 — falta 2"),
+  nunca um item FALTANTE (o notebook itinerante não tem carreta fixa)
+- O servidor recalcula o status pela meta atual da UM e grava a meta usada em
+  `ConferenceMeta`; divergência é registrada no log, não rejeitada
+- Não conta para a `metaDiaria` nem para o 409
+- **Cobertura do dia** (dashboard): notebook coberto = lido em 2 conferências no dia
+  (America/Sao_Paulo)
+
+Detalhes e motivos: `docs/DECISIONS.md`, m8-02.
 
 ---
 
@@ -255,19 +279,31 @@ id, nome, cor (hex)
 ### UM (Unidade Móvel)
 
 ```
-id, nome, projectId, quantidadeEsperada, perifericos, mouses, carregadores, fones
+id, nome, projectId, tipo (FIXA|ITINERANTE), quantidadeEsperada, perifericos, mouses, carregadores, fones
+```
+
+### UMMetaCategoria
+
+```
+id, umId, categoria (INSTRUTOR|PEDAGOGA|COORDENADORA), meta — só em UM ITINERANTE
 ```
 
 ### Notebook
 
 ```
-id, hostname, serial, patrimonio, status (ATIVO|MANUTENCAO), umId
+id, hostname, serial, patrimonio, status (ATIVO|MANUTENCAO|ARQUIVADO), categoria? (INSTRUTOR|PEDAGOGA|COORDENADORA — obrigatória em UM ITINERANTE, nula em FIXA), umId
 ```
 
 ### Conference
 
 ```
-id, userId, umId, dataInicio, dataFim, localizacao, status (CONCLUIDO_OK|CONCLUIDO_FALTANTES)
+id, userId, umId, umFisicaId? (carreta, só em UM ITINERANTE), dataInicio, dataFim, localizacao, status (CONCLUIDO_OK|CONCLUIDO_FALTANTES)
+```
+
+### ConferenceMeta
+
+```
+id, conferenceId, categoria, meta — cópia da meta da UM itinerante no envio (imutável)
 ```
 
 ### ConferenceItem
@@ -411,10 +447,10 @@ itc-notescan/
 
 | Página  | Funcionalidades principais                                  |
 | ------- | ----------------------------------------------------------- |
-| Início  | Cards contagens diárias + botão INICIAR + histórico pessoal |
+| Início  | Cards contagens diárias + botão NOVA CONFERÊNCIA + histórico pessoal |
 | Scanner | Câmera + listas pendentes/escaneados + fluxo de finalização |
 
-**Regra:** técnico em desktop **não vê** o botão INICIAR CONFERÊNCIA.
+**Regra:** técnico em desktop **não vê** o botão NOVA CONFERÊNCIA.
 
 ---
 
@@ -487,7 +523,7 @@ ambiente do Docker no GLPI-SRV.
 
 - **Plataforma:** Docker + Nginx no GLPI-SRV (Dell R250)
 - **CI/CD:** push na branch `main` → GitHub Actions → build e deploy
-- **Branches:** desenvolver em branches de feature → merge em `develop` → merge em `main`
+- **Branches:** uma branch por funcionalidade → PR para `develop` → PR `develop` → `main`
 - **`output: 'standalone'`** obrigatório no next.config.ts para compatibilidade Docker
 
 ---
