@@ -12,7 +12,7 @@ vi.mock("@/lib/auth", () => ({ auth }));
 import { GET } from "@/app/api/agents/guide/route";
 import { SCOPES } from "@/lib/auth/scopes";
 import { ACTOR_LIMITS } from "@/lib/rate-limit";
-import { ALL_SCOPES, tokenRecord, withBearer } from "./helpers/actor";
+import { ALL_SCOPES, invalidTokens, tokenRecord, withBearer } from "./helpers/actor";
 
 const guide = readFileSync(join(process.cwd(), "docs", "AGENT-API.md"), "utf-8");
 
@@ -53,6 +53,10 @@ describe("docs/AGENT-API.md", () => {
     expect(guide).not.toMatch(/nsk_[A-Za-z0-9_-]{20,}/);
     expect(guide).not.toMatch(/[?&]token=/i);
   });
+
+  it("ensina o agente a ler o próprio guia", () => {
+    expect(guide).toContain('curl -s "$NOTESCAN_URL/agents/guide" -H "Authorization: Bearer $NOTESCAN_TOKEN"');
+  });
 });
 
 describe("GET /api/agents/guide", () => {
@@ -69,12 +73,37 @@ describe("GET /api/agents/guide", () => {
     expect(await res.text()).toBe(guide);
   });
 
-  it("ADMIN → 403; token → 403; sem sessão → 401", async () => {
-    auth.mockResolvedValue({ user: { id: "a1", role: "ADMIN" } });
-    expect((await GET(new Request("http://x/api/agents/guide"))).status).toBe(403);
-    db.apiToken.findUnique.mockResolvedValue(tokenRecord(ALL_SCOPES));
-    expect((await GET(withBearer("http://x/api/agents/guide"))).status).toBe(403);
+  it("ADMIN e USER → 403; sem sessão → 401", async () => {
+    for (const role of ["ADMIN", "USER"]) {
+      auth.mockResolvedValue({ user: { id: `h-${role}`, role } });
+      expect((await GET(new Request("http://x/api/agents/guide"))).status).toBe(403);
+    }
     auth.mockResolvedValue(null);
     expect((await GET(new Request("http://x/api/agents/guide"))).status).toBe(401);
   });
+
+  it.each([[["read:catalog"]], [["destructive"]], [ALL_SCOPES]] as const)(
+    "token com escopos %j lê o guia, sem consultar a sessão",
+    async (scopes) => {
+      db.apiToken.findUnique.mockResolvedValue(tokenRecord([...scopes]));
+      const res = await GET(withBearer("http://x/api/agents/guide"));
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe(guide);
+      expect(auth).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(Object.entries(invalidTokens))("token %s → 401", async (_k, rec) => {
+    db.apiToken.findUnique.mockResolvedValue(rec === null ? null : rec());
+    auth.mockResolvedValue({ user: { id: "m1", role: "MASTER" } }); // nunca cai no cookie
+    expect((await GET(withBearer("http://x/api/agents/guide"))).status).toBe(401);
+  });
+
+  it("token de agente desativado → 401", async () => {
+    db.apiToken.findUnique.mockResolvedValue(
+      tokenRecord(ALL_SCOPES, { user: { role: "AGENTE", desativadoEm: new Date() } }),
+    );
+    expect((await GET(withBearer("http://x/api/agents/guide"))).status).toBe(401);
+  });
+
 });

@@ -21,6 +21,15 @@ export NOTESCAN_URL=https://notescan.itcbr.xyz/api
 
 Todos os exemplos abaixo usam essas duas variáveis.
 
+**Leia este guia antes de operar.** Qualquer token válido pode lê-lo, sem escopo exigido:
+
+```bash
+curl -s "$NOTESCAN_URL/agents/guide" -H "Authorization: Bearer $NOTESCAN_TOKEN"
+```
+
+A resposta vem em texto puro (`text/plain`). Um token revogado, expirado ou de agente
+desativado recebe **401**.
+
 ## 2. Escopos
 
 O token traz um ou mais escopos, escolhidos pelo administrador (MASTER) na emissão. Os
@@ -329,7 +338,8 @@ contornar:
 - conferências (`/conferences`, `/conferences/dashboard`)
 - usuários (`/users`, `/users/change-password`)
 - notificações (`/notifications/*`)
-- gestão de agentes e tokens (`/agents/*`)
+- gestão de agentes e tokens (`/agents`, `/agents/{id}` e sub-rotas). Exceção:
+  `GET /agents/guide`, que qualquer token válido pode ler (seção 1)
 
 ## 7. Erros e o que fazer
 
