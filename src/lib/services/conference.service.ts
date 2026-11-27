@@ -195,3 +195,32 @@ export async function getItinerantCoverage(now = new Date(), umIds?: string[]) {
     ),
   }));
 }
+
+/**
+ * Em qual UM física o notebook foi lido, por conferência itinerante (mais
+ * recente primeiro). Vem de ConferenceItem + Conference.umFisicaId — sem
+ * LifecycleEvent duplicando a informação.
+ */
+export async function getNotebookLocations(notebookId: string, take = 200) {
+  const items = await prisma.conferenceItem.findMany({
+    where: { notebookId, status: "ESCANEADO", conference: { umFisicaId: { not: null } } },
+    orderBy: { conference: { dataInicio: "desc" } },
+    take,
+    select: {
+      conference: {
+        select: {
+          id: true,
+          dataInicio: true,
+          user: { select: { nome: true } },
+          umFisica: { select: { id: true, nome: true } },
+        },
+      },
+    },
+  });
+  return items.map(({ conference: c }) => ({
+    conferenceId: c.id,
+    dataInicio: c.dataInicio,
+    tecnico: c.user.nome,
+    umFisica: c.umFisica,
+  }));
+}

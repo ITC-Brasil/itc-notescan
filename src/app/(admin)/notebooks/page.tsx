@@ -33,6 +33,7 @@ import {
   useCreateNotebooksBatch,
   useImportNotebooks,
   useNotebookHistory,
+  useNotebookLocations,
   useBulkDeleteNotebooks,
   type Notebook,
 } from "@/hooks/useNotebooks";
@@ -852,6 +853,7 @@ function HistoryModal({
   onOpenChange: (v: boolean) => void;
 }) {
   const { data: history, isLoading } = useNotebookHistory(open ? notebookId : null);
+  const { data: locations } = useNotebookLocations(open ? notebookId : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -892,6 +894,25 @@ function HistoryModal({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {!!locations?.length && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Localização (UM física por leitura)</p>
+            <div className="rounded-lg border border-border overflow-hidden max-h-60 overflow-y-auto divide-y divide-border">
+              {locations.map((l) => (
+                <div key={l.conferenceId} className="flex items-center gap-3 px-4 py-2 text-xs">
+                  <span className="tabular-nums text-muted-foreground">
+                    {new Date(l.dataInicio).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                  <span className="font-medium text-foreground">{l.umFisica?.nome ?? "-"}</span>
+                  <span className="ml-auto text-muted-foreground truncate">{l.tecnico}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </DialogContent>

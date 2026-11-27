@@ -175,6 +175,26 @@ export function useNotebookHistory(notebookId: string | null) {
   });
 }
 
+export interface NotebookLocation {
+  conferenceId: string;
+  dataInicio: string;
+  tecnico: string;
+  umFisica: { id: string; nome: string } | null;
+}
+
+/** UM física de cada leitura do notebook em conferência itinerante. */
+export function useNotebookLocations(notebookId: string | null) {
+  return useQuery({
+    queryKey: ["notebook-locations", notebookId],
+    queryFn: async () => {
+      const res = await fetch(`/api/notebooks/${notebookId}/locations`);
+      if (!res.ok) throw new Error("Falha ao carregar localizações");
+      return res.json() as Promise<NotebookLocation[]>;
+    },
+    enabled: !!notebookId,
+  });
+}
+
 export function useBulkDeleteNotebooks() {
   const qc = useQueryClient();
   return useMutation({
