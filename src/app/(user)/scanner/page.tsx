@@ -71,7 +71,8 @@ function UMSelectionPhase({
     ? (ums ?? []).filter((u) => u.tipo === "FIXA" && u.projectId === selectedUM.projectId)
     : [];
   const umFisica = umsFisicas.find((u) => u.id === umFisicaId);
-  // A meta diária só bloqueia UM FIXA; itinerante acompanha a conferência da carreta.
+  // A meta diária só bloqueia UM FIXA (desabilitada no seletor); itinerante e a
+  // carreta (UM física) seguem liberadas — a conferência itinerante não conta.
   const bloqueadaPelaMeta = dailyLimitReached && !itinerante;
   const { data: notebooks, isLoading: loadingNotebooks } = useNotebooks(
     selectedUmId || undefined,
@@ -148,17 +149,21 @@ function UMSelectionPhase({
               <SelectValue placeholder={loadingUMs ? "Carregando..." : "Selecione a UM"} />
             </SelectTrigger>
             <SelectContent>
-              {ums?.map((um) => (
-                <SelectItem key={um.id} value={um.id}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: um.project.cor }}
-                    />
-                    {um.project.nome} / {um.nome}
-                  </div>
-                </SelectItem>
-              ))}
+              {ums?.map((um) => {
+                const bloqueada = dailyLimitReached && um.tipo === "FIXA";
+                return (
+                  <SelectItem key={um.id} value={um.id} disabled={bloqueada}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: um.project.cor }}
+                      />
+                      {um.project.nome} / {um.nome}
+                      {bloqueada && <span className="text-xs text-itc-atencao">· meta diária atingida</span>}
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>

@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones, CheckCircle2, XCircle, Cable, FileText, ChevronRight } from "lucide-react";
+import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones, CheckCircle2, XCircle, Cable, FileText } from "lucide-react";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { useSession } from "next-auth/react";
 import { countsForMeta, useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
-import { useUMs } from "@/hooks/useUMs";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -275,8 +274,6 @@ export default function InicioPage() {
   const todayFaltantes = fixasHoje?.filter((c) => c.status === "CONCLUIDO_FALTANTES").length ?? 0;
   const meta = session?.user.metaDiaria ?? 2;
   const dailyLimitReached = meta > 0 && todayTotal >= meta;
-  const { data: ums } = useUMs();
-  const temItinerante = ums?.some((u) => u.tipo === "ITINERANTE") ?? false;
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-2">
@@ -337,7 +334,7 @@ export default function InicioPage() {
       )}
       </div>
 
-      {/* INICIAR button — hidden on desktop (sm+); blocked when daily meta reached */}
+      {/* Aviso de meta diária (mobile) */}
       {dailyLimitReached ? (
         <div className="sm:hidden w-full rounded-2xl border border-itc-atencao/30 bg-itc-atencao/10 p-5 flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-itc-atencao/15 flex items-center justify-center shrink-0">
@@ -349,28 +346,13 @@ export default function InicioPage() {
           </div>
         </div>
       ) : null}
-      {/* Itinerantes não contam para a meta: o acesso continua liberado. */}
-      {dailyLimitReached && temItinerante ? (
-        <Link href="/scanner" className="sm:hidden block">
-          <div className="w-full rounded-2xl border border-border bg-card shadow-1 p-5 flex items-center gap-3 active:scale-[0.98] transition-transform">
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <ScanLine className="h-7 w-7 text-primary" />
-            </div>
-            <div className="text-left min-w-0 flex-1">
-              <p className="text-lg font-bold text-foreground leading-tight">Conferir itinerantes</p>
-              <p className="text-sm text-muted-foreground leading-tight">Não conta para a meta diária</p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-          </div>
-        </Link>
-      ) : dailyLimitReached ? null : (
+      {/* Sempre habilitado: com a meta atingida, o seletor desabilita só as UMs fixas. */}
         <Link href="/scanner" className="sm:hidden block">
           <div className="w-full min-h-14 rounded-2xl bg-primary px-5 py-4 flex items-center justify-center gap-3 shadow-1 active:scale-[0.98] transition-transform">
             <ScanLine className="h-6 w-6 text-primary-foreground shrink-0" />
-            <span className="text-base font-bold uppercase tracking-wide text-primary-foreground">Iniciar Conferência</span>
+            <span className="text-base font-bold uppercase tracking-wide text-primary-foreground">Nova Conferência</span>
           </div>
         </Link>
-      )}
 
       {/* Histórico */}
       <div className="mt-2">
