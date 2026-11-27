@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateUMInput } from "@/lib/validations";
+import type { Categoria, CreateUMInput } from "@/lib/validations";
 
 export interface UM {
   id: string;
@@ -10,6 +10,8 @@ export interface UM {
   mouses: boolean;
   carregadores: boolean;
   fones: boolean;
+  tipo: "FIXA" | "ITINERANTE";
+  metas: { categoria: Categoria; meta: number }[];
   createdAt: string;
   project: { id: string; nome: string; cor: string };
   _count: { notebooks: number };

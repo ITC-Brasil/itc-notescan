@@ -1,7 +1,7 @@
 ﻿import { authorize, WRITE_CATALOG } from "@/lib/auth/actor";
 import { logger } from "@/lib/logger";
 import { createNotebooksBatchSchema } from "@/lib/validations";
-import { conflictResponse, createNotebooksBulk } from "@/lib/services/notebook.service";
+import { validateCategorias, conflictResponse, createNotebooksBulk } from "@/lib/services/notebook.service";
 
 export async function POST(request: Request) {
   const actor = await authorize(request, WRITE_CATALOG);
@@ -15,6 +15,9 @@ export async function POST(request: Request) {
     );
 
   const { prefix, start, end, umId, status, onArchived } = parsed.data;
+
+  const categoriaError = await validateCategorias(umId, [parsed.data.categoria]);
+  if (categoriaError) return Response.json({ message: categoriaError }, { status: 400 });
 
   if (end < start)
     return Response.json(
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await createNotebooksBulk(
-      hostnames.map((hostname) => ({ hostname })),
+      hostnames.map((hostname) => ({ hostname, categoria: parsed.data.categoria })),
       umId,
       status,
       actor.userId,

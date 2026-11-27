@@ -258,3 +258,43 @@ describe("importNotebooksSchema", () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe("createUMSchema — tipo e metas", () => {
+  const base = { nome: "QDFM-PEDAGÓGICO", projectId: "p1", quantidadeEsperada: 24 };
+
+  it("default FIXA sem metas", () => {
+    const r = createUMSchema.parse(base);
+    expect(r.tipo).toBe("FIXA");
+    expect(r.metas).toEqual([]);
+  });
+
+  it("ITINERANTE exige pelo menos uma meta > 0", () => {
+    expect(createUMSchema.safeParse({ ...base, tipo: "ITINERANTE" }).success).toBe(false);
+    expect(
+      createUMSchema.safeParse({ ...base, tipo: "ITINERANTE", metas: [{ categoria: "INSTRUTOR", meta: 0 }] }).success,
+    ).toBe(false);
+    expect(
+      createUMSchema.safeParse({
+        ...base,
+        tipo: "ITINERANTE",
+        metas: [{ categoria: "INSTRUTOR", meta: 5 }, { categoria: "PEDAGOGA", meta: 1 }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("FIXA com meta > 0 é rejeitada", () => {
+    expect(
+      createUMSchema.safeParse({ ...base, metas: [{ categoria: "PEDAGOGA", meta: 1 }] }).success,
+    ).toBe(false);
+  });
+
+  it("categoria repetida é rejeitada", () => {
+    expect(
+      createUMSchema.safeParse({
+        ...base,
+        tipo: "ITINERANTE",
+        metas: [{ categoria: "PEDAGOGA", meta: 1 }, { categoria: "PEDAGOGA", meta: 2 }],
+      }).success,
+    ).toBe(false);
+  });
+});

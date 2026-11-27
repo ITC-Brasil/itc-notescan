@@ -907,3 +907,33 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
 - `GET /api/agents` esconde desativados; `?includeInactive=1` traz todos. A UI tem o filtro
   "Mostrar desativados" e a ação "Reativar".
 - Tooltips (shadcn `Tooltip`) e `aria-label` em todas as ações da tabela de agentes.
+
+**UMs itinerantes (27/11/2026):**
+- Notebooks de instrutores, pedagogas e coordenadoras acompanham as pessoas entre carretas.
+  Cada projeto tem uma UM `tipo = ITINERANTE` (QDFM-PEDAGÓGICO, BSBIA-PEDAGÓGICO,
+  SEDET-COORDENAÇÃO). As UMs existentes ficam `FIXA` e o fluxo delas não mudou.
+- Meta por conferência em `UMMetaCategoria` (`@@unique([umId, categoria])`), não em colunas
+  na UM: categorias novas (COORDENADORA) não exigem migration. Meta 0 não é gravada.
+- `Notebook.categoria` (INSTRUTOR | PEDAGOGA | COORDENADORA): obrigatória em UM itinerante,
+  proibida em UM fixa (`validateCategorias`, 400).
+- Trocar o tipo de uma UM que já tem conferências: 409 (mudaria o sentido do histórico).
+- `Conference.umFisicaId` (FK Restrict, relação nomeada): UM FIXA do mesmo projeto onde o
+  técnico estava. Conferência itinerante envia só ESCANEADO e pode ser enviada a qualquer
+  momento, como a fixa. Status: CONCLUIDO_OK com todas as metas por categoria atingidas,
+  senão CONCLUIDO_FALTANTES. Como o notebook itinerante não tem carreta, não dá para dizer
+  QUAL falta: o faltante é a diferença por categoria ("Instrutores 4/5 — falta 1"), sem item
+  FALTANTE. O servidor valida a forma (`checkConferenceShape`, 400) e recalcula o status pela
+  meta atual da UM; se a meta mudou entre o scan offline e o sync, grava o recalculado e loga
+  em vez de rejeitar (a conferência nunca pode ser perdida). A meta usada fica gravada em
+  `ConferenceMeta`, para o histórico não mudar se a meta da UM mudar depois. Não valida
+  posse dos notebooks.
+- Itinerante não conta para `metaDiaria` nem para o 409.
+- Cobertura do grupo, por dia em America/Sao_Paulo: notebook ATIVO coberto = ESCANEADO em
+  2+ conferências no dia (abertura e fechamento). Sem campo de turno. Offset fixo -03:00
+  (`saoPauloDayRange`); rever se o horário de verão voltar.
+- Sem aviso de "já lido por outro técnico": cada técnico fica numa carreta, então dois
+  técnicos não leem o mesmo notebook.
+- Dexie sem versão nova: `umFisicaId` vai dentro do payload da outbox.
+- Histórico de localização vem de ConferenceItem + `umFisicaId`; sem LifecycleEvent de
+  troca de UM física (seria a mesma informação duplicada).
+- `quantidadeEsperada` continua manual: mover notebook de UM mostra aviso para ajustar.

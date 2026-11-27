@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ScanLine, AlertTriangle, Wifi, WifiOff, ClipboardList, Mouse, BatteryCharging, Headphones, CheckCircle2, XCircle, Cable, FileText } from "lucide-react";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
 import { useSession } from "next-auth/react";
-import { useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
+import { countsForMeta, useConferences, useInfiniteConferences, type ConferenceRecord } from "@/hooks/useConferences";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { getOutboxCount } from "@/lib/offline/sync";
 import { processOutbox } from "@/lib/offline/sync";
 import { originalHostname } from "@/lib/notebook-hostname";
+import { conferenceCounts } from "@/lib/meta-categoria";
 
 function useOnlineStatus() {
   const [online, setOnline] = useState(() =>
@@ -104,7 +105,7 @@ function PeripheralsModal({ conference, onClose }: { conference: ConferenceRecor
 }
 
 function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord; onClose: () => void }) {
-  const faltantes = conference.items.filter((i) => i.status === "FALTANTE");
+  const faltantes = conferenceCounts(conference).faltantesList;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={SHEET_CLASS}>
@@ -115,10 +116,11 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
           <p className="text-sm text-muted-foreground">Nenhum dispositivo faltante.</p>
         ) : (
           <div className="divide-y divide-destructive/10 rounded-xl border border-destructive/20 bg-destructive/5 max-h-64 overflow-y-auto">
-            {faltantes.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-2">
+            {faltantes.map((item) => (
+              <div key={item.id} className="flex items-center gap-2 px-3 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                <span className="text-sm tabular-nums text-foreground">{originalHostname(item.notebook.hostname)}</span>
+                <span className="text-sm tabular-nums text-foreground">{originalHostname(item.hostname)}</span>
+                {item.detail && <span className="ml-auto text-xs text-muted-foreground">{item.detail}</span>}
               </div>
             ))}
           </div>
@@ -129,9 +131,7 @@ function FaltantesModal({ conference, onClose }: { conference: ConferenceRecord;
 }
 
 function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; onClose: () => void }) {
-  const escaneados = conference.items.filter((i) => i.status === "ESCANEADO").length;
-  const faltantes = conference.items.filter((i) => i.status === "FALTANTE");
-  const manutencao = conference.items.filter((i) => i.status === "MANUTENCAO");
+  const counts = conferenceCounts(conference);
   const um = conference.um;
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
@@ -150,16 +150,16 @@ function ResumoModal({ conference, onClose }: { conference: ConferenceRecord; on
         <ConferenceSummary
           tecnico={conference.user.nome}
           localizacao={conference.localizacao}
-          escaneados={escaneados}
-          faltantes={faltantes.length}
-          manutencao={manutencao.length}
+          escaneados={counts.escaneados}
+          faltantes={counts.faltantes}
+          manutencao={counts.manutencao}
           peripherals={hasPeripherals ? {
             ...(um.mouses && { mouses: conference.mousesQtd }),
             ...(um.carregadores && { carregadores: conference.carregadoresQtd }),
             ...(um.fones && { fones: conference.fonesQtd }),
           } : undefined}
-          faltantesList={faltantes.map((item, i) => ({ id: String(i), hostname: item.notebook.hostname }))}
-          manutencaoList={manutencao.map((item, i) => ({ id: String(i), hostname: item.notebook.hostname }))}
+          faltantesList={counts.faltantesList}
+          manutencaoList={counts.manutencaoList}
         />
       </DialogContent>
     </Dialog>
@@ -171,8 +171,7 @@ function ConferenceRow({ conference }: { conference: ConferenceRecord }) {
   const [modal, setModal] = useState<"perifericos" | "faltantes" | "resumo" | null>(null);
   const isOk = conference.status === "CONCLUIDO_OK";
   const d = new Date(conference.dataInicio);
-  const escaneados = conference.items.filter((i) => i.status === "ESCANEADO").length;
-  const totalAtivos = escaneados + conference.items.filter((i) => i.status === "FALTANTE").length;
+  const { escaneados, ativos: totalAtivos } = conferenceCounts(conference);
   const um = conference.um;
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
   const hasFaltantes = conference.status === "CONCLUIDO_FALTANTES";
@@ -268,9 +267,11 @@ export default function InicioPage() {
     }
   }, [online, outboxCount]);
 
-  const todayTotal = conferences?.length ?? 0;
-  const todayOk = conferences?.filter((c) => c.status === "CONCLUIDO_OK").length ?? 0;
-  const todayFaltantes = conferences?.filter((c) => c.status === "CONCLUIDO_FALTANTES").length ?? 0;
+  // Itinerantes acompanham a conferência da carreta: fora dos cards e da meta.
+  const fixasHoje = conferences?.filter(countsForMeta);
+  const todayTotal = fixasHoje?.length ?? 0;
+  const todayOk = fixasHoje?.filter((c) => c.status === "CONCLUIDO_OK").length ?? 0;
+  const todayFaltantes = fixasHoje?.filter((c) => c.status === "CONCLUIDO_FALTANTES").length ?? 0;
   const meta = session?.user.metaDiaria ?? 2;
   const dailyLimitReached = meta > 0 && todayTotal >= meta;
 
@@ -333,7 +334,7 @@ export default function InicioPage() {
       )}
       </div>
 
-      {/* INICIAR button — hidden on desktop (sm+); blocked when daily meta reached */}
+      {/* Aviso de meta diária (mobile) */}
       {dailyLimitReached ? (
         <div className="sm:hidden w-full rounded-2xl border border-itc-atencao/30 bg-itc-atencao/10 p-5 flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-itc-atencao/15 flex items-center justify-center shrink-0">
@@ -341,17 +342,17 @@ export default function InicioPage() {
           </div>
           <div className="text-left">
             <p className="text-lg font-bold text-itc-atencao leading-tight">Meta diária atingida</p>
-            <p className="text-sm text-muted-foreground leading-tight">Você já concluiu {meta} conferência{meta !== 1 ? "s" : ""} hoje.</p>
+            <p className="text-sm text-muted-foreground leading-tight">Conferências para notebooks de Pedagogas, Instrutores e Coordenadoras (SEDET) continuam liberadas em &quot;Nova conferência&quot;.</p>
           </div>
         </div>
-      ) : (
+      ) : null}
+      {/* Sempre habilitado: com a meta atingida, o seletor desabilita só as UMs fixas. */}
         <Link href="/scanner" className="sm:hidden block">
           <div className="w-full min-h-14 rounded-2xl bg-primary px-5 py-4 flex items-center justify-center gap-3 shadow-1 active:scale-[0.98] transition-transform">
             <ScanLine className="h-6 w-6 text-primary-foreground shrink-0" />
-            <span className="text-base font-bold uppercase tracking-wide text-primary-foreground">Iniciar Conferência</span>
+            <span className="text-base font-bold uppercase tracking-wide text-primary-foreground">Nova Conferência</span>
           </div>
         </Link>
-      )}
 
       {/* Histórico */}
       <div className="mt-2">

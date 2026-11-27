@@ -4,6 +4,7 @@ const { db, auth } = vi.hoisted(() => ({
   db: {
     notebook: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     lifecycleEvent: { create: vi.fn() },
+    uM: { findUnique: vi.fn(() => Promise.resolve({ tipo: "FIXA" })) },
     $transaction: vi.fn(),
   },
   auth: vi.fn(),

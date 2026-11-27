@@ -8,7 +8,8 @@ const { db, auth, svc } = vi.hoisted(() => {
     notebook: { findUnique: vi.fn(), update: vi.fn(), groupBy: vi.fn() },
     lifecycleEvent: { create: vi.fn() },
     project: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-    uM: { create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+    uM: { create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn() },
+    uMMetaCategoria: { deleteMany: vi.fn(), createMany: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(),
   };
@@ -20,6 +21,7 @@ const { db, auth, svc } = vi.hoisted(() => {
       createNotebooksBulk: vi.fn(),
       removeNotebooks: vi.fn(),
       conflictResponse: vi.fn(() => null),
+      validateCategorias: vi.fn(() => Promise.resolve(null)),
     },
   };
 });
@@ -80,6 +82,8 @@ beforeEach(() => {
   db.project.delete.mockResolvedValue({ id: "x1", nome: "P", cor: "#000000" });
   db.uM.delete.mockResolvedValue({ id: "x1", nome: "UM", projectId: "p1" });
   db.uM.count.mockResolvedValue(0);
+  db.uM.findUnique.mockResolvedValue({ tipo: "FIXA", _count: { conferences: 0 } });
+  db.uM.findUniqueOrThrow.mockImplementation(({ where }) => Promise.resolve({ id: where.id }));
   db.notebook.groupBy.mockResolvedValue([]);
   svc.createNotebooksBulk.mockResolvedValue({ created: 1 });
 });
@@ -244,6 +248,8 @@ describe("exclusões — sessão humana", () => {
       db.uM.count.mockResolvedValueOnce(2);
       expect((await projectDelete(del(), params)).status).toBe(409);
       db.uM.count.mockResolvedValue(0);
+  db.uM.findUnique.mockResolvedValue({ tipo: "FIXA", _count: { conferences: 0 } });
+  db.uM.findUniqueOrThrow.mockImplementation(({ where }) => Promise.resolve({ id: where.id }));
       expect((await projectDelete(del(), params)).status).toBe(204);
       db.project.delete.mockRejectedValueOnce(new Error("db"));
       expect((await projectDelete(del(), params)).status).toBe(500);

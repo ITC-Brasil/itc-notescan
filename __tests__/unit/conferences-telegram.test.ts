@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { db, auth } = vi.hoisted(() => ({
   db: {
     conference: { create: vi.fn(), count: vi.fn(), findMany: vi.fn() },
+    uM: { findUnique: vi.fn() },
     lifecycleEvent: { createMany: vi.fn() },
     user: { findUnique: vi.fn() },
   },
@@ -60,6 +61,7 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  db.uM.findUnique.mockResolvedValue({ tipo: "FIXA", projectId: "p1" });
   process.env.TELEGRAM_BOT_TOKEN = "t";
   process.env.TELEGRAM_CHAT_ID = "c";
   auth.mockResolvedValue({ user: { id: "tec1", role: "USER" } });

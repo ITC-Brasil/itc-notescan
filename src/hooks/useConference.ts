@@ -3,8 +3,9 @@
 import { useCallback, useReducer } from "react";
 import { saveToOutbox } from "@/lib/offline/sync";
 import { logger } from "@/lib/logger";
-import type { CreateConferenceInput } from "@/lib/validations";
+import type { Categoria, CreateConferenceInput } from "@/lib/validations";
 import { originalHostname } from "@/lib/notebook-hostname";
+import { progressoPorCategoria, statusPorMeta, type ProgressoCategoria } from "@/lib/meta-categoria";
 
 export interface NotebookSlim {
   id: string;
@@ -12,6 +13,14 @@ export interface NotebookSlim {
   serial: string | null;
   /** ARQUIVADO só chega na lista de lookup do scan (nunca em pending/maintenance). */
   status: "ATIVO" | "MANUTENCAO" | "ARQUIVADO";
+  categoria?: Categoria | null;
+}
+
+/** Só em UM ITINERANTE: a UM física escolhida e as metas por categoria (> 0). */
+export interface ItineranteSlim {
+  umFisicaId: string;
+  umFisicaNome: string;
+  metas: { categoria: Categoria; meta: number }[];
 }
 
 export interface UMSlim {
@@ -21,6 +30,14 @@ export interface UMSlim {
   mouses: boolean;
   carregadores: boolean;
   fones: boolean;
+  itinerante?: ItineranteSlim;
+}
+
+export type MetaProgress = ProgressoCategoria;
+
+/** Progresso por categoria da conferência itinerante (vazio em UM FIXA). */
+export function metaProgress(state: Pick<ConferenceState, "um" | "scanned">): MetaProgress[] {
+  return progressoPorCategoria(state.um?.itinerante?.metas ?? [], state.scanned.map((n) => n.categoria));
 }
 
 export type ConferencePhase = "idle" | "scanning" | "peripherals" | "summary" | "saving" | "done";
@@ -273,17 +290,27 @@ export function useConference() {
     dispatch({ type: "SAVING" });
 
     const dataFim = new Date().toISOString();
-    const conferenceStatus =
-      state.pending.length === 0 ? "CONCLUIDO_OK" : "CONCLUIDO_FALTANTES";
+    const itinerante = um.itinerante;
+    // Itinerante: status pela meta por categoria. Só ESCANEADO — o faltante é a
+    // diferença por categoria, não um notebook específico (não há "da carreta").
+    const conferenceStatus = itinerante
+      ? statusPorMeta(metaProgress(state))
+      : state.pending.length === 0
+        ? "CONCLUIDO_OK"
+        : "CONCLUIDO_FALTANTES";
 
-    const items: CreateConferenceInput["items"] = [
-      ...state.scanned.map((n) => ({ notebookId: n.id, status: "ESCANEADO" as const })),
-      ...state.pending.map((n) => ({ notebookId: n.id, status: "FALTANTE" as const })),
-      ...state.maintenance.map((n) => ({ notebookId: n.id, status: "MANUTENCAO" as const })),
-    ];
+    const scannedItems = state.scanned.map((n) => ({ notebookId: n.id, status: "ESCANEADO" as const }));
+    const items: CreateConferenceInput["items"] = itinerante
+      ? scannedItems
+      : [
+          ...scannedItems,
+          ...state.pending.map((n) => ({ notebookId: n.id, status: "FALTANTE" as const })),
+          ...state.maintenance.map((n) => ({ notebookId: n.id, status: "MANUTENCAO" as const })),
+        ];
 
     const payload: CreateConferenceInput = {
       umId: um.id,
+      ...(itinerante && { umFisicaId: itinerante.umFisicaId }),
       dataInicio: state.startTime,
       dataFim,
       localizacao: state.location ?? undefined,

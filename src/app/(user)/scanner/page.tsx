@@ -25,10 +25,19 @@ import {
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { useConference, type NotebookSlim, type UMSlim, type Peripherals } from "@/hooks/useConference";
+import {
+  metaProgress,
+  useConference,
+  type MetaProgress,
+  type NotebookSlim,
+  type UMSlim,
+  type Peripherals,
+} from "@/hooks/useConference";
+import { CATEGORIA_LABEL } from "@/lib/constants";
+import { rotuloProgresso } from "@/lib/meta-categoria";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
-import { useConferences } from "@/hooks/useConferences";
+import { countsForMeta, useConferences } from "@/hooks/useConferences";
 import { usePlatform } from "@/hooks/usePlatform";
 import { QRScanner } from "@/components/scanner/QRScanner";
 import { ConferenceSummary } from "@/components/ConferenceSummary";
@@ -53,8 +62,18 @@ function UMSelectionPhase({
 }) {
   const { data: ums, isLoading: loadingUMs } = useUMs();
   const [selectedUmId, setSelectedUmId] = useState("");
+  const [umFisicaId, setUmFisicaId] = useState("");
 
   const selectedUM = ums?.find((u) => u.id === selectedUmId);
+  const itinerante = selectedUM?.tipo === "ITINERANTE";
+  // UM física: uma UM FIXA do mesmo projeto da itinerante.
+  const umsFisicas = itinerante
+    ? (ums ?? []).filter((u) => u.tipo === "FIXA" && u.projectId === selectedUM.projectId)
+    : [];
+  const umFisica = umsFisicas.find((u) => u.id === umFisicaId);
+  // A meta diária só bloqueia UM FIXA (desabilitada no seletor); itinerante e a
+  // carreta (UM física) seguem liberadas — a conferência itinerante não conta.
+  const bloqueadaPelaMeta = dailyLimitReached && !itinerante;
   const { data: notebooks, isLoading: loadingNotebooks } = useNotebooks(
     selectedUmId || undefined,
   );
@@ -71,12 +90,20 @@ function UMSelectionPhase({
       mouses: selectedUM.mouses,
       carregadores: selectedUM.carregadores,
       fones: selectedUM.fones,
+      ...(itinerante && umFisica && {
+        itinerante: {
+          umFisicaId: umFisica.id,
+          umFisicaNome: umFisica.nome,
+          metas: selectedUM.metas.filter((m) => m.meta > 0),
+        },
+      }),
     };
     const nbs: NotebookSlim[] = notebooks.filter((n) => n.status !== "ARQUIVADO").map((n) => ({
       id: n.id,
       hostname: n.hostname,
       serial: n.serial,
       status: n.status,
+      categoria: n.categoria,
     }));
     onSelect(um, nbs);
   };
@@ -110,25 +137,63 @@ function UMSelectionPhase({
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
             Unidade Móvel
           </label>
-          <Select value={selectedUmId} onValueChange={setSelectedUmId} disabled={loadingUMs}>
+          <Select
+            value={selectedUmId}
+            onValueChange={(v) => {
+              setSelectedUmId(v);
+              setUmFisicaId("");
+            }}
+            disabled={loadingUMs}
+          >
             <SelectTrigger className={cn("h-14 text-base", selectedUmId && "border-primary")}>
               <SelectValue placeholder={loadingUMs ? "Carregando..." : "Selecione a UM"} />
             </SelectTrigger>
             <SelectContent>
-              {ums?.map((um) => (
-                <SelectItem key={um.id} value={um.id}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: um.project.cor }}
-                    />
-                    {um.project.nome} / {um.nome}
-                  </div>
-                </SelectItem>
-              ))}
+              {ums?.map((um) => {
+                const bloqueada = dailyLimitReached && um.tipo === "FIXA";
+                return (
+                  <SelectItem key={um.id} value={um.id} disabled={bloqueada}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: um.project.cor }}
+                      />
+                      {um.project.nome} / {um.nome}
+                      {bloqueada && <span className="text-xs text-itc-atencao">· meta diária atingida</span>}
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>
+
+        {itinerante && (
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Em qual carreta você está?
+            </label>
+            <Select value={umFisicaId} onValueChange={setUmFisicaId}>
+              <SelectTrigger className={cn("h-14 text-base", umFisicaId && "border-primary")}>
+                <SelectValue placeholder="Selecione a UM física" />
+              </SelectTrigger>
+              <SelectContent>
+                {umsFisicas.map((um) => (
+                  <SelectItem key={um.id} value={um.id}>
+                    {um.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Meta por conferência:{" "}
+              {selectedUM.metas
+                .filter((m) => m.meta > 0)
+                .map((m) => `${CATEGORIA_LABEL[m.categoria]} ${m.meta}`)
+                .join(" · ")}
+            </p>
+          </div>
+        )}
 
         {selectedUM && (
           <div className="rounded-xl border border-border bg-card shadow-1 divide-y divide-border">
@@ -144,7 +209,7 @@ function UMSelectionPhase({
           </div>
         )}
 
-        {dailyLimitReached && (
+        {bloqueadaPelaMeta && (
           <div className="rounded-xl border border-itc-atencao/30 bg-itc-atencao/10 p-3 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-itc-atencao shrink-0" />
             <p className="text-sm text-itc-atencao">
@@ -159,7 +224,9 @@ function UMSelectionPhase({
         <Button
           size="lg"
           className="w-full h-14 text-base font-semibold uppercase tracking-wide"
-          disabled={!selectedUmId || loadingNotebooks || !notebooks?.length || dailyLimitReached}
+          disabled={
+            !selectedUmId || loadingNotebooks || !notebooks?.length || bloqueadaPelaMeta || (itinerante && !umFisica)
+          }
           onClick={handleStart}
         >
           <ScanLine className="h-5 w-5 mr-2" />
@@ -186,6 +253,8 @@ function ScanningPhase({
 }) {
   const platform = usePlatform();
   const [showManut, setShowManut] = useState(false);
+  // Itinerante: progresso por categoria no lugar da lista de pendentes da UM inteira.
+  const metas = state.um?.itinerante ? metaProgress(state) : null;
 
   // On Android APK: hand off the entire scanning UI to the native overlay.
   // The NativeQRScanner renders top bar + viewfinder + feedback + buttons
@@ -201,7 +270,8 @@ function ScanningPhase({
           pending: state.pending,
           scanned: state.scanned,
           maintenance: state.maintenance,
-          activeTotal: state.activeTotal,
+          activeTotal: metas ? metas.reduce((a, m) => a + m.meta, 0) : state.activeTotal,
+          metas: metas?.map((m) => ({ label: CATEGORIA_LABEL[m.categoria], lidos: m.lidos, meta: m.meta })),
           lastScanned: state.lastScanned ?? null,
           scanError: state.error ?? null,
           onNext,
@@ -214,7 +284,7 @@ function ScanningPhase({
 
   // Denominador FIXO = ativos capturados no início. Overflow (lidos > total)
   // fica visível de propósito.
-  const total = state.activeTotal;
+  const total = metas ? metas.reduce((a, m) => a + m.meta, 0) : state.activeTotal;
   const progress = total > 0 ? Math.min((state.scanned.length / total) * 100, 100) : 0;
 
   return (
@@ -234,13 +304,19 @@ function ScanningPhase({
           style={{ backgroundColor: state.um?.project.cor }}
         />
         <span className="text-sm font-medium text-foreground">{state.um?.nome}</span>
+        {state.um?.itinerante && (
+          <span className="text-xs text-muted-foreground truncate">em {state.um.itinerante.umFisicaNome}</span>
+        )}
         <span className="ml-auto text-xs text-muted-foreground tabular-nums">
           {state.scanned.length}/{total}
         </span>
       </div>
 
+      {/* Itinerante: meta por categoria (ex.: Instrutores 3/5 · Pedagoga 0/1) */}
+      {metas && <MetaPills metas={metas} />}
+
       {/* Stat pills: pendentes / lidos / manut. */}
-      <div className="flex gap-2 px-4 pt-2">
+      <div className={cn("flex gap-2 px-4 pt-2", metas && "hidden")}>
         <div className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-destructive/10 border border-destructive/30 py-1">
           <span className="text-sm font-bold text-destructive tabular-nums">{state.pending.length}</span>
           <span className="text-xs text-destructive/90">pendentes</span>
@@ -350,7 +426,7 @@ function ScanningPhase({
         ) : (
           <>
         {/* Pending */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className={cn("flex-1 flex flex-col min-h-0", metas && "hidden")}>
           <div className="flex items-center gap-1.5 mb-1.5">
             <Package className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground">
@@ -421,6 +497,31 @@ function ScanningPhase({
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+/* ─── Itinerante: pílulas de meta por categoria ─── */
+function MetaPills({ metas }: { metas: MetaProgress[] }) {
+  return (
+    <div className="flex gap-2 px-4 pt-2">
+      {metas.map((m) => {
+        const ok = m.lidos >= m.meta;
+        return (
+          <div
+            key={m.categoria}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 rounded-full border py-1",
+              ok ? "bg-itc-sucesso/10 border-itc-sucesso/30 text-itc-sucesso" : "bg-muted border-border text-foreground",
+            )}
+          >
+            <span className="text-xs">{CATEGORIA_LABEL[m.categoria]}</span>
+            <span className="text-sm font-bold tabular-nums">
+              {m.lidos}/{m.meta}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -558,6 +659,9 @@ function SummaryPhase({
   const subtitle = startDate
     ? `${um.nome} · ${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
     : um.nome;
+  const fisica = um.itinerante ? ` · em ${um.itinerante.umFisicaNome}` : "";
+  // Itinerante: faltante = diferença por categoria (mesmo padrão visual da fixa).
+  const metas = um.itinerante ? metaProgress(state) : null;
 
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
@@ -575,7 +679,7 @@ function SummaryPhase({
         </button>
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-foreground leading-tight">Resumo</h1>
-          <p className="text-xs text-muted-foreground leading-tight truncate">{subtitle}</p>
+          <p className="text-xs text-muted-foreground leading-tight truncate">{subtitle}{fisica}</p>
         </div>
       </div>
 
@@ -585,14 +689,20 @@ function SummaryPhase({
           tecnico={tecnico}
           localizacao={state.location}
           escaneados={state.scanned.length}
-          faltantes={state.pending.length}
+          faltantes={metas ? metas.reduce((a, m) => a + m.falta, 0) : state.pending.length}
           manutencao={state.maintenance.length}
           peripherals={hasPeripherals ? {
             ...(um.mouses && { mouses: state.peripherals.mouses }),
             ...(um.carregadores && { carregadores: state.peripherals.carregadores }),
             ...(um.fones && { fones: state.peripherals.fones }),
           } : undefined}
-          faltantesList={state.pending.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))}
+          faltantesList={
+            metas
+              ? metas
+                  .filter((m) => m.falta > 0)
+                  .map((m) => ({ id: m.categoria, hostname: rotuloProgresso(m), detail: `falta ${m.falta}` }))
+              : state.pending.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))
+          }
           manutencaoList={state.maintenance.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))}
         />
       </div>
@@ -664,7 +774,7 @@ export default function ScannerPage() {
   const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
   const { data: todayConferences } = useConferences({ from, to, userId: session?.user.id });
-  const dailyLimitReached = meta > 0 && (todayConferences?.length ?? 0) >= meta;
+  const dailyLimitReached = meta > 0 && (todayConferences?.filter(countsForMeta).length ?? 0) >= meta;
 
   const [activeUM, setActiveUM] = useState<{ id: string; notebooks: NotebookSlim[] } | null>(null);
   // Lookup do scan inclui arquivados só para a mensagem "notebook arquivado";
@@ -679,6 +789,7 @@ export default function ScannerPage() {
         hostname: n.hostname,
         serial: n.serial,
         status: n.status,
+        categoria: n.categoria,
       })),
     [rawNotebooks],
   );

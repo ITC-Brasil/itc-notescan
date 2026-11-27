@@ -13,6 +13,8 @@ export interface NativeScanUi {
   maintenance: { id: string; hostname: string }[]
   /** Total FIXO de ativos da UM (denominador do contador) — capturado no início */
   activeTotal: number
+  /** UM itinerante: progresso por categoria no lugar de pendentes/manut. */
+  metas?: { label: string; lidos: number; meta: number }[]
   lastScanned: string | null
   scanError: string | null
   onNext: () => void
@@ -256,11 +258,18 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           pointerEvents: 'auto',
         }}
       >
-        {[
-          { n: ui.pending.length, label: 'pendentes', rgb: ITC_ERRO_RGB },
-          { n: ui.scanned.length, label: 'lidos', rgb: ITC_SUCESSO_RGB },
-          { n: ui.maintenance.length, label: 'manut.', rgb: ITC_ATENCAO_RGB },
-        ].map((p) => (
+        {(ui.metas
+          ? ui.metas.map((m) => ({
+              n: `${m.lidos}/${m.meta}`,
+              label: m.label,
+              rgb: m.lidos >= m.meta ? ITC_SUCESSO_RGB : ITC_ATENCAO_RGB,
+            }))
+          : [
+              { n: ui.pending.length, label: 'pendentes', rgb: ITC_ERRO_RGB },
+              { n: ui.scanned.length, label: 'lidos', rgb: ITC_SUCESSO_RGB },
+              { n: ui.maintenance.length, label: 'manut.', rgb: ITC_ATENCAO_RGB },
+            ]
+        ).map((p) => (
           <div
             key={p.label}
             style={{
@@ -387,8 +396,8 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
           </div>
         ) : (
           <>
-            {/* Pendentes */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 10px 8px 14px', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+            {/* Pendentes (itinerante: oculto — a meta fica nas pílulas) */}
+            <div style={{ flex: 1, display: ui.metas ? 'none' : 'flex', flexDirection: 'column', overflow: 'hidden', padding: '8px 10px 8px 14px', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: WHITE_DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
                 Pendentes · {ui.pending.length}
               </p>

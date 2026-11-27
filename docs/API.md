@@ -25,17 +25,29 @@ a paginação "Carregar mais" do `/inicio`.
 
 ### POST /api/conferences
 Autenticação: sessão ativa (USER, ADMIN ou MASTER)  
-Body: `{ umId, dataInicio, dataFim, localizacao?, status, mousesQtd?, carregadoresQtd?, fonesQtd?, items: { notebookId, status }[] }`  
+Body: `{ umId, umFisicaId?, dataInicio, dataFim, localizacao?, status, mousesQtd?, carregadoresQtd?, fonesQtd?, items: { notebookId, status }[] }`  
+Resposta 400: payload inconsistente — UM FIXA com `umFisicaId` ou status que não bate com os
+itens; UM ITINERANTE sem `umFisicaId`, UM física que não é FIXA do mesmo projeto, item
+diferente de ESCANEADO  
 Resposta 201: conferência criada  
 Resposta 409: `{ code: "META_REACHED" }` — técnico atingiu `metaDiaria` no dia (bloqueio interativo)  
 Cria conferência imutável, `ConferenceItem` por item e dispara notificação Telegram
 (MarkdownV2 escapado). **Trava de meta diária:** conta as conferências do dia do
 usuário e retorna 409 se ≥ `metaDiaria` — exceto quando a request traz o header
-`X-Sync-Replay: 1` (replay da `syncQueue`, sempre aceito).
+`X-Sync-Replay: 1` (replay da `syncQueue`, sempre aceito). Conferências de UM ITINERANTE
+não contam para a meta nem passam pela trava. **Status da itinerante:** recalculado pelos
+escaneados × meta por categoria atual da UM (CONCLUIDO_OK se todas atingidas, senão
+CONCLUIDO_FALTANTES); se divergir do enviado, grava o recalculado e loga (não rejeita). A
+meta usada é gravada em `ConferenceMeta`. Telegram da itinerante: mesmo layout da fixa, com
+UM física, meta, escaneados, faltantes por categoria ("Instrutores 4/5 — falta 1") e
+"grupo: X/Y com 2 leituras hoje".  
+GET e dashboard trazem `metas[]` e `items[].notebook.categoria`.
 
 ### GET /api/conferences/dashboard
 Autenticação: ADMIN ou MASTER  
-Resposta 200: `{ conferencesToday, activeTechnicians, notebooksTotal, notebooksInMaintenance, conferencesWithMissing, latestConferences[], maintenanceNotebooks[] }`  
+Resposta 200: `{ conferencesToday, activeTechnicians, notebooksTotal, notebooksInMaintenance, conferencesWithMissing, latestConferences[], maintenanceNotebooks[], itinerantCoverage[] }`  
+`itinerantCoverage`: por UM ITINERANTE, `{ total, cobertos, pendentes[{ hostname, categoria, leituras }] }`
+no dia em America/Sao_Paulo (coberto = ESCANEADO em 2+ conferências; só ATIVO).  
 Stats para o dashboard. Usado com polling de 30s via React Query.
 
 ---
@@ -66,6 +78,11 @@ Resposta 200: `{ ok: true }`
 Autenticação: ADMIN ou MASTER  
 Resposta 200: `{ events: LifecycleEvent[] }`  
 Retorna todos os `LifecycleEvent` do notebook em ordem cronológica reversa.
+
+### GET /api/notebooks/[id]/locations
+Autenticação: ADMIN/MASTER ou token `read:catalog`  
+Resposta 200: `{ conferenceId, dataInicio, tecnico, umFisica: { id, nome } }[]` — UM física
+de cada leitura em conferência itinerante, mais recente primeiro (até 200).
 
 ### POST /api/notebooks/batch
 Autenticação: ADMIN ou MASTER  

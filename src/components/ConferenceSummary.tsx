@@ -130,7 +130,7 @@ export function ConferenceSummary({
       {/* Faltantes list */}
       {faltantesList && faltantesList.length > 0 && (
         <div>
-          <p className={cn(CAPTION, "text-destructive mb-2")}>Faltantes · {faltantesList.length}</p>
+          <p className={cn(CAPTION, "text-destructive mb-2")}>Faltantes · {faltantes}</p>
           <div className="rounded-xl border border-destructive/20 bg-destructive/5 divide-y divide-destructive/10">
             {faltantesList.map((nb) => (
               <div key={nb.id} className="flex items-center gap-2 px-3 py-2">
