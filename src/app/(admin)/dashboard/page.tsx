@@ -11,8 +11,10 @@ import {
   Laptop,
   MapPin,
   Eye,
+  Route,
 } from "lucide-react";
-import { useDashboard } from "@/hooks/useDashboard";
+import { useDashboard, type ItinerantCoverage } from "@/hooks/useDashboard";
+import { CATEGORIA_LABEL } from "@/lib/constants";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SkeletonCard, SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -51,7 +53,55 @@ interface ConferenceRow {
     fones: boolean;
     project: { nome: string; cor: string };
   };
+  umFisica: { nome: string } | null;
   items: ConferenceItem[];
+}
+
+/** Cobertura do dia das UMs itinerantes: lidos 2x (abertura + fechamento) / total. */
+function ItinerantesDoDia({ coverage }: { coverage: ItinerantCoverage[] }) {
+  if (!coverage.length) return null;
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold text-foreground">Itinerantes do dia</h2>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {coverage.map((um) => {
+          const ok = um.total > 0 && um.cobertos === um.total;
+          return (
+            <div key={um.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: um.project.cor }} />
+                <span className="text-sm font-medium text-foreground truncate">{um.nome}</span>
+                <span
+                  className={cn(
+                    "ml-auto text-sm font-bold tabular-nums",
+                    ok ? "text-itc-sucesso" : "text-itc-atencao",
+                  )}
+                >
+                  {um.cobertos}/{um.total}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">Cobertos = lidos em 2 conferências hoje</p>
+              {um.pendentes.length > 0 ? (
+                <div className="max-h-40 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                  {um.pendentes.map((n) => (
+                    <div key={n.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                      <span className="tabular-nums font-medium text-foreground">{n.hostname}</span>
+                      {n.categoria && <span className="text-muted-foreground">{CATEGORIA_LABEL[n.categoria]}</span>}
+                      <span className="ml-auto tabular-nums text-muted-foreground">{n.leituras}/2</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-itc-sucesso flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Todos cobertos hoje
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function countByStatus(items: ConferenceItem[]) {
@@ -104,6 +154,11 @@ function conferenceColumns(onVer: (c: ConferenceRow) => void): ColumnDef<Confere
           />
           <span className="text-sm text-muted-foreground">{row.original.um.project.nome}</span>
           <span className="text-sm">/ {row.original.um.nome}</span>
+          {row.original.umFisica && (
+            <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+              <Route className="h-3 w-3" /> {row.original.umFisica.nome}
+            </span>
+          )}
         </div>
       ),
     },
@@ -286,6 +341,8 @@ export default function DashboardPage() {
               variant="error"
             />
           </div>
+
+          <ItinerantesDoDia coverage={data!.itinerantCoverage} />
 
           <div className="space-y-3">
             <h2 className="text-sm font-semibold text-foreground">

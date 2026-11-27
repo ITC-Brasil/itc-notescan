@@ -17,7 +17,7 @@ vi.mock("@/lib/rate-limit", () => ({
   rateLimitByActor: () => ({ allowed: true }),
 }));
 
-import { checkConferenceShape } from "@/lib/services/conference.service";
+import { checkConferenceShape, computeCoverage, saoPauloDayRange } from "@/lib/services/conference.service";
 import { POST } from "@/app/api/conferences/route";
 
 const FIXA = { tipo: "FIXA" as const, projectId: "p1" };
@@ -98,5 +98,39 @@ describe("POST /api/conferences — itinerante", () => {
     const res = await post({ ...body, umFisicaId: undefined });
     expect(res.status).toBe(400);
     expect(db.conference.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("saoPauloDayRange", () => {
+  it("23h30 em SP (02h30 UTC do dia seguinte) ainda é o dia anterior", () => {
+    const { gte, lt } = saoPauloDayRange(new Date("2026-11-27T02:30:00Z"));
+    expect(gte.toISOString()).toBe("2026-11-26T03:00:00.000Z");
+    expect(lt.toISOString()).toBe("2026-11-27T03:00:00.000Z");
+  });
+});
+
+describe("computeCoverage", () => {
+  const nbs = [
+    { id: "a", hostname: "A", categoria: "INSTRUTOR" as const },
+    { id: "b", hostname: "B", categoria: "INSTRUTOR" as const },
+    { id: "c", hostname: "C", categoria: "PEDAGOGA" as const },
+  ];
+
+  it("coberto = 2+ leituras no dia; pendentes trazem a contagem", () => {
+    const r = computeCoverage(nbs, ["a", "a", "b", "a"]);
+    expect(r.total).toBe(3);
+    expect(r.cobertos).toBe(1);
+    expect(r.pendentes.map((p) => [p.id, p.leituras])).toEqual([
+      ["b", 1],
+      ["c", 0],
+    ]);
+  });
+
+  it("leitura de notebook fora da lista (ex.: em manutenção) não conta", () => {
+    expect(computeCoverage(nbs, ["x", "x"]).cobertos).toBe(0);
+  });
+
+  it("sem notebooks: 0/0", () => {
+    expect(computeCoverage([], [])).toEqual({ total: 0, cobertos: 0, pendentes: [] });
   });
 });

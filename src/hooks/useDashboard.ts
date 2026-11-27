@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { Categoria } from "@/lib/validations";
 
 interface MaintenanceNotebook {
   id: string;
@@ -7,7 +8,17 @@ interface MaintenanceNotebook {
   um: { nome: string; project: { nome: string; cor: string } };
 }
 
+export interface ItinerantCoverage {
+  id: string;
+  nome: string;
+  project: { nome: string; cor: string };
+  total: number;
+  cobertos: number;
+  pendentes: { id: string; hostname: string; categoria: Categoria | null; leituras: number }[];
+}
+
 interface DashboardStats {
+  itinerantCoverage: ItinerantCoverage[];
   conferencesToday: number;
   conferencesWithMissing: number;
   notebooksInMaintenance: number;
@@ -32,6 +43,7 @@ interface DashboardStats {
       fones: boolean;
       project: { id: string; nome: string; cor: string };
     };
+    umFisica: { nome: string } | null;
     items: { status: string; notebook: { hostname: string } }[];
   }[];
 }

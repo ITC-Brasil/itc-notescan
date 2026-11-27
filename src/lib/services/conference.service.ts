@@ -57,6 +57,7 @@ export async function getDashboardStats() {
     activeTechnicians,
     latestConferences,
     maintenanceNotebooks,
+    itinerantCoverage,
   ] = await Promise.all([
     prisma.conference.count({
       where: { dataInicio: { gte: todayStart } },
@@ -97,6 +98,7 @@ export async function getDashboardStats() {
             project: { select: { id: true, nome: true, cor: true } },
           },
         },
+        umFisica: { select: { nome: true } },
         items: { select: { status: true, notebook: { select: { hostname: true } } } },
       },
     }),
@@ -110,6 +112,7 @@ export async function getDashboardStats() {
         um: { select: { nome: true, project: { select: { nome: true, cor: true } } } },
       },
     }),
+    getItinerantCoverage(),
   ]);
 
   return {
@@ -120,6 +123,7 @@ export async function getDashboardStats() {
     activeTechnicians,
     latestConferences,
     maintenanceNotebooks,
+    itinerantCoverage,
   };
 }
 
