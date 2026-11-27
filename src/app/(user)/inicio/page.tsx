@@ -342,7 +342,7 @@ export default function InicioPage() {
           </div>
           <div className="text-left">
             <p className="text-lg font-bold text-itc-atencao leading-tight">Meta diária atingida</p>
-            <p className="text-sm text-muted-foreground leading-tight">Você já concluiu {meta} conferência{meta !== 1 ? "s" : ""} hoje.</p>
+            <p className="text-sm text-muted-foreground leading-tight">Conferências para notebooks de Pedagogas, Instrutores e Coordenadoras (SEDET) continuam liberadas em &quot;Nova conferência&quot;.</p>
           </div>
         </div>
       ) : null}
