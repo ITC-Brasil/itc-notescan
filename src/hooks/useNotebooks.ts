@@ -4,6 +4,7 @@ import type {
   UpdateNotebookInput,
   CreateNotebooksBatchInput,
   ImportNotebooksInput,
+  Categoria,
 } from "@/lib/validations";
 
 export interface Notebook {
@@ -12,6 +13,7 @@ export interface Notebook {
   serial: string | null;
   patrimonio: string | null;
   status: "ATIVO" | "MANUTENCAO" | "ARQUIVADO";
+  categoria: Categoria | null;
   umId: string;
   createdAt: string;
   um: {

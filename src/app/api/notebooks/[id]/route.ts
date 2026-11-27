@@ -2,7 +2,7 @@ import { authorize, DELETE_CATALOG, WRITE_CATALOG } from "@/lib/auth/actor";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { updateNotebookSchema } from "@/lib/validations";
-import { conflictResponse, removeNotebooks } from "@/lib/services/notebook.service";
+import { validateCategorias, conflictResponse, removeNotebooks } from "@/lib/services/notebook.service";
 
 export async function PUT(
   request: Request,
@@ -19,6 +19,9 @@ export async function PUT(
     );
 
   const { id } = await params;
+
+  const categoriaError = await validateCategorias(parsed.data.umId, [parsed.data.categoria]);
+  if (categoriaError) return Response.json({ message: categoriaError }, { status: 400 });
 
   try {
     const existing = await prisma.notebook.findUnique({

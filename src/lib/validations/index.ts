@@ -12,6 +12,14 @@ const hostnameSchema = z
 const onArchivedSchema = z.enum(["reactivate", "new"]).optional();
 const onArchivedBulkSchema = z.enum(["skip", "reactivate", "new"]).default("skip");
 
+export const CATEGORIAS = ["INSTRUTOR", "PEDAGOGA", "COORDENADORA"] as const;
+export const categoriaSchema = z.enum(CATEGORIAS);
+export type Categoria = z.infer<typeof categoriaSchema>;
+
+// Categoria do notebook: obrigatória em UM ITINERANTE, nula em UM FIXA. A regra
+// depende do tipo da UM — validada no service (validateCategorias).
+const categoriaFieldSchema = categoriaSchema.nullable().optional();
+
 export const conferenceItemSchema = z.object({
   notebookId: z.string().min(1),
   status: z.enum(["ESCANEADO", "FALTANTE", "MANUTENCAO"]),
@@ -35,6 +43,7 @@ export const createNotebookSchema = z.object({
   patrimonio: z.string().optional(),
   status: z.enum(["ATIVO", "MANUTENCAO"]).default("ATIVO"),
   umId: z.string().min(1),
+  categoria: categoriaFieldSchema,
   onArchived: onArchivedSchema,
 });
 
@@ -48,6 +57,7 @@ export const createNotebooksBatchSchema = z.object({
   end: z.number().int().min(1),
   umId: z.string().min(1),
   status: z.enum(["ATIVO", "MANUTENCAO"]).default("ATIVO"),
+  categoria: categoriaFieldSchema,
   onArchived: onArchivedBulkSchema,
 });
 
@@ -57,6 +67,7 @@ export const updateNotebookSchema = z.object({
   patrimonio: z.string().optional(),
   status: z.enum(["ATIVO", "MANUTENCAO"]),
   umId: z.string().min(1),
+  categoria: categoriaFieldSchema,
 });
 
 export const importNotebooksSchema = z.object({
@@ -66,6 +77,7 @@ export const importNotebooksSchema = z.object({
       hostname: hostnameSchema,
       serial: z.string().optional(),
       patrimonio: z.string().optional(),
+      categoria: categoriaFieldSchema,
     }),
   ).min(1),
   onArchived: onArchivedBulkSchema,
@@ -75,10 +87,6 @@ export const createProjectSchema = z.object({
   nome: z.string().min(1).max(100),
   cor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve ser um hex válido"),
 });
-
-export const CATEGORIAS = ["INSTRUTOR", "PEDAGOGA", "COORDENADORA"] as const;
-export const categoriaSchema = z.enum(CATEGORIAS);
-export type Categoria = z.infer<typeof categoriaSchema>;
 
 export const createUMSchema = z
   .object({

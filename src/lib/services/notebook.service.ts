@@ -5,6 +5,7 @@ import {
   nextArchivedHostname,
   originalHostname,
 } from "@/lib/notebook-hostname";
+import type { Categoria } from "@/lib/validations";
 
 // Conferências e LifecycleEvents são imutáveis e referenciam o notebook por FK
 // (Restrict). Por isso "excluir" um notebook com histórico = arquivar.
@@ -36,6 +37,23 @@ export function conflictResponse(error: unknown): Response | null {
         { status: 409 },
       );
   }
+  return null;
+}
+
+/**
+ * Categoria × tipo da UM: obrigatória em UM ITINERANTE, proibida em UM FIXA.
+ * Devolve a mensagem de erro (400) ou null.
+ */
+export async function validateCategorias(
+  umId: string,
+  categorias: (string | null | undefined)[],
+): Promise<string | null> {
+  const um = await prisma.uM.findUnique({ where: { id: umId }, select: { tipo: true } });
+  if (!um) return "UM não encontrada";
+  if (um.tipo === "ITINERANTE" && categorias.some((c) => !c))
+    return "Categoria é obrigatória para notebooks de UM itinerante";
+  if (um.tipo === "FIXA" && categorias.some((c) => c))
+    return "Notebooks de UM fixa não têm categoria";
   return null;
 }
 
@@ -142,6 +160,7 @@ interface NotebookData {
   serial?: string | null;
   patrimonio?: string | null;
   umId: string;
+  categoria?: Categoria | null;
 }
 
 async function reactivateIn(
@@ -160,6 +179,7 @@ async function reactivateIn(
       hostname: data.hostname,
       status: "ATIVO",
       umId: data.umId,
+      categoria: data.categoria ?? null,
       ...(data.serial ? { serial: data.serial } : {}),
       ...(data.patrimonio ? { patrimonio: data.patrimonio } : {}),
     },
@@ -214,7 +234,7 @@ export interface BulkCreateResult {
 
 /** Lote/import: conflitos com arquivados são tratados em massa, sem diálogo por item. */
 export async function createNotebooksBulk(
-  rows: { hostname: string; serial?: string | null; patrimonio?: string | null }[],
+  rows: { hostname: string; serial?: string | null; patrimonio?: string | null; categoria?: Categoria | null }[],
   umId: string,
   status: "ATIVO" | "MANUTENCAO",
   userId: string,
@@ -230,6 +250,7 @@ export async function createNotebooksBulk(
         hostname: r.hostname,
         serial: r.serial ?? null,
         patrimonio: r.patrimonio ?? null,
+        categoria: r.categoria ?? null,
         umId,
         status,
       })),

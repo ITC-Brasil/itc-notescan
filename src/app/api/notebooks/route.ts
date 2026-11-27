@@ -2,7 +2,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { createNotebookSchema } from "@/lib/validations";
-import { conflictResponse, createNotebook } from "@/lib/services/notebook.service";
+import { validateCategorias, conflictResponse, createNotebook } from "@/lib/services/notebook.service";
 
 export async function GET(request: Request) {
   const actor = await authorize(request, { scopes: ["read:catalog"], rate: "read" });
@@ -48,6 +48,9 @@ export async function POST(request: Request) {
       { message: "Dados inválidos", errors: parsed.error.issues },
       { status: 400 },
     );
+
+  const categoriaError = await validateCategorias(parsed.data.umId, [parsed.data.categoria]);
+  if (categoriaError) return Response.json({ message: categoriaError }, { status: 400 });
 
   try {
     const { onArchived, ...data } = parsed.data;
