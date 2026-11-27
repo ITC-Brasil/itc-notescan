@@ -5,6 +5,7 @@ import { saveToOutbox } from "@/lib/offline/sync";
 import { logger } from "@/lib/logger";
 import type { Categoria, CreateConferenceInput } from "@/lib/validations";
 import { originalHostname } from "@/lib/notebook-hostname";
+import { progressoPorCategoria, statusPorMeta, type ProgressoCategoria } from "@/lib/meta-categoria";
 
 export interface NotebookSlim {
   id: string;
@@ -32,25 +33,11 @@ export interface UMSlim {
   itinerante?: ItineranteSlim;
 }
 
-export interface MetaProgress {
-  categoria: Categoria;
-  meta: number;
-  lidos: number;
-}
+export type MetaProgress = ProgressoCategoria;
 
 /** Progresso por categoria da conferência itinerante (vazio em UM FIXA). */
 export function metaProgress(state: Pick<ConferenceState, "um" | "scanned">): MetaProgress[] {
-  return (state.um?.itinerante?.metas ?? [])
-    .filter((m) => m.meta > 0)
-    .map((m) => ({
-      ...m,
-      lidos: state.scanned.filter((n) => n.categoria === m.categoria).length,
-    }));
-}
-
-/** Itinerante: finalização liberada quando todas as metas forem atingidas. */
-export function metaAtingida(state: Pick<ConferenceState, "um" | "scanned">): boolean {
-  return metaProgress(state).every((m) => m.lidos >= m.meta);
+  return progressoPorCategoria(state.um?.itinerante?.metas ?? [], state.scanned.map((n) => n.categoria));
 }
 
 export type ConferencePhase = "idle" | "scanning" | "peripherals" | "summary" | "saving" | "done";
@@ -304,10 +291,13 @@ export function useConference() {
 
     const dataFim = new Date().toISOString();
     const itinerante = um.itinerante;
-    // Itinerante: os não lidos por este técnico não são faltantes dele — a
-    // cobertura é do grupo (dashboard). Só ESCANEADO, sempre CONCLUIDO_OK.
-    const conferenceStatus =
-      itinerante || state.pending.length === 0 ? "CONCLUIDO_OK" : "CONCLUIDO_FALTANTES";
+    // Itinerante: status pela meta por categoria. Só ESCANEADO — o faltante é a
+    // diferença por categoria, não um notebook específico (não há "da carreta").
+    const conferenceStatus = itinerante
+      ? statusPorMeta(metaProgress(state))
+      : state.pending.length === 0
+        ? "CONCLUIDO_OK"
+        : "CONCLUIDO_FALTANTES";
 
     const scannedItems = state.scanned.map((n) => ({ notebookId: n.id, status: "ESCANEADO" as const }));
     const items: CreateConferenceInput["items"] = itinerante

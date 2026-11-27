@@ -1,13 +1,16 @@
 import { prisma } from "@/lib/db/prisma";
 import type { Categoria, CreateConferenceInput } from "@/lib/validations";
 import { archiveDateStamp } from "@/lib/notebook-hostname";
+import { logger } from "@/lib/logger";
+import { progressoPorCategoria, statusPorMeta, type MetaCategoria } from "@/lib/meta-categoria";
 
 type UMRef = { tipo: "FIXA" | "ITINERANTE"; projectId: string };
 
 /**
  * Regras estruturais da conferência × tipo da UM. Pura (testável); devolve a
- * mensagem do 400 ou null. Não confere meta nem posse dos notebooks: isso pode
- * mudar entre o scan offline e o sync, e a conferência nunca pode ser perdida.
+ * mensagem do 400 ou null. Não confere a posse dos notebooks nem o status da
+ * itinerante contra a meta: isso pode mudar entre o scan offline e o sync, e a
+ * conferência nunca pode ser perdida (ver validateConference).
  */
 export function checkConferenceShape(
   input: Pick<CreateConferenceInput, "status" | "umFisicaId" | "items">,
@@ -27,22 +30,49 @@ export function checkConferenceShape(
   if (umFisica.projectId !== um.projectId) return "A UM física deve ser do mesmo projeto";
   if (input.items.some((i) => i.status !== "ESCANEADO"))
     return "Conferência itinerante só envia itens escaneados";
-  if (input.status !== "CONCLUIDO_OK") return "Conferência itinerante é sempre CONCLUIDO_OK";
   return null;
 }
 
-/** Carrega as UMs e aplica checkConferenceShape. */
+type ValidConference = {
+  tipo: UMRef["tipo"];
+  status: CreateConferenceInput["status"];
+  /** Itinerante: meta da UM no momento do envio (gravada na conferência). */
+  metas: MetaCategoria[];
+};
+
+/**
+ * Carrega as UMs e aplica checkConferenceShape. Itinerante: o status vem dos
+ * escaneados × meta atual da UM. Se a meta mudou desde o scan (offline) e o
+ * status do cliente diverge, não rejeita: usa o recalculado e registra no log.
+ */
 export async function validateConference(
   input: Pick<CreateConferenceInput, "umId" | "status" | "umFisicaId" | "items">,
-): Promise<{ error: string } | { tipo: UMRef["tipo"] }> {
+): Promise<{ error: string } | ValidConference> {
   const select = { tipo: true, projectId: true } as const;
   const [um, umFisica] = await Promise.all([
-    prisma.uM.findUnique({ where: { id: input.umId }, select }),
+    prisma.uM.findUnique({
+      where: { id: input.umId },
+      select: { ...select, metas: { select: { categoria: true, meta: true } } },
+    }),
     input.umFisicaId ? prisma.uM.findUnique({ where: { id: input.umFisicaId }, select }) : null,
   ]);
   if (!um) return { error: "UM não encontrada" };
   const error = checkConferenceShape(input, um, umFisica);
-  return error ? { error } : { tipo: um.tipo };
+  if (error) return { error };
+  if (um.tipo === "FIXA") return { tipo: um.tipo, status: input.status, metas: [] };
+
+  const metas = um.metas.filter((m) => m.meta > 0);
+  const ids = [...new Set(input.items.map((i) => i.notebookId))];
+  const notebooks = await prisma.notebook.findMany({ where: { id: { in: ids } }, select: { categoria: true } });
+  const status = statusPorMeta(progressoPorCategoria(metas, notebooks.map((n) => n.categoria)));
+  if (status !== input.status) {
+    logger.warn("Status da conferência itinerante recalculado pela meta atual da UM", {
+      umId: input.umId,
+      recebido: input.status,
+      gravado: status,
+    });
+  }
+  return { tipo: um.tipo, status, metas };
 }
 
 export async function getDashboardStats() {
@@ -99,7 +129,8 @@ export async function getDashboardStats() {
           },
         },
         umFisica: { select: { nome: true } },
-        items: { select: { status: true, notebook: { select: { hostname: true } } } },
+        metas: { select: { categoria: true, meta: true } },
+        items: { select: { status: true, notebook: { select: { hostname: true, categoria: true } } } },
       },
     }),
     prisma.notebook.findMany({

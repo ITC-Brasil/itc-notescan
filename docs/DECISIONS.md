@@ -918,10 +918,15 @@ tratam `ARQUIVADO` e o recadastro (Reativar / Cadastrar como novo) conforme `nb-
   proibida em UM fixa (`validateCategorias`, 400).
 - Trocar o tipo de uma UM que já tem conferências: 409 (mudaria o sentido do histórico).
 - `Conference.umFisicaId` (FK Restrict, relação nomeada): UM FIXA do mesmo projeto onde o
-  técnico estava. Conferência itinerante envia só ESCANEADO e é sempre CONCLUIDO_OK; os não
-  lidos por ele não viram FALTANTE. O servidor valida a forma (`checkConferenceShape`) e
-  rejeita 400; não valida meta nem posse dos notebooks, que podem mudar entre o scan offline
-  e o sync (a conferência nunca pode ser perdida).
+  técnico estava. Conferência itinerante envia só ESCANEADO e pode ser enviada a qualquer
+  momento, como a fixa. Status: CONCLUIDO_OK com todas as metas por categoria atingidas,
+  senão CONCLUIDO_FALTANTES. Como o notebook itinerante não tem carreta, não dá para dizer
+  QUAL falta: o faltante é a diferença por categoria ("Instrutores 4/5 — falta 1"), sem item
+  FALTANTE. O servidor valida a forma (`checkConferenceShape`, 400) e recalcula o status pela
+  meta atual da UM; se a meta mudou entre o scan offline e o sync, grava o recalculado e loga
+  em vez de rejeitar (a conferência nunca pode ser perdida). A meta usada fica gravada em
+  `ConferenceMeta`, para o histórico não mudar se a meta da UM mudar depois. Não valida
+  posse dos notebooks.
 - Itinerante não conta para `metaDiaria` nem para o 409.
 - Cobertura do grupo, por dia em America/Sao_Paulo: notebook ATIVO coberto = ESCANEADO em
   2+ conferências no dia (abertura e fechamento). Sem campo de turno. Offset fixo -03:00

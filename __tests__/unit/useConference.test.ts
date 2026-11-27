@@ -7,7 +7,7 @@ vi.mock("@/lib/offline/sync", () => ({
   getOutboxCount: vi.fn().mockResolvedValue(0),
 }));
 
-import { metaAtingida, metaProgress, useConference, type NotebookSlim, type UMSlim } from "@/hooks/useConference";
+import { metaProgress, useConference, type NotebookSlim, type UMSlim } from "@/hooks/useConference";
 import { saveToOutbox } from "@/lib/offline/sync";
 
 const mockUM: UMSlim = {
@@ -462,20 +462,30 @@ describe("useConference — UM itinerante", () => {
   const scanI = (r: { current: ReturnType<typeof useConference> }, h: string[], t: number) =>
     act(() => r.current.processScanBatch(h, itinNbs, t));
 
-  it("progresso por categoria e meta liberada só ao atingir todas", async () => {
+  it("progresso e falta por categoria", async () => {
     const { result } = renderHook(() => useConference());
     await act(async () => result.current.startConference(itinUM, itinNbs));
     scanI(result, ["QDFM-INSTR01", "QDFM-INSTR02"], 1000);
     expect(metaProgress(result.current.state)).toEqual([
-      { categoria: "INSTRUTOR", meta: 2, lidos: 2 },
-      { categoria: "PEDAGOGA", meta: 1, lidos: 0 },
+      { categoria: "INSTRUTOR", meta: 2, lidos: 2, falta: 0 },
+      { categoria: "PEDAGOGA", meta: 1, lidos: 0, falta: 1 },
     ]);
-    expect(metaAtingida(result.current.state)).toBe(false);
     scanI(result, ["QDFM-PEDAG-A"], 2000);
-    expect(metaAtingida(result.current.state)).toBe(true);
+    expect(metaProgress(result.current.state).every((m) => m.falta === 0)).toBe(true);
     // Ler além da meta é permitido.
     scanI(result, ["QDFM-INSTR03"], 3000);
     expect(result.current.state.scanned).toHaveLength(4);
+  });
+
+  it("meta não atingida: envia a qualquer momento como CONCLUIDO_FALTANTES, sem itens FALTANTE", async () => {
+    const { result } = renderHook(() => useConference());
+    await act(async () => result.current.startConference(itinUM, itinNbs));
+    scanI(result, ["QDFM-INSTR01"], 1000);
+    await act(async () => { await result.current.finalize(); });
+    const [, options] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(options.body as string);
+    expect(body.status).toBe("CONCLUIDO_FALTANTES");
+    expect(body.items).toEqual([{ notebookId: "i1", status: "ESCANEADO" }]);
   });
 
   it("duplicada na mesma conferência e notebook de outra UM continuam bloqueados", async () => {

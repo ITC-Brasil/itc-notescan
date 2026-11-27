@@ -26,7 +26,6 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
-  metaAtingida,
   metaProgress,
   useConference,
   type MetaProgress,
@@ -35,6 +34,7 @@ import {
   type Peripherals,
 } from "@/hooks/useConference";
 import { CATEGORIA_LABEL } from "@/lib/constants";
+import { rotuloProgresso } from "@/lib/meta-categoria";
 import { useUMs } from "@/hooks/useUMs";
 import { useNotebooks } from "@/hooks/useNotebooks";
 import { countsForMeta, useConferences } from "@/hooks/useConferences";
@@ -250,7 +250,6 @@ function ScanningPhase({
   const [showManut, setShowManut] = useState(false);
   // Itinerante: progresso por categoria no lugar da lista de pendentes da UM inteira.
   const metas = state.um?.itinerante ? metaProgress(state) : null;
-  const nextDisabled = !!metas && !metaAtingida(state);
 
   // On Android APK: hand off the entire scanning UI to the native overlay.
   // The NativeQRScanner renders top bar + viewfinder + feedback + buttons
@@ -268,7 +267,6 @@ function ScanningPhase({
           maintenance: state.maintenance,
           activeTotal: metas ? metas.reduce((a, m) => a + m.meta, 0) : state.activeTotal,
           metas: metas?.map((m) => ({ label: CATEGORIA_LABEL[m.categoria], lidos: m.lidos, meta: m.meta })),
-          nextDisabled,
           lastScanned: state.lastScanned ?? null,
           scanError: state.error ?? null,
           onNext,
@@ -489,7 +487,7 @@ function ScanningPhase({
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
-        <Button size="lg" className="flex-1" onClick={onNext} disabled={nextDisabled}>
+        <Button size="lg" className="flex-1" onClick={onNext}>
           Próximo
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
@@ -657,6 +655,8 @@ function SummaryPhase({
     ? `${um.nome} · ${startDate.toLocaleDateString("pt-BR")} · ${startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
     : um.nome;
   const fisica = um.itinerante ? ` · em ${um.itinerante.umFisicaNome}` : "";
+  // Itinerante: faltante = diferença por categoria (mesmo padrão visual da fixa).
+  const metas = um.itinerante ? metaProgress(state) : null;
 
   const hasPeripherals = um.mouses || um.carregadores || um.fones;
 
@@ -684,14 +684,20 @@ function SummaryPhase({
           tecnico={tecnico}
           localizacao={state.location}
           escaneados={state.scanned.length}
-          faltantes={um.itinerante ? 0 : state.pending.length}
+          faltantes={metas ? metas.reduce((a, m) => a + m.falta, 0) : state.pending.length}
           manutencao={state.maintenance.length}
           peripherals={hasPeripherals ? {
             ...(um.mouses && { mouses: state.peripherals.mouses }),
             ...(um.carregadores && { carregadores: state.peripherals.carregadores }),
             ...(um.fones && { fones: state.peripherals.fones }),
           } : undefined}
-          faltantesList={um.itinerante ? [] : state.pending.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))}
+          faltantesList={
+            metas
+              ? metas
+                  .filter((m) => m.falta > 0)
+                  .map((m) => ({ id: m.categoria, hostname: rotuloProgresso(m), detail: `falta ${m.falta}` }))
+              : state.pending.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))
+          }
           manutencaoList={state.maintenance.map((n) => ({ id: n.id, hostname: n.hostname, detail: n.serial }))}
         />
       </div>

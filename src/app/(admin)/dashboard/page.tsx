@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useDashboard, type ItinerantCoverage } from "@/hooks/useDashboard";
 import { CATEGORIA_LABEL } from "@/lib/constants";
+import { conferenceCounts, type MetaCategoria } from "@/lib/meta-categoria";
+import type { Categoria } from "@/lib/validations";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SkeletonCard, SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -33,7 +35,7 @@ import { cn } from "@/lib/utils";
 
 interface ConferenceItem {
   status: string;
-  notebook: { hostname: string };
+  notebook: { hostname: string; categoria: Categoria | null };
 }
 
 interface ConferenceRow {
@@ -54,6 +56,7 @@ interface ConferenceRow {
     project: { nome: string; cor: string };
   };
   umFisica: { nome: string } | null;
+  metas: MetaCategoria[];
   items: ConferenceItem[];
 }
 
@@ -102,18 +105,6 @@ function ItinerantesDoDia({ coverage }: { coverage: ItinerantCoverage[] }) {
       </div>
     </div>
   );
-}
-
-function countByStatus(items: ConferenceItem[]) {
-  let lidos = 0;
-  let faltantes = 0;
-  let manutencao = 0;
-  for (const it of items) {
-    if (it.status === "ESCANEADO") lidos++;
-    else if (it.status === "FALTANTE") faltantes++;
-    else if (it.status === "MANUTENCAO") manutencao++;
-  }
-  return { lidos, faltantes, manutencao, ativos: lidos + faltantes };
 }
 
 const timeFmt = { hour: "2-digit", minute: "2-digit" } as const;
@@ -166,7 +157,7 @@ function conferenceColumns(onVer: (c: ConferenceRow) => void): ColumnDef<Confere
       id: "contagem",
       header: "Contagem",
       cell: ({ row }) => {
-        const { lidos, ativos } = countByStatus(row.original.items);
+        const { escaneados: lidos, ativos } = conferenceCounts(row.original);
         return (
           <span className="text-sm tabular-nums">
             <span className="font-semibold text-foreground">{lidos}</span>
@@ -282,7 +273,7 @@ export default function DashboardPage() {
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const [selected, setSelected] = useState<ConferenceRow | null>(null);
   const columns = useMemo(() => conferenceColumns(setSelected), []);
-  const selectedCounts = selected ? countByStatus(selected.items) : null;
+  const selectedCounts = selected ? conferenceCounts(selected) : null;
 
   return (
     <div className="space-y-6 page-transition">
@@ -422,7 +413,7 @@ export default function DashboardPage() {
             <ConferenceSummary
               tecnico={selected.user.nome}
               localizacao={selected.localizacao}
-              escaneados={selectedCounts.lidos}
+              escaneados={selectedCounts.escaneados}
               faltantes={selectedCounts.faltantes}
               manutencao={selectedCounts.manutencao}
               peripherals={
@@ -434,12 +425,8 @@ export default function DashboardPage() {
                     }
                   : undefined
               }
-              faltantesList={selected.items
-                .filter((i) => i.status === "FALTANTE")
-                .map((it, idx) => ({ id: String(idx), hostname: it.notebook.hostname }))}
-              manutencaoList={selected.items
-                .filter((i) => i.status === "MANUTENCAO")
-                .map((it, idx) => ({ id: String(idx), hostname: it.notebook.hostname }))}
+              faltantesList={selectedCounts.faltantesList}
+              manutencaoList={selectedCounts.manutencaoList}
             />
           )}
         </DialogContent>

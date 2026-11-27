@@ -44,7 +44,8 @@ interface DashboardStats {
       project: { id: string; nome: string; cor: string };
     };
     umFisica: { nome: string } | null;
-    items: { status: string; notebook: { hostname: string } }[];
+    metas: { categoria: Categoria; meta: number }[];
+    items: { status: string; notebook: { hostname: string; categoria: Categoria | null } }[];
   }[];
 }
 

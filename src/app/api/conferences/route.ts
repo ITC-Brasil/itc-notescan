@@ -6,6 +6,7 @@ import { createConferenceSchema } from "@/lib/validations";
 import { originalHostname } from "@/lib/notebook-hostname";
 import { getItinerantCoverage, validateConference } from "@/lib/services/conference.service";
 import { CATEGORIA_LABEL } from "@/lib/constants";
+import { progressoPorCategoria, rotuloProgresso, type MetaCategoria, type ProgressoCategoria } from "@/lib/meta-categoria";
 
 export async function GET(request: Request) {
   const actor = await authorize(request, { scopes: [] });
@@ -55,7 +56,8 @@ export async function GET(request: Request) {
         },
       },
       umFisica: { select: { id: true, nome: true } },
-      items: { select: { status: true, notebook: { select: { hostname: true } } } },
+      metas: { select: { categoria: true, meta: true } },
+      items: { select: { status: true, notebook: { select: { hostname: true, categoria: true } } } },
       _count: { select: { items: true } },
     },
   });
@@ -78,11 +80,13 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
-  const { umId, umFisicaId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
+  const { umId, umFisicaId, dataInicio, dataFim, localizacao, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
 
   const shape = await validateConference(parsed.data);
   if ("error" in shape) return Response.json({ message: shape.error }, { status: 400 });
   const itinerante = shape.tipo === "ITINERANTE";
+  // Fixa: o do cliente (já conferido com os itens). Itinerante: recalculado pela meta.
+  const status = shape.status;
 
   // Dedupe defensiva por notebookId (mantém a 1ª ocorrência). A @@unique
   // ([conferenceId, notebookId]) é a rede final no banco; esta dedupe impede
@@ -154,6 +158,7 @@ export async function POST(request: Request) {
             status: item.status,
           })),
         },
+        ...(shape.metas.length > 0 && { metas: { create: shape.metas } }),
       },
       include: {
         user: { select: { id: true, nome: true } },
@@ -168,6 +173,7 @@ export async function POST(request: Request) {
           },
         },
         umFisica: { select: { nome: true } },
+        metas: { select: { categoria: true, meta: true } },
         items: { include: { notebook: { select: { hostname: true, categoria: true } } } },
       },
     });
@@ -193,31 +199,31 @@ export async function POST(request: Request) {
   }
 }
 
-type CreatedConference = Parameters<typeof notifyTelegram>[0] & {
+type CreatedConference = Omit<Parameters<typeof notifyTelegram>[0], "items"> & {
   umId: string;
   umFisica: { nome: string } | null;
+  metas: MetaCategoria[];
   items: { status: string; notebook: { hostname: string; categoria: keyof typeof CATEGORIA_LABEL | null } }[];
 };
 
 interface ItinerantSummary {
   umFisica: string;
-  porCategoria: string;
+  progresso: ProgressoCategoria[];
   grupo: { cobertos: number; total: number };
 }
 
-/** UM física, lidos por categoria e cobertura do grupo no dia da conferência. */
+/** UM física, lidos × meta por categoria e cobertura do grupo no dia da conferência. */
 async function itinerantSummary(conference: CreatedConference): Promise<ItinerantSummary | undefined> {
   try {
-    const porCat = new Map<string, number>();
-    for (const i of conference.items) {
-      const c = i.notebook.categoria;
-      if (c) porCat.set(CATEGORIA_LABEL[c], (porCat.get(CATEGORIA_LABEL[c]) ?? 0) + 1);
-    }
+    const progresso = progressoPorCategoria(
+      conference.metas,
+      conference.items.filter((i) => i.status === "ESCANEADO").map((i) => i.notebook.categoria),
+    );
     // Dia da conferência (não "agora"): replay offline cai no dia certo.
     const [grupo] = await getItinerantCoverage(new Date(conference.dataInicio), [conference.umId]);
     return {
       umFisica: conference.umFisica?.nome ?? "-",
-      porCategoria: [...porCat].map(([k, v]) => `${k} ${v}`).join(" · ") || "-",
+      progresso,
       grupo: { cobertos: grupo?.cobertos ?? 0, total: grupo?.total ?? 0 },
     };
   } catch (err) {
@@ -296,7 +302,19 @@ async function notifyTelegram(conference: {
 
   lines.push(`\`------------------------------------\``);
   if (itinerante) {
-    lines.push(`💻 Lidos: ${esc(itinerante.porCategoria)}`);
+    // Mesmo layout da fixa; o faltante é a diferença por categoria (o notebook
+    // itinerante não tem carreta, então não dá para dizer QUAL falta).
+    const { progresso } = itinerante;
+    const incompletas = progresso.filter((p) => p.falta > 0);
+    lines.push(`💻 Meta: ${progresso.reduce((a, p) => a + p.meta, 0)}`);
+    lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
+    lines.push(`❗️ Dispositivos Faltantes: ${incompletas.reduce((a, p) => a + p.falta, 0)}`);
+    if (incompletas.length > 0) {
+      lines.push(``);
+      lines.push(`*Lista de Faltantes:*`);
+      for (const p of incompletas) lines.push(`\\- ${esc(`${rotuloProgresso(p)} — falta ${p.falta}`)}`);
+    }
+    lines.push(``);
     lines.push(`👥 Grupo: ${itinerante.grupo.cobertos}/${itinerante.grupo.total} com 2 leituras hoje`);
     lines.push(``);
     lines.push(`Status: *${statusLabel}*`);

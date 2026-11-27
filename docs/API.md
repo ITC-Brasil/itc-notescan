@@ -28,15 +28,20 @@ Autenticação: sessão ativa (USER, ADMIN ou MASTER)
 Body: `{ umId, umFisicaId?, dataInicio, dataFim, localizacao?, status, mousesQtd?, carregadoresQtd?, fonesQtd?, items: { notebookId, status }[] }`  
 Resposta 400: payload inconsistente — UM FIXA com `umFisicaId` ou status que não bate com os
 itens; UM ITINERANTE sem `umFisicaId`, UM física que não é FIXA do mesmo projeto, item
-diferente de ESCANEADO ou status diferente de CONCLUIDO_OK  
+diferente de ESCANEADO  
 Resposta 201: conferência criada  
 Resposta 409: `{ code: "META_REACHED" }` — técnico atingiu `metaDiaria` no dia (bloqueio interativo)  
 Cria conferência imutável, `ConferenceItem` por item e dispara notificação Telegram
 (MarkdownV2 escapado). **Trava de meta diária:** conta as conferências do dia do
 usuário e retorna 409 se ≥ `metaDiaria` — exceto quando a request traz o header
 `X-Sync-Replay: 1` (replay da `syncQueue`, sempre aceito). Conferências de UM ITINERANTE
-não contam para a meta nem passam pela trava. Telegram da itinerante: UM física, lidos por
-categoria e "grupo: X/Y com 2 leituras hoje".
+não contam para a meta nem passam pela trava. **Status da itinerante:** recalculado pelos
+escaneados × meta por categoria atual da UM (CONCLUIDO_OK se todas atingidas, senão
+CONCLUIDO_FALTANTES); se divergir do enviado, grava o recalculado e loga (não rejeita). A
+meta usada é gravada em `ConferenceMeta`. Telegram da itinerante: mesmo layout da fixa, com
+UM física, meta, escaneados, faltantes por categoria ("Instrutores 4/5 — falta 1") e
+"grupo: X/Y com 2 leituras hoje".  
+GET e dashboard trazem `metas[]` e `items[].notebook.categoria`.
 
 ### GET /api/conferences/dashboard
 Autenticação: ADMIN ou MASTER  

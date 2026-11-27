@@ -1,4 +1,5 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import type { Categoria } from "@/lib/validations";
 
 export interface ConferenceRecord {
   id: string;
@@ -12,7 +13,8 @@ export interface ConferenceRecord {
   user: { id: string; nome: string };
   um: { id: string; nome: string; mouses: boolean; carregadores: boolean; fones: boolean; tipo?: "FIXA" | "ITINERANTE"; project: { id: string; nome: string; cor: string } };
   umFisica?: { id: string; nome: string } | null;
-  items: { status: string; notebook: { hostname: string } }[];
+  metas: { categoria: Categoria; meta: number }[];
+  items: { status: string; notebook: { hostname: string; categoria: Categoria | null } }[];
   _count: { items: number };
 }
 

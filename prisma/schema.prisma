@@ -162,8 +162,20 @@ model Conference {
   fonesQtd        Int?
   createdAt       DateTime         @default(now())
   items           ConferenceItem[]
+  // Itinerante: cópia da meta por categoria da UM no momento do envio.
+  metas           ConferenceMeta[]
 
   @@index([umId, dataInicio])
+}
+
+model ConferenceMeta {
+  id           String            @id @default(cuid())
+  conferenceId String
+  conference   Conference        @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+  categoria    NotebookCategoria
+  meta         Int
+
+  @@unique([conferenceId, categoria])
 }
 
 enum ConferenceStatus {

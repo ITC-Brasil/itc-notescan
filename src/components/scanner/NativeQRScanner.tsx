@@ -15,8 +15,6 @@ export interface NativeScanUi {
   activeTotal: number
   /** UM itinerante: progresso por categoria no lugar de pendentes/manut. */
   metas?: { label: string; lidos: number; meta: number }[]
-  /** Itinerante: "Próximo" só libera com as metas atingidas */
-  nextDisabled?: boolean
   lastScanned: string | null
   scanError: string | null
   onNext: () => void
@@ -463,9 +461,7 @@ export function NativeQRScanner({ onScan, onError, isActive, ui }: NativeQRScann
 
         <button
           onClick={ui.onNext}
-          disabled={ui.nextDisabled}
           style={{
-            opacity: ui.nextDisabled ? 0.5 : 1,
             flex: 1, height: 56, borderRadius: 12, border: 'none',
             background: '#008f95',
             color: '#fff', fontSize: 15, fontWeight: 600,
