@@ -89,10 +89,37 @@ model UM {
   mouses             Boolean      @default(false)
   carregadores       Boolean      @default(false)
   fones              Boolean      @default(false)
+  // Itinerante: notebooks que acompanham pessoas entre carretas (instrutores,
+  // pedagogas, coordenadoras). Conferidos por meta, junto da UM física.
+  tipo               UMTipo       @default(FIXA)
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   notebooks          Notebook[]
-  conferences        Conference[]
+  conferences        Conference[] @relation("ConferenceUM")
+  conferencesFisicas Conference[] @relation("ConferenceUMFisica")
+  metas              UMMetaCategoria[]
+}
+
+enum UMTipo {
+  FIXA
+  ITINERANTE
+}
+
+enum NotebookCategoria {
+  INSTRUTOR
+  PEDAGOGA
+  COORDENADORA
+}
+
+// Meta por conferência de cada categoria numa UM ITINERANTE.
+model UMMetaCategoria {
+  id        String            @id @default(cuid())
+  umId      String
+  um        UM                @relation(fields: [umId], references: [id], onDelete: Cascade)
+  categoria NotebookCategoria
+  meta      Int
+
+  @@unique([umId, categoria])
 }
 
 model Notebook {
@@ -101,6 +128,8 @@ model Notebook {
   serial          String?
   patrimonio      String?
   status          NotebookStatus   @default(ATIVO)
+  // Só em UMs ITINERANTE (obrigatória lá); nula nos notebooks de UMs fixas.
+  categoria       NotebookCategoria?
   umId            String
   um              UM               @relation(fields: [umId], references: [id])
   createdAt       DateTime         @default(now())
@@ -120,7 +149,10 @@ model Conference {
   userId          String
   user            User             @relation(fields: [userId], references: [id])
   umId            String
-  um              UM               @relation(fields: [umId], references: [id])
+  um              UM               @relation("ConferenceUM", fields: [umId], references: [id])
+  // UM física (FIXA) onde o técnico estava — só em conferência de UM ITINERANTE.
+  umFisicaId      String?
+  umFisica        UM?              @relation("ConferenceUMFisica", fields: [umFisicaId], references: [id], onDelete: Restrict)
   dataInicio      DateTime
   dataFim         DateTime
   localizacao     String?
@@ -130,6 +162,8 @@ model Conference {
   fonesQtd        Int?
   createdAt       DateTime         @default(now())
   items           ConferenceItem[]
+
+  @@index([umId, dataInicio])
 }
 
 enum ConferenceStatus {
