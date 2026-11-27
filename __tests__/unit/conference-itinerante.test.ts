@@ -128,7 +128,9 @@ describe("POST /api/conferences — itinerante", () => {
       dataInicio: new Date(NOW),
       dataFim: new Date(NOW),
       user: { nome: "Técnico" },
-      um: { nome: "QDFM-PEDAGÓGICO", mouses: false, carregadores: false, fones: false, project: { nome: "QDFM", cor: "#000" } },
+      um: { nome: "QDFM-PEDAGÓGICO", mouses: true, carregadores: true, fones: false, project: { nome: "QDFM", cor: "#000" } },
+      mousesQtd: 2,
+      carregadoresQtd: 3,
       umFisica: { nome: "QDFM01" },
       metas: [
         { categoria: "INSTRUTOR", meta: 2 },
@@ -157,13 +159,16 @@ describe("POST /api/conferences — itinerante", () => {
     ]);
     expect((await post(body)).status).toBe(201);
     const text = JSON.parse(fetchMock.mock.calls[0][1].body).text as string;
-    expect(text).toContain("UM física: QDFM01");
-    expect(text).toContain("Meta: 3");
+    expect(text).toContain("Carreta: QDFM01");
+    expect(text).toContain("Periféricos:\n\\- Mouses: 2\n\\- Carregadores: 3");
+    expect(text).toContain("Dispositivos Esperados: 3");
+    expect(text).toContain("Dispositivos em Manutenção: 0");
+    expect(text).toContain("\\- Instrutores 1/2 — falta 1");
     expect(text).toContain("Dispositivos Escaneados: 2");
     expect(text).toContain("Dispositivos Faltantes: 1");
     expect(text).toContain("Instrutores 1/2 — falta 1");
     expect(text).not.toContain("Pedagoga 1/1");
-    expect(text).toContain("Grupo: 1/2 com 2 leituras hoje");
+    expect(text).toContain("Cobertura do dia: 1/2 notebooks conferidos 2x");
     vi.unstubAllGlobals();
   });
 

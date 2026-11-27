@@ -286,7 +286,7 @@ async function notifyTelegram(conference: {
     ``,
     `👤 Técnico: ${esc(conference.user.nome)}`,
     `🚚 UM: ${esc(um.nome)} \\(${esc(um.project.nome)}\\)`,
-    ...(itinerante ? [`🏠 UM física: ${esc(itinerante.umFisica)}`] : []),
+    ...(itinerante ? [`🏠 Carreta: ${esc(itinerante.umFisica)}`] : []),
     `📅 Data: ${esc(dataStr)}`,
     `🕒 Horário: ${esc(horaInicio)} às ${esc(horaFim)}`,
     `📍 Localização: ${localizacao}`,
@@ -301,36 +301,24 @@ async function notifyTelegram(conference: {
   }
 
   lines.push(`\`------------------------------------\``);
-  if (itinerante) {
-    // Mesmo layout da fixa; o faltante é a diferença por categoria (o notebook
-    // itinerante não tem carreta, então não dá para dizer QUAL falta).
-    const { progresso } = itinerante;
-    const incompletas = progresso.filter((p) => p.falta > 0);
-    lines.push(`💻 Meta: ${progresso.reduce((a, p) => a + p.meta, 0)}`);
-    lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
-    lines.push(`❗️ Dispositivos Faltantes: ${incompletas.reduce((a, p) => a + p.falta, 0)}`);
-    if (incompletas.length > 0) {
-      lines.push(``);
-      lines.push(`*Lista de Faltantes:*`);
-      for (const p of incompletas) lines.push(`\\- ${esc(`${rotuloProgresso(p)} — falta ${p.falta}`)}`);
-    }
-    lines.push(``);
-    lines.push(`👥 Grupo: ${itinerante.grupo.cobertos}/${itinerante.grupo.total} com 2 leituras hoje`);
-    lines.push(``);
-    lines.push(`Status: *${statusLabel}*`);
-    return sendTelegram(token, chatId, lines.join("\n"));
-  }
-  lines.push(`💻 Dispositivos Ativos: ${totalAtivos}`);
+  // Itinerante: mesmo layout da fixa. Esperados = soma das metas; faltante é a
+  // diferença por categoria (o notebook itinerante não tem carreta, então não dá
+  // para dizer QUAL falta).
+  const incompletas = itinerante?.progresso.filter((p) => p.falta > 0) ?? [];
+  const esperados = itinerante ? itinerante.progresso.reduce((a, p) => a + p.meta, 0) : totalAtivos;
+  const faltantes = itinerante ? incompletas.reduce((a, p) => a + p.falta, 0) : faltanteItems.length;
+  lines.push(`💻 Dispositivos ${itinerante ? "Esperados" : "Ativos"}: ${esperados}`);
   lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
-  lines.push(`❗️ Dispositivos Faltantes: ${faltanteItems.length}`);
+  lines.push(`❗️ Dispositivos Faltantes: ${faltantes}`);
   lines.push(`🔧 Dispositivos em Manutenção: ${manutencaoItems.length}`);
 
-  if (faltanteItems.length > 0) {
+  if (faltantes > 0) {
     lines.push(``);
     lines.push(`*Lista de Faltantes:*`);
-    for (const item of faltanteItems) {
-      lines.push(`\\- ${esc(originalHostname(item.notebook.hostname))}`);
-    }
+    const lista = itinerante
+      ? incompletas.map((p) => `${rotuloProgresso(p)} — falta ${p.falta}`)
+      : faltanteItems.map((item) => originalHostname(item.notebook.hostname));
+    for (const l of lista) lines.push(`\\- ${esc(l)}`);
   }
 
   if (manutencaoItems.length > 0) {
@@ -339,6 +327,11 @@ async function notifyTelegram(conference: {
     for (const item of manutencaoItems) {
       lines.push(`\\- ${esc(originalHostname(item.notebook.hostname))}`);
     }
+  }
+
+  if (itinerante) {
+    lines.push(``);
+    lines.push(`👥 Cobertura do dia: ${itinerante.grupo.cobertos}/${itinerante.grupo.total} notebooks conferidos 2x`);
   }
 
   lines.push(``);
