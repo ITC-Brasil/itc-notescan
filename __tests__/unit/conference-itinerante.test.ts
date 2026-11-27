@@ -5,7 +5,8 @@ const { db, auth } = vi.hoisted(() => ({
     conference: { create: vi.fn(), count: vi.fn(), findMany: vi.fn() },
     lifecycleEvent: { createMany: vi.fn() },
     user: { findUnique: vi.fn() },
-    uM: { findUnique: vi.fn() },
+    uM: { findUnique: vi.fn(), findMany: vi.fn() },
+    conferenceItem: { findMany: vi.fn() },
   },
   auth: vi.fn(),
 }));
@@ -92,6 +93,50 @@ describe("POST /api/conferences — itinerante", () => {
     expect(res.status).toBe(201);
     expect(db.user.findUnique).not.toHaveBeenCalled();
     expect(db.conference.create.mock.calls[0][0].data.umFisicaId).toBe("fixa");
+  });
+
+  it("Telegram: UM física, lidos por categoria e cobertura do grupo", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = "t";
+    process.env.TELEGRAM_CHAT_ID = "c";
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+    db.conference.create.mockResolvedValue({
+      id: "c1",
+      umId: "itin",
+      status: "CONCLUIDO_OK",
+      dataInicio: new Date(NOW),
+      dataFim: new Date(NOW),
+      user: { nome: "Técnico" },
+      um: { nome: "QDFM-PEDAGÓGICO", mouses: false, carregadores: false, fones: false, project: { nome: "QDFM", cor: "#000" } },
+      umFisica: { nome: "QDFM01" },
+      items: [
+        { status: "ESCANEADO", notebook: { hostname: "QDFM-INSTR01", categoria: "INSTRUTOR" } },
+        { status: "ESCANEADO", notebook: { hostname: "QDFM-PEDAG-A", categoria: "PEDAGOGA" } },
+      ],
+    });
+    db.uM.findMany.mockResolvedValue([
+      {
+        id: "itin",
+        nome: "QDFM-PEDAGÓGICO",
+        project: { nome: "QDFM", cor: "#000" },
+        notebooks: [
+          { id: "i1", hostname: "QDFM-INSTR01", categoria: "INSTRUTOR" },
+          { id: "p1", hostname: "QDFM-PEDAG-A", categoria: "PEDAGOGA" },
+        ],
+      },
+    ]);
+    db.conferenceItem.findMany.mockResolvedValue([
+      { notebookId: "i1", conference: { umId: "itin", userId: "x" } },
+      { notebookId: "i1", conference: { umId: "itin", userId: "tec1" } },
+      { notebookId: "p1", conference: { umId: "itin", userId: "tec1" } },
+    ]);
+    expect((await post(body)).status).toBe(201);
+    const text = JSON.parse(fetchMock.mock.calls[0][1].body).text as string;
+    expect(text).toContain("UM física: QDFM01");
+    expect(text).toContain("Lidos: Instrutores 1 · Pedagoga 1");
+    expect(text).toContain("Grupo: 1/2 com 2 leituras hoje");
+    expect(text).not.toContain("Faltantes");
+    vi.unstubAllGlobals();
   });
 
   it("sem UM física → 400, nada gravado", async () => {

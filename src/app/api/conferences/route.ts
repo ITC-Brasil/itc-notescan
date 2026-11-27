@@ -4,7 +4,8 @@ import { rateLimitByIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { createConferenceSchema } from "@/lib/validations";
 import { originalHostname } from "@/lib/notebook-hostname";
-import { validateConference } from "@/lib/services/conference.service";
+import { getItinerantCoverage, validateConference } from "@/lib/services/conference.service";
+import { CATEGORIA_LABEL } from "@/lib/constants";
 
 export async function GET(request: Request) {
   const actor = await authorize(request, { scopes: [] });
@@ -166,7 +167,8 @@ export async function POST(request: Request) {
             project: { select: { nome: true, cor: true } },
           },
         },
-        items: { include: { notebook: { select: { hostname: true } } } },
+        umFisica: { select: { nome: true } },
+        items: { include: { notebook: { select: { hostname: true, categoria: true } } } },
       },
     });
 
@@ -182,12 +184,46 @@ export async function POST(request: Request) {
       });
     }
 
-    await notifyTelegram(conference);
+    await notifyTelegram(conference, itinerante ? await itinerantSummary(conference) : undefined);
 
     return Response.json(conference, { status: 201 });
   } catch (error) {
     logger.captureException(error, { userId: actor.userId, umId });
     return Response.json({ message: "Erro interno" }, { status: 500 });
+  }
+}
+
+type CreatedConference = Parameters<typeof notifyTelegram>[0] & {
+  umId: string;
+  umFisica: { nome: string } | null;
+  items: { status: string; notebook: { hostname: string; categoria: keyof typeof CATEGORIA_LABEL | null } }[];
+};
+
+interface ItinerantSummary {
+  umFisica: string;
+  porCategoria: string;
+  grupo: { cobertos: number; total: number };
+}
+
+/** UM física, lidos por categoria e cobertura do grupo no dia da conferência. */
+async function itinerantSummary(conference: CreatedConference): Promise<ItinerantSummary | undefined> {
+  try {
+    const porCat = new Map<string, number>();
+    for (const i of conference.items) {
+      const c = i.notebook.categoria;
+      if (c) porCat.set(CATEGORIA_LABEL[c], (porCat.get(CATEGORIA_LABEL[c]) ?? 0) + 1);
+    }
+    // Dia da conferência (não "agora"): replay offline cai no dia certo.
+    const [grupo] = await getItinerantCoverage(new Date(conference.dataInicio), [conference.umId]);
+    return {
+      umFisica: conference.umFisica?.nome ?? "-",
+      porCategoria: [...porCat].map(([k, v]) => `${k} ${v}`).join(" · ") || "-",
+      grupo: { cobertos: grupo?.cobertos ?? 0, total: grupo?.total ?? 0 },
+    };
+  } catch (err) {
+    // Telegram é acessório: a conferência já foi gravada.
+    logger.warn("Resumo itinerante do Telegram falhou", { error: String(err) });
+    return undefined;
   }
 }
 
@@ -203,7 +239,7 @@ async function notifyTelegram(conference: {
   user: { nome: string };
   um: { nome: string; mouses: boolean; carregadores: boolean; fones: boolean; project: { nome: string; cor: string } };
   items: { status: string; notebook: { hostname: string } }[];
-}) {
+}, itinerante?: ItinerantSummary) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) {
@@ -244,6 +280,7 @@ async function notifyTelegram(conference: {
     ``,
     `👤 Técnico: ${esc(conference.user.nome)}`,
     `🚚 UM: ${esc(um.nome)} \\(${esc(um.project.nome)}\\)`,
+    ...(itinerante ? [`🏠 UM física: ${esc(itinerante.umFisica)}`] : []),
     `📅 Data: ${esc(dataStr)}`,
     `🕒 Horário: ${esc(horaInicio)} às ${esc(horaFim)}`,
     `📍 Localização: ${localizacao}`,
@@ -258,6 +295,13 @@ async function notifyTelegram(conference: {
   }
 
   lines.push(`\`------------------------------------\``);
+  if (itinerante) {
+    lines.push(`💻 Lidos: ${esc(itinerante.porCategoria)}`);
+    lines.push(`👥 Grupo: ${itinerante.grupo.cobertos}/${itinerante.grupo.total} com 2 leituras hoje`);
+    lines.push(``);
+    lines.push(`Status: *${statusLabel}*`);
+    return sendTelegram(token, chatId, lines.join("\n"));
+  }
   lines.push(`💻 Dispositivos Ativos: ${totalAtivos}`);
   lines.push(`👍 Dispositivos Escaneados: ${escaneados}`);
   lines.push(`❗️ Dispositivos Faltantes: ${faltanteItems.length}`);
@@ -282,8 +326,10 @@ async function notifyTelegram(conference: {
   lines.push(``);
   lines.push(`Status: *${statusLabel}*`);
 
-  const text = lines.join("\n");
+  return sendTelegram(token, chatId, lines.join("\n"));
+}
 
+async function sendTelegram(token: string, chatId: string, text: string) {
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
