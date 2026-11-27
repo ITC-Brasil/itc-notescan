@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useUMs, useCreateUM, useUpdateUM, useDeleteUM, type UM } from "@/hooks/useUMs";
 import { useProjects } from "@/hooks/useProjects";
-import { createUMSchema, type CreateUMInput } from "@/lib/validations";
+import { CATEGORIAS, createUMSchema, type CreateUMInput } from "@/lib/validations";
+import { CATEGORIA_LABEL } from "@/lib/constants";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,10 +66,18 @@ function UMFormDialog({
       mouses: um?.mouses ?? false,
       carregadores: um?.carregadores ?? false,
       fones: um?.fones ?? false,
+      tipo: um?.tipo ?? "FIXA",
+      // Sempre as 3 categorias na mesma ordem; meta 0 = categoria fora da meta.
+      metas: CATEGORIAS.map((categoria) => ({
+        categoria,
+        meta: um?.metas.find((m) => m.categoria === categoria)?.meta ?? 0,
+      })),
     },
   });
+  const tipo = form.watch("tipo");
 
   const onSubmit = async (data: CreateUMInput) => {
+    if (data.tipo === "FIXA") data = { ...data, metas: [] };
     try {
       if (isEditing) {
         await updateMutation.mutateAsync({ id: um.id, data });
@@ -159,6 +168,63 @@ function UMFormDialog({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="tipo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="FIXA">Fixa (carreta)</SelectItem>
+                      <SelectItem value="ITINERANTE">Itinerante (acompanha pessoas)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {tipo === "ITINERANTE" && (
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">Meta por conferência</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Quantos de cada categoria o técnico lê em cada conferência. 0 = não conferida.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {CATEGORIAS.map((categoria, i) => (
+                    <FormField
+                      key={categoria}
+                      control={form.control}
+                      name={`metas.${i}.meta`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{CATEGORIA_LABEL[categoria]}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={0}
+                              {...field}
+                              value={field.value as number}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+                {form.formState.errors.metas && (
+                  <p className="text-sm text-destructive mt-2">
+                    {form.formState.errors.metas.message ?? form.formState.errors.metas.root?.message}
+                  </p>
+                )}
+              </div>
+            )}
             <Separator />
             <div>
               <p className="text-sm font-medium text-foreground mb-3">Periféricos</p>
@@ -316,6 +382,12 @@ export default function UMsPage() {
                           <span className="text-xs text-muted-foreground hidden sm:inline">
                             {um.quantidadeEsperada} notebooks
                           </span>
+                          {um.tipo === "ITINERANTE" && (
+                            <Badge variant="outline" className="text-xs">
+                              Itinerante ·{" "}
+                              {um.metas.map((m) => `${CATEGORIA_LABEL[m.categoria]} ${m.meta}`).join(" · ")}
+                            </Badge>
+                          )}
                           <Badge variant="secondary" className="text-xs">
                             {um._count.notebooks} cadastrados
                           </Badge>
