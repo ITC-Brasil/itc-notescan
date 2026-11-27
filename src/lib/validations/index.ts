@@ -34,6 +34,8 @@ export const createConferenceSchema = z.object({
   mousesQtd: z.number().int().min(0).optional(),
   carregadoresQtd: z.number().int().min(0).optional(),
   fonesQtd: z.number().int().min(0).optional(),
+  // Só em conferência de UM ITINERANTE: a UM física (FIXA) onde o técnico está.
+  umFisicaId: z.string().min(1).optional(),
   items: z.array(conferenceItemSchema).min(1),
 });
 

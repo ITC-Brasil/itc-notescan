@@ -1,4 +1,48 @@
 import { prisma } from "@/lib/db/prisma";
+import type { CreateConferenceInput } from "@/lib/validations";
+
+type UMRef = { tipo: "FIXA" | "ITINERANTE"; projectId: string };
+
+/**
+ * Regras estruturais da conferência × tipo da UM. Pura (testável); devolve a
+ * mensagem do 400 ou null. Não confere meta nem posse dos notebooks: isso pode
+ * mudar entre o scan offline e o sync, e a conferência nunca pode ser perdida.
+ */
+export function checkConferenceShape(
+  input: Pick<CreateConferenceInput, "status" | "umFisicaId" | "items">,
+  um: UMRef,
+  umFisica: UMRef | null,
+): string | null {
+  const temFaltante = input.items.some((i) => i.status === "FALTANTE");
+  if (um.tipo === "FIXA") {
+    if (input.umFisicaId) return "UM fixa não aceita UM física";
+    const esperado = temFaltante ? "CONCLUIDO_FALTANTES" : "CONCLUIDO_OK";
+    if (input.status !== esperado) return "Status inconsistente com os itens";
+    return null;
+  }
+  if (!input.umFisicaId) return "Conferência itinerante exige a UM física";
+  if (!umFisica) return "UM física não encontrada";
+  if (umFisica.tipo !== "FIXA") return "A UM física deve ser uma UM fixa";
+  if (umFisica.projectId !== um.projectId) return "A UM física deve ser do mesmo projeto";
+  if (input.items.some((i) => i.status !== "ESCANEADO"))
+    return "Conferência itinerante só envia itens escaneados";
+  if (input.status !== "CONCLUIDO_OK") return "Conferência itinerante é sempre CONCLUIDO_OK";
+  return null;
+}
+
+/** Carrega as UMs e aplica checkConferenceShape. */
+export async function validateConference(
+  input: Pick<CreateConferenceInput, "umId" | "status" | "umFisicaId" | "items">,
+): Promise<{ error: string } | { tipo: UMRef["tipo"] }> {
+  const select = { tipo: true, projectId: true } as const;
+  const [um, umFisica] = await Promise.all([
+    prisma.uM.findUnique({ where: { id: input.umId }, select }),
+    input.umFisicaId ? prisma.uM.findUnique({ where: { id: input.umFisicaId }, select }) : null,
+  ]);
+  if (!um) return { error: "UM não encontrada" };
+  const error = checkConferenceShape(input, um, umFisica);
+  return error ? { error } : { tipo: um.tipo };
+}
 
 export async function getDashboardStats() {
   const todayStart = new Date();

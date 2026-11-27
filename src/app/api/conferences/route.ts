@@ -4,6 +4,7 @@ import { rateLimitByIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { createConferenceSchema } from "@/lib/validations";
 import { originalHostname } from "@/lib/notebook-hostname";
+import { validateConference } from "@/lib/services/conference.service";
 
 export async function GET(request: Request) {
   const actor = await authorize(request, { scopes: [] });
@@ -74,7 +75,11 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
-  const { umId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
+  const { umId, umFisicaId, dataInicio, dataFim, localizacao, status, mousesQtd, carregadoresQtd, fonesQtd, items } = parsed.data;
+
+  const shape = await validateConference(parsed.data);
+  if ("error" in shape) return Response.json({ message: shape.error }, { status: 400 });
+  const itinerante = shape.tipo === "ITINERANTE";
 
   // Dedupe defensiva por notebookId (mantém a 1ª ocorrência). A @@unique
   // ([conferenceId, notebookId]) é a rede final no banco; esta dedupe impede
@@ -99,7 +104,8 @@ export async function POST(request: Request) {
   // conferences replayed from the syncQueue carry X-Sync-Replay and are always
   // recorded (they already happened; never drop data). Counts both statuses.
   const isSyncReplay = request.headers.get("x-sync-replay") === "1";
-  if (!isSyncReplay) {
+  // Conferência itinerante acompanha a da carreta: não conta para a meta diária.
+  if (!isSyncReplay && !itinerante) {
     const dbUser = await prisma.user.findUnique({
       where: { id: actor.userId },
       select: { metaDiaria: true },
@@ -114,6 +120,7 @@ export async function POST(request: Request) {
         where: {
           userId: actor.userId,
           dataInicio: { gte: startOfDay, lte: endOfDay },
+          um: { tipo: "FIXA" },
         },
       });
       if (todayCount >= meta) {
@@ -130,6 +137,7 @@ export async function POST(request: Request) {
       data: {
         userId: actor.userId,
         umId,
+        umFisicaId,
         dataInicio: new Date(dataInicio),
         dataFim: new Date(dataFim),
         localizacao,
